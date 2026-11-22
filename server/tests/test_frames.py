@@ -177,3 +177,24 @@ async def test_refresh_error_redacts_urls(tmp_path, caplog):
     assert "abc" not in store.last_error(0)
     assert "refresh failed" in caplog.text
     assert "abc" not in caplog.text
+
+
+async def test_refresh_error_redacts_schemeless_request_url(tmp_path, caplog):
+    import socket
+
+    from glancebox import http
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    def fetch(o, c):
+        http.get_json(f"http://127.0.0.1:{port}/api/x", params={"lat": "48.1234"}, timeout=2)
+
+    t = script_type(tmp_path, "a", fetch)
+    store = FrameStore(1)
+    caplog.set_level(logging.WARNING)
+    await refresh_once(make_cfg(page(0, "a")), {"a": t}, FakeRenderer(), store, 0)
+    assert "ConnectionError" in store.last_error(0)
+    assert "48.1234" not in store.last_error(0)
+    assert "refresh failed" in caplog.text and "48.1234" not in caplog.text

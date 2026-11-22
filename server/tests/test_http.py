@@ -69,3 +69,36 @@ def test_redact_urls(text, expected):
 ])
 def test_redact_urls_edge_cases(text, expected):
     assert http.redact_urls(text) == expected
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("[http://u:pw@h/?a=1]", "[http://***@h/?***]"),
+    ("<http://h/x?a=1>", "<http://h/x?***>"),
+    ("with url: /api/x?apikey=SECRET (Caused by X)", "with url: /api/x?*** (Caused by X)"),
+    ("with url: /api/x (Caused by X)", "with url: /api/x (Caused by X)"),
+])
+def test_redact_urls_brackets_and_schemeless(text, expected):
+    assert http.redact_urls(text) == expected
+
+
+@pytest.mark.parametrize("text", ["http://user:pa/ss@h/x", "http://user:p?ss@h/x",
+                                  "http://user:p#ss@h/x"])
+def test_redact_urls_odd_userinfo(text):
+    out = http.redact_urls(text)
+    assert "ss" not in out and out.startswith("http://***@h")
+
+
+def _closed_port() -> int:
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def test_redact_urls_real_requests_connection_error():
+    with pytest.raises(requests.ConnectionError) as err:
+        http.get_json(f"http://127.0.0.1:{_closed_port()}/api/x", params={"apikey": "SECRET"},
+                      timeout=2)
+    assert "SECRET" in str(err.value)  # precondition: requests quotes the query
+    out = http.redact_urls(str(err.value))
+    assert "SECRET" not in out and "url: /api/x?***" in out
