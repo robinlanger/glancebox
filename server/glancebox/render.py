@@ -10,10 +10,13 @@ from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from typing import Self
+from urllib.parse import urlsplit
 
 from PIL import Image
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
+
+from .netguard import blocked
 
 MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_timing.h
 QUALITY_STEPS = (85, 75, 65, 55, 45, 40)
@@ -152,9 +155,20 @@ class Renderer:
             if wait_ms:
                 await page.wait_for_timeout(wait_ms)
 
-        return await self._render(load, timeout_s + wait_ms / 1000)
+        try:
+            page_host = urlsplit(url).hostname
+        except ValueError:
+            page_host = None
+        return await self._render(load, timeout_s + wait_ms / 1000, page_host)
 
-    async def _render(self, load, budget_s: float) -> bytes:
+    async def _render(self, load, budget_s: float, page_host: str | None = None) -> bytes:
+        async def guard(route):
+            # Pages may not reach Home Assistant internals; the url page's own host is exempt.
+            if blocked(route.request.url, page_host):
+                await route.abort("blockedbyclient")
+            else:
+                await route.continue_()
+
         if self._pw is None:
             raise RenderError("renderer not started")
         async with self._lock:
@@ -164,8 +178,10 @@ class Renderer:
             try:
                 async with asyncio.timeout(budget_s + 2):
                     context = await self._browser.new_context(
-                        viewport={"width": SIZE, "height": SIZE}, device_scale_factor=1
+                        viewport={"width": SIZE, "height": SIZE}, device_scale_factor=1,
+                        service_workers="block",
                     )
+                    await context.route("**/*", guard)
                     page = await context.new_page()
                     await load(page)
                     png = await page.screenshot(

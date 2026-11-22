@@ -173,6 +173,8 @@ Der Server lädt die Adresse in einem Headless-Chromium mit einem Fenster von ge
 - **Keine Anmeldeseiten.** Der Browser des Servers hat keine gespeicherten Anmeldungen. Eine Seite mit Anmeldung zeigt die Anmeldung. Baue eine schreibgeschützte Seite fürs Display, und stelle sie nicht ins Internet, denn das Display-Bild wird ohne jedes Passwort ausgeliefert.
 - Jede Aktualisierung lädt die Seite neu, also bedeutet `refresh: 30` alle 30 Sekunden eine Anfrage an deine Seite.
 
+Manche Ziele sind für alles gesperrt, was der Browser lädt, bei `url`-Seiten wie bei Vorlagen-Seiten: die internen Namen von Home Assistant (`supervisor`, `hassio`, `homeassistant`, `observer`, jeder Name, der auf `.local.hass.io` endet), `localhost` und die Adressen `127.0.0.0/8`, `::1`, `172.30.32.0/23` (das Add-on-Netz) und `169.254.0.0/16`. Der Server bricht solche Anfragen ab, und überhaupt laden nur Adressen mit `http`, `https`, `data`, `blob` und `about`. Eine Ausnahme: Eine `url`-Seite darf alles von ihrem eigenen Host laden, `url: http://homeassistant:8123/...` funktioniert also weiter samt eigenen Bildern und Skripten. Geprüft werden Namen und IP-Adressen, wie sie dastehen, nicht, wohin ein Name aufgelöst wird.
+
 ## Vorschau im Browser
 
 Öffne `http://<server>:8080/`. Dort siehst du jede Seite deiner Playlist als 240x240-Bild mit Alter und letztem Fehler, und die Seite aktualisiert sich alle 30 Sekunden selbst. Starte nach einer Änderung an `page.py` oder `template.html` den Server neu (`docker compose restart`) und lade die Seite neu. Erscheint deine Seite nicht als Bild, sagt dir der Fehlertext darunter, warum. Die Einzelheiten stehen in `docker compose logs`.

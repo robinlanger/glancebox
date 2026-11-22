@@ -89,6 +89,54 @@ async def test_render_relaunches_dead_browser():
     assert Image.open(io.BytesIO(out)).format == "JPEG"
 
 
+def _serve(body: bytes, content_type: str, seen: list[str]) -> HTTPServer:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append(self.path)
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+@pytest.mark.browser
+async def test_render_url_blocks_internal_target():
+    internal_seen: list[str] = []
+    internal = _serve(b"", "image/png", internal_seen)
+    page_seen: list[str] = []
+    html = f'<img src="http://localhost:{internal.server_port}/x.png"><p>hi</p>'.encode()
+    page = _serve(html, "text/html", page_seen)
+    try:
+        async with Renderer() as r:
+            out = await r.render_url(f"http://127.0.0.1:{page.server_port}/", 0, None, 5)
+        assert Image.open(io.BytesIO(out)).format == "JPEG"
+        assert page_seen  # the page's own host stays reachable
+        assert internal_seen == []
+    finally:
+        page.shutdown()
+        internal.shutdown()
+
+
+@pytest.mark.browser
+async def test_render_html_blocks_loopback():
+    seen: list[str] = []
+    srv = _serve(b"", "image/png", seen)
+    try:
+        async with Renderer() as r:
+            await r.render_html(f'<img src="http://127.0.0.1:{srv.server_port}/x.png">')
+        assert seen == []
+    finally:
+        srv.shutdown()
+
+
 class _DeadBrowser:
     def is_connected(self):
         return False

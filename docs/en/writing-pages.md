@@ -173,6 +173,8 @@ The server loads the address in a headless Chromium with a window of exactly **2
 - **No login screens.** The server's browser has no saved logins. A page that needs a login shows the login. Make a read-only page for the display, and do not publish it to the internet, because the display image is served without any password.
 - Every refresh loads the page again, so `refresh: 30` means one request to your page every 30 seconds.
 
+Some targets are off limits for everything the browser loads, on `url` pages and on template pages alike: the Home Assistant internal names (`supervisor`, `hassio`, `homeassistant`, `observer`, any name ending in `.local.hass.io`), `localhost`, and the addresses `127.0.0.0/8`, `::1`, `172.30.32.0/23` (the add-on network) and `169.254.0.0/16`. The server aborts such requests, and only `http`, `https`, `data`, `blob` and `about` addresses load at all. One exception: a `url` page may load anything from its own host, so `url: http://homeassistant:8123/...` still works with its own images and scripts. The check looks at names and IP addresses as written, not at what a name resolves to.
+
 ## Previewing in the browser
 
 Open `http://<server>:8080/`. It shows every page of your playlist as a 240x240 picture with its age and last error, and refreshes itself every 30 seconds. After a change to `page.py` or `template.html` restart the server (`docker compose restart`) and reload. If your page does not appear as a picture, the error text under it tells you why. `docker compose logs` has the details.

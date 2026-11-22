@@ -13,6 +13,10 @@ All notable changes to this project are documented here. The format follows
 - Chromium first tries to start with its sandbox. Where the container does not allow it (usual
   under Docker's default seccomp profile and in the add-on), it starts without it as before and
   logs one warning.
+- Pages can no longer make the browser request Home Assistant internal targets (`supervisor`,
+  `homeassistant`, `localhost`, the add-on network `172.30.32.0/23`, loopback, link-local) or
+  non-web addresses such as `file:`; such requests are aborted. A `url` page may still load
+  everything from its own host. Service workers are disabled.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
