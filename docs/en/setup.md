@@ -17,11 +17,12 @@ After the first flash (or after a factory reset) the display opens a Wi-Fi setup
    | Field | Meaning |
    | --- | --- |
    | Wi-Fi network and password | Your home network (2.4 GHz). |
-   | Server URL | Address of the Glance Box server, for example `http://homeserver:8080`. Only `http://` works (no `https://`). A trailing slash is removed for you. |
-   | Update password | The password for updates and for changing settings later. The user name is always `admin`. |
+   | Server URL | Address of the Glance Box server, for example `http://homeserver:8080`. Required. Only `http://` works (no `https://`). A trailing slash is removed for you. The empty field shows the example `http://192.168.x.x:8090`: replace `192.168.x.x` with your server's IP address, and `8090` with your port. 8090 is the port of the Home Assistant add-on; the Docker server uses 8080 unless you changed it. |
+   | Update password | The password for updates and for changing settings later, at least 8 characters. The user name is always `admin`. |
+   | Current update password | Only on a device that already has an update password. Needed for any change to the fields below it; a new Wi-Fi alone does not need it. |
    | Brightness | 5 to 100 percent. You can change it later on the device web page. |
 
-4. Save. If something is invalid (short password, `https://`, missing host) the portal shows the error in English and German and asks again.
+4. Save. The portal checks the fields **before** it connects to your Wi-Fi. If something is invalid (empty server URL, short password, `https://`, missing host, wrong current password), the form comes back at once with the error in English and German. The server URL stays in its field; choose your Wi-Fi network again and enter the Wi-Fi password and the passwords again, because the portal never sends passwords back to the browser.
 5. The display restarts, joins your Wi-Fi and shows the first page.
 
 **Language.** The device web page and its messages follow your browser language (German or English). The text on the display itself is English.

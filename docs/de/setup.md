@@ -17,11 +17,12 @@ Nach dem ersten Flashen (oder nach einem Zurücksetzen) öffnet das Display ein 
    | Feld | Bedeutung |
    | --- | --- |
    | WLAN-Name und Passwort | Dein Heimnetz (2,4 GHz). |
-   | Server URL | Adresse des Glance-Box-Servers, zum Beispiel `http://homeserver:8080`. Nur `http://` geht (kein `https://`). Ein abschließender Schrägstrich wird für dich entfernt. |
-   | Update password | Das Passwort für Updates und für spätere Änderungen der Einstellungen. Der Benutzername ist immer `admin`. |
+   | Server URL | Adresse des Glance-Box-Servers, zum Beispiel `http://homeserver:8080`. Pflichtfeld. Nur `http://` geht (kein `https://`). Ein abschließender Schrägstrich wird für dich entfernt. Das leere Feld zeigt das Beispiel `http://192.168.x.x:8090`: Ersetze `192.168.x.x` durch die IP-Adresse deines Servers und `8090` durch deinen Port. 8090 ist der Port des Home-Assistant-Add-ons; der Docker-Server nutzt 8080, solange du nichts geändert hast. |
+   | Update password | Das Passwort für Updates und für spätere Änderungen der Einstellungen, mindestens 8 Zeichen. Der Benutzername ist immer `admin`. |
+   | Current update password | Nur bei einem Gerät, das schon ein Update-Passwort hat. Nötig für jede Änderung der Felder darunter; ein neues WLAN allein braucht es nicht. |
    | Brightness | Helligkeit von 5 bis 100 Prozent. Du kannst sie später auf der Geräteseite ändern. |
 
-4. Speichern. Ist etwas ungültig (zu kurzes Passwort, `https://`, fehlender Host), zeigt das Portal den Fehler auf Englisch und Deutsch und fragt erneut.
+4. Speichern. Das Portal prüft die Felder, **bevor** es sich mit deinem WLAN verbindet. Ist etwas ungültig (leere Server-URL, zu kurzes Passwort, `https://`, fehlender Host, falsches aktuelles Passwort), kommt das Formular sofort mit dem Fehler auf Englisch und Deutsch zurück. Die Server-URL bleibt im Feld stehen; wähl dein WLAN noch einmal aus und gib das WLAN-Passwort und die Passwörter neu ein, denn das Portal schickt Passwörter nie an den Browser zurück.
 5. Das Display startet neu, verbindet sich mit deinem WLAN und zeigt die erste Seite.
 
 **Sprache.** Die Geräteseite und ihre Meldungen richten sich nach der Sprache deines Browsers (Deutsch oder Englisch). Die Texte auf dem Display selbst sind englisch.
