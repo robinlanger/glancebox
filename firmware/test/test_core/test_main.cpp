@@ -5,6 +5,7 @@
 
 #include "boot_guard.h"
 #include "frame_poll.h"
+#include "http_head.h"
 #include "ota_check.h"
 #include "night.h"
 #include "ota_flow.h"
@@ -945,6 +946,188 @@ void test_stored_url_with_old_chars_still_loads() {
   TEST_ASSERT_TRUE(gb::settingsComplete(back));  // the device keeps running with it
 }
 
+namespace {
+bool parseHead(const char* h, gb::HttpHead* head) { return gb::parseHttpHead(h, strlen(h), head); }
+}  // namespace
+
+void test_http_head_parses_frame_reply() {
+  const char* h = "HTTP/1.1 200 OK\r\ncontent-length: 1234\r\nETag: \"abc\"\r\n"
+                  "X-Next-In:30\r\nx-local-time:  13:05:09 \r\ncontent-type: image/jpeg\r\n\r\n";
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(gb::parseHttpHead(h, strlen(h), &head));
+  TEST_ASSERT_EQUAL(200, head.status);
+  TEST_ASSERT_EQUAL(1234, head.contentLength);
+  TEST_ASSERT_EQUAL_STRING("\"abc\"", head.etag);
+  TEST_ASSERT_EQUAL(30, head.nextIn);
+  TEST_ASSERT_EQUAL(13 * 3600 + 5 * 60 + 9, head.localSec);
+}
+
+void test_http_head_304_without_length() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 304 Not Modified\r\nX-Next-In: 30\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(304, head.status);
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_EQUAL_STRING("", head.etag);
+  TEST_ASSERT_EQUAL(30, head.nextIn);
+  TEST_ASSERT_EQUAL(-1, head.localSec);
+  // Status line without reason phrase, no headers at all.
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.0 404\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(404, head.status);
+  TEST_ASSERT_EQUAL(-1, head.nextIn);
+}
+
+void test_http_head_chunked_has_no_length() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  // Content-Length together with chunked: the length does not describe the body.
+  TEST_ASSERT_TRUE(parseHead(
+      "HTTP/1.1 200 OK\r\nContent-Length: 100\r\ntransfer-encoding: Chunked\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_TRUE(parseHead(
+      "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\nContent-Length: 100\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+}
+
+void test_http_head_rejects_garbage() {
+  gb::HttpHead head;
+  TEST_ASSERT_FALSE(parseHead("", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("FOO 200\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 099 Low\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 600 High\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 20 OK\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 2000 OK\r\n\r\n", &head));
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n", &head));  // no blank line
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 200 OK\r\nX-A: b\nc\r\n\r\n", &head));      // bare LF
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 200 OK\r\nX-A: b\rc\r\n\r\n", &head));      // bare CR
+  const char nul[] = "HTTP/1.1 200 OK\r\nX-Next-In: 3\0\r\n\r\n";
+  TEST_ASSERT_FALSE(gb::parseHttpHead(nul, sizeof(nul) - 1, &head));
+  // Data after the blank line is not part of the head.
+  TEST_ASSERT_FALSE(parseHead("HTTP/1.1 200 OK\r\n\r\nxy", &head));
+}
+
+void test_http_head_bad_length_is_minus_one() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length: 12x\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length: -5\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_TRUE(
+      parseHead("HTTP/1.1 200 OK\r\nContent-Length: 12345678901234567890\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length:\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  // Two different lengths: neither can be trusted.
+  TEST_ASSERT_TRUE(
+      parseHead("HTTP/1.1 200 OK\r\nContent-Length: 10\r\nContent-Length: 20\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(-1, head.contentLength);
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length:\t 42\t\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(42, head.contentLength);
+}
+
+void test_http_head_etag_and_values_follow_existing_rules() {
+  gb::HttpHead head;
+  // 40 characters do not fit kEtagCap (storeEtag rule): no ETag.
+  TEST_ASSERT_TRUE(parseHead(
+      "HTTP/1.1 200 OK\r\nETag: \"01234567890123456789012345678901234567\"\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_STRING("", head.etag);
+  TEST_ASSERT_TRUE(parseHead(  // 39 characters fit
+      "HTTP/1.1 200 OK\r\nETag: \"0123456789012345678901234567890123456\"\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL(39, strlen(head.etag));
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nX-Next-In: soon\r\nX-Local-Time: 25:00:00\r\n"
+                             "X-Next-In-Extra: 5\r\nNot a header line\r\n\r\n",
+                             &head));
+  TEST_ASSERT_EQUAL(-1, head.nextIn);
+  TEST_ASSERT_EQUAL(-1, head.localSec);
+}
+
+void test_server_target() {
+  gb::ServerTarget t;
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://192.168.1.10:8090", &t));
+  TEST_ASSERT_EQUAL_STRING("192.168.1.10", t.host);
+  TEST_ASSERT_EQUAL(8090, t.port);
+  TEST_ASSERT_EQUAL_STRING("", t.path);
+  TEST_ASSERT_EQUAL_STRING("", t.userinfo);
+
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://box", &t));
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL(80, t.port);
+  TEST_ASSERT_EQUAL_STRING("", t.path);
+
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://box/base/x", &t));
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL_STRING("/base/x", t.path);
+
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://box:65535/", &t));
+  TEST_ASSERT_EQUAL(65535, t.port);
+  TEST_ASSERT_EQUAL_STRING("", t.path);
+
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box:0", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box:70000", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box:", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box:80a", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("https://box", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("box", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box?k=v", &t));        // query
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box/base?k=v", &t));   // query
+  const std::string longHost = "http://" + std::string(70, 'h');
+  TEST_ASSERT_FALSE(gb::parseServerTarget(longHost.c_str(), &t));
+  const std::string longPath = "http://box/" + std::string(130, 'p');
+  TEST_ASSERT_FALSE(gb::parseServerTarget(longPath.c_str(), &t));
+}
+
+void test_server_target_userinfo() {
+  // Kept for Basic auth: HTTPClient sent the raw text before '@' as credentials.
+  gb::ServerTarget t;
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://u:p@box", &t));
+  TEST_ASSERT_EQUAL_STRING("u:p", t.userinfo);
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL(80, t.port);
+  TEST_ASSERT_EQUAL_STRING("", t.path);
+
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://u@box:8090/base", &t));
+  TEST_ASSERT_EQUAL_STRING("u", t.userinfo);
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL(8090, t.port);
+  TEST_ASSERT_EQUAL_STRING("/base", t.path);
+
+  // '@' in the path is not userinfo.
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://box/a@b", &t));
+  TEST_ASSERT_EQUAL_STRING("", t.userinfo);
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL_STRING("/a@b", t.path);
+
+  // 95 characters fit userinfo[96], 96 do not.
+  const std::string fits = "http://" + std::string(95, 'u') + "@box";
+  TEST_ASSERT_TRUE(gb::parseServerTarget(fits.c_str(), &t));
+  TEST_ASSERT_EQUAL(95, strlen(t.userinfo));
+  const std::string tooLong = "http://" + std::string(96, 'u') + "@box";
+  TEST_ASSERT_FALSE(gb::parseServerTarget(tooLong.c_str(), &t));
+
+  // HTTPClient split at the first '@'; a second one would end up in the host name.
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://u:p@ss@box", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://u:p@", &t));  // empty host
+}
+
+void test_deadline_wraparound() {
+  TEST_ASSERT_FALSE(gb::deadlinePassed(0xFFFFFF00u, 0x00000010u, 8000));
+  TEST_ASSERT_TRUE(gb::deadlinePassed(0xFFFFFF00u, 0x00002000u, 8000));
+  TEST_ASSERT_FALSE(gb::deadlinePassed(1000, 8999, 8000));
+  TEST_ASSERT_TRUE(gb::deadlinePassed(1000, 9000, 8000));
+}
+
+void test_frame_error_text_new_codes() {
+  char b[gb::kErrorTextCap];
+  gb::frameErrorText(gb::kErrHeadTooLarge, b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("reply too large", b);
+  gb::frameErrorText(gb::kErrHeadTimeout, b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("server too slow", b);
+  gb::frameErrorText(gb::kErrHeadMalformed, b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("bad reply", b);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_fresh_magic);
@@ -1024,5 +1207,15 @@ int main() {
   RUN_TEST(test_server_url_rejects_markup_chars);
   RUN_TEST(test_server_url_still_accepts_normal_urls);
   RUN_TEST(test_stored_url_with_old_chars_still_loads);
+  RUN_TEST(test_http_head_parses_frame_reply);
+  RUN_TEST(test_http_head_304_without_length);
+  RUN_TEST(test_http_head_chunked_has_no_length);
+  RUN_TEST(test_http_head_rejects_garbage);
+  RUN_TEST(test_http_head_bad_length_is_minus_one);
+  RUN_TEST(test_http_head_etag_and_values_follow_existing_rules);
+  RUN_TEST(test_server_target);
+  RUN_TEST(test_server_target_userinfo);
+  RUN_TEST(test_deadline_wraparound);
+  RUN_TEST(test_frame_error_text_new_codes);
   return UNITY_END();
 }

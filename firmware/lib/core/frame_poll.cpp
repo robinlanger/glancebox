@@ -43,6 +43,9 @@ void frameErrorText(int status, char* buf, size_t cap) {
     case kErrDecode: fixed = "bad JPEG"; break;
     case kErrNoWifi: fixed = "no Wi-Fi"; break;
     case kErrBadUrl: fixed = "bad server URL"; break;
+    case kErrHeadTooLarge: fixed = "reply too large"; break;
+    case kErrHeadTimeout: fixed = "server too slow"; break;
+    case kErrHeadMalformed: fixed = "bad reply"; break;
     default: break;
   }
   if (fixed != nullptr) {

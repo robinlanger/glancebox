@@ -15,6 +15,11 @@ All notable changes to this project are documented here. The format follows
 - Firmware: a server URL typed in the setup portal or on the device web page may no longer contain
   quotes, `<`, `>`, a backtick, inner spaces, control characters or non-ASCII characters. A URL
   already stored on the device keeps working.
+- Firmware: the reply header of the frame request must now be complete within 8 seconds of
+  starting the request, and it may be at most 1024 bytes long. Before, a wrong or
+  impersonated server could send header lines slowly without end; the display then hung and its
+  web page (settings, updates) no longer answered, even after a restart. The offline screen now
+  shows "server too slow", "reply too large" or "bad reply" in these cases.
 
 ## [0.6.1]
 
