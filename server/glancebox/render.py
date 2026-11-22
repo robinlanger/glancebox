@@ -16,7 +16,7 @@ from PIL import Image
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
-from .netguard import blocked
+from .netguard import GuardProxy, normalize_host
 
 MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_timing.h
 QUALITY_STEPS = (85, 75, 65, 55, 45, 40)
@@ -87,11 +87,13 @@ class Renderer:
     def __init__(self) -> None:
         self._pw = None
         self._browser = None
+        self._guard: GuardProxy | None = None  # all page traffic goes through it
         self._lock = asyncio.Lock()
         self.sandboxed: bool | None = None  # None until Chromium first started
 
     async def __aenter__(self) -> Self:
         try:
+            self._guard = GuardProxy()
             self._pw = await async_playwright().start()
             await self._launch()
         except Exception as exc:
@@ -100,14 +102,18 @@ class Renderer:
         return self
 
     async def __aexit__(self, *exc) -> None:
-        browser, pw = self._browser, self._pw
-        self._browser = self._pw = None
+        browser, pw, guard = self._browser, self._pw, self._guard
+        self._browser = self._pw = self._guard = None
         try:
             if browser:
                 await browser.close()
         finally:
-            if pw:
-                await pw.stop()
+            try:
+                if pw:
+                    await pw.stop()
+            finally:
+                if guard:
+                    await guard.close()
 
     async def _launch(self) -> None:
         """Start Chromium with a clean environment; try the sandbox once, remember the outcome."""
@@ -156,19 +162,17 @@ class Renderer:
                 await page.wait_for_timeout(wait_ms)
 
         try:
-            page_host = urlsplit(url).hostname
+            page_host = normalize_host(urlsplit(url).hostname or "") or None
         except ValueError:
             page_host = None
         return await self._render(load, timeout_s + wait_ms / 1000, page_host)
 
     async def _render(self, load, budget_s: float, page_host: str | None = None) -> bytes:
-        async def guard(route):
-            # Pages may not reach Home Assistant internals; the url page's own host is exempt.
-            if blocked(route.request.url, page_host):
-                await route.abort("blockedbyclient")
-            else:
-                await route.continue_()
+        """Render in a fresh context whose traffic all goes through the guard proxy.
 
+        Pages may not reach Home Assistant internals; ``page_host`` (the url page's own host) is
+        exempt. ``<-loopback>`` makes Chromium proxy loopback targets too instead of going direct.
+        """
         if self._pw is None:
             raise RenderError("renderer not started")
         async with self._lock:
@@ -180,8 +184,9 @@ class Renderer:
                     context = await self._browser.new_context(
                         viewport={"width": SIZE, "height": SIZE}, device_scale_factor=1,
                         service_workers="block",
+                        proxy={"server": await self._guard.url_for(page_host),
+                               "bypass": "<-loopback>"},
                     )
-                    await context.route("**/*", guard)
                     page = await context.new_page()
                     await load(page)
                     png = await page.screenshot(

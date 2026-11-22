@@ -58,8 +58,10 @@ Lieferkette am 2026-11-22 ergab sieben Punkte. Dieses Dokument legt fest, wie si
   bleibt der Rückfall ohne Sandbox; Schutz sind dann die bereinigte Umgebung und die Zielsperre.
 - Ein Prozess mit derselben Benutzerkennung kann `/proc/<pid>/environ` des Servers lesen; dort
   steht der Supervisor-Token aus dem Start. Das verhindert nur die Sandbox.
-- Die Zielsperre prüft Namen und IP-Literale, nicht aufgelöste Adressen (DNS-Rebinding bleibt).
-- WebSockets aus Seiten werden nicht gefiltert.
+- Die Zielsperre ist ein filternder Proxy im Server-Prozess, über den jeder Browser-Kontext
+  seinen ganzen Verkehr schickt. Er prüft Namen und jede aufgelöste Adresse und verbindet zur
+  geprüften Adresse; DNS-Rebinding, Weiterleitungen und WebSockets sind damit abgedeckt.
+- Direktes UDP, etwa WebRTC, läuft nicht über den Proxy und wird nicht gefiltert.
 
 ## Was dem Bauenden überlassen ist
 

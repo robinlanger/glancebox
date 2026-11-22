@@ -1,5 +1,6 @@
 import io
 import random
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -89,52 +90,126 @@ async def test_render_relaunches_dead_browser():
     assert Image.open(io.BytesIO(out)).format == "JPEG"
 
 
-def _serve(body: bytes, content_type: str, seen: list[str]) -> HTTPServer:
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            seen.append(self.path)
-            self.send_response(200)
-            self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+class _Site:
+    """A threaded HTTP server on 127.0.0.1 with fixed answers per path; records the paths."""
 
-        def log_message(self, *a):
-            pass
+    def __init__(self, routes: dict[str, tuple[int, dict[str, str], bytes]]) -> None:
+        self.seen: list[str] = []
+        site = self
 
-    srv = HTTPServer(("127.0.0.1", 0), Handler)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    return srv
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                site.seen.append(self.path)
+                status, headers, body = routes.get(self.path, (404, {}, b""))
+                self.send_response(status)
+                for name, value in headers.items():
+                    self.send_header(name, value)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        self.server = HTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self.server.server_port
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def _html(body: str) -> tuple[int, dict[str, str], bytes]:
+    return 200, {"Content-Type": "text/html"}, body.encode()
+
+
+PNG = (200, {"Content-Type": "image/png"}, b"")
+
+
+def _assert_reachable(host: str, port: int) -> None:
+    # Proves the blocked request would have arrived if nothing stopped it.
+    with socket.create_connection((host, port), timeout=2):
+        pass
 
 
 @pytest.mark.browser
-async def test_render_url_blocks_internal_target():
-    internal_seen: list[str] = []
-    internal = _serve(b"", "image/png", internal_seen)
-    page_seen: list[str] = []
-    html = f'<img src="http://localhost:{internal.server_port}/x.png"><p>hi</p>'.encode()
-    page = _serve(html, "text/html", page_seen)
+async def test_url_page_cannot_reach_other_internal_target():
+    internal = _Site({"/x.png": PNG})
+    page = _Site({"/": _html(f'<img src="http://localhost:{internal.port}/x.png"><p>hi</p>')})
     try:
+        _assert_reachable("localhost", internal.port)
         async with Renderer() as r:
-            out = await r.render_url(f"http://127.0.0.1:{page.server_port}/", 0, None, 5)
+            out = await r.render_url(f"http://127.0.0.1:{page.port}/", 0, None, 5)
         assert Image.open(io.BytesIO(out)).format == "JPEG"
-        assert page_seen  # the page's own host stays reachable
-        assert internal_seen == []
+        assert "/" in page.seen  # the page's own host stays reachable
+        assert internal.seen == []
     finally:
-        page.shutdown()
-        internal.shutdown()
+        page.close()
+        internal.close()
 
 
 @pytest.mark.browser
-async def test_render_html_blocks_loopback():
-    seen: list[str] = []
-    srv = _serve(b"", "image/png", seen)
+async def test_redirect_to_internal_target_is_blocked():
+    internal = _Site({"/x.png": PNG})
+    page = _Site({
+        "/": _html('<img src="/redir"><p>hi</p>'),
+        "/redir": (302, {"Location": f"http://localhost:{internal.port}/x.png"}, b""),
+    })
+    try:
+        _assert_reachable("localhost", internal.port)
+        async with Renderer() as r:
+            await r.render_url(f"http://127.0.0.1:{page.port}/", 0, None, 5)
+        assert {"/", "/redir"} <= set(page.seen)
+        assert internal.seen == []
+    finally:
+        page.close()
+        internal.close()
+
+
+@pytest.mark.browser
+async def test_websocket_to_internal_target_is_blocked():
+    internal = _Site({})
+    page = _Site({"/": _html(f'<script>new WebSocket("ws://localhost:{internal.port}/ws")'
+                             '</script><p>hi</p>')})
+    try:
+        _assert_reachable("localhost", internal.port)
+        async with Renderer() as r:
+            await r.render_url(f"http://127.0.0.1:{page.port}/", 1000, None, 5)
+        assert "/" in page.seen
+        assert internal.seen == []
+    finally:
+        page.close()
+        internal.close()
+
+
+@pytest.mark.browser
+async def test_html_page_cannot_reach_loopback():
+    site = _Site({"/x.png": PNG})
+    try:
+        _assert_reachable("127.0.0.1", site.port)
+        async with Renderer() as r:
+            await r.render_html(f'<img src="http://127.0.0.1:{site.port}/x.png">')
+        assert site.seen == []
+    finally:
+        site.close()
+
+
+@pytest.mark.browser
+async def test_url_page_same_host_subrequests_work():
+    page = _Site({
+        "/": _html('<img src="/a.png"><p id="s">wait</p>'
+                   '<script>fetch("/data").then(r => r.text())'
+                   '.then(t => { document.getElementById("s").id = t; });</script>'),
+        "/a.png": PNG,
+        "/data": (200, {"Content-Type": "text/plain"}, b"done"),
+    })
     try:
         async with Renderer() as r:
-            await r.render_html(f'<img src="http://127.0.0.1:{srv.server_port}/x.png">')
-        assert seen == []
+            await r.render_url(f"http://127.0.0.1:{page.port}/", 0, "#done", 5)
+        assert sorted(page.seen) == ["/", "/a.png", "/data"]
     finally:
-        srv.shutdown()
+        page.close()
 
 
 class _DeadBrowser:
