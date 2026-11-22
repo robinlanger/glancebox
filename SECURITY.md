@@ -12,6 +12,19 @@ Glance Box is a hobby project maintained by one person. You will usually get a f
 
 Only the **latest release** gets security fixes. Firmware and server are released together with the same version number; please update both.
 
+## Checking a release
+
+Every release image and firmware file carries a signed build provenance attestation from the
+release workflow. With the [GitHub CLI](https://cli.github.com/) you can check that a file was
+built by this repository:
+
+```sh
+gh attestation verify oci://ghcr.io/robinlanger/glancebox:X.Y.Z --repo robinlanger/glancebox
+gh attestation verify glancebox-ultra-X.Y.Z.bin --repo robinlanger/glancebox
+```
+
+Releases before the one that introduced this check have no attestation.
+
 ## Scope and known limits
 
 Glance Box is built for a home network. These are design decisions, not vulnerabilities:

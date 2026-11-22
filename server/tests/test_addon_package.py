@@ -1,5 +1,6 @@
 """The Home Assistant add-on files stay in line with the code and the release version."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -67,3 +68,22 @@ def test_only_one_addon_config():
                and Path(f).suffix in (".yaml", ".yml", ".json")
                and not any(part.startswith(".") for part in Path(f).parts)]
     assert configs == ["ha-addon/config.yaml"]
+
+
+def test_runtime_lock_is_hashed_and_has_no_dev_tools():
+    text = (ROOT / "server/requirements.lock").read_text()
+    assert "--hash=sha256:" in text
+    for dev in ("pytest", "ruff", "httpx"):
+        assert not re.search(rf"^{dev}==", text, re.MULTILINE)
+
+
+def test_workflows_pin_actions_by_commit():
+    for wf in (ROOT / ".github/workflows").glob("*.yml"):
+        for line in wf.read_text().splitlines():
+            if "uses:" in line:
+                assert re.search(r"@[0-9a-f]{40}\b", line), f"{wf.name}: {line.strip()}"
+
+
+def test_base_image_pinned_by_digest():
+    assert re.search(r"^FROM mcr\.microsoft\.com/playwright/python:\S+@sha256:[0-9a-f]{64}",
+                     (ROOT / "Dockerfile").read_text(), re.MULTILINE)

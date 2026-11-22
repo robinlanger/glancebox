@@ -40,6 +40,12 @@ All notable changes to this project are documented here. The format follows
 - The supplied `docker-compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`) and sets
   `no-new-privileges`. CI runs the browser tests in the image with the same restrictions. If you
   keep your own compose file, you can add the same two settings.
+- Supply chain: the image installs its Python dependencies only from a lock file with a hash for
+  every package, and no longer contains the test tools (`pytest`, `ruff`, `httpx`). The base image
+  and all GitHub Actions are pinned by digest or commit. CI checks the dependencies for known
+  vulnerabilities (`pip-audit`), and Dependabot proposes updates weekly. Release images and
+  firmware files carry a signed build provenance attestation; `SECURITY.md` shows how to check it
+  with `gh attestation verify`.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
