@@ -27,7 +27,8 @@ uint8_t clampBrightness(int pct);
 uint8_t clampNightBrightness(int pct);
 
 // Normalize and store the server URL. On failure *error is one of
-// "https_unsupported", "unsupported_scheme", "empty_host", "too_long" and s is unchanged.
+// "https_unsupported", "unsupported_scheme", "empty_host", "invalid_chars" (one of ' " < > `,
+// an inner space, a control character or a byte >= 0x80), "too_long" and s is unchanged.
 bool applyServerUrl(Settings& s, const std::string& raw, std::string* error);
 // Store the update password (8..32 printable ASCII chars). On failure *error is one of
 // "too_short", "too_long", "invalid_chars" and s is unchanged.

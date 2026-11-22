@@ -914,6 +914,37 @@ void test_portal_ap_password_only_when_configured() {
   TEST_ASSERT_EQUAL_STRING("correct-horse", gb::portalApPassword(s));
 }
 
+void test_server_url_rejects_markup_chars() {
+  const char* bad[] = {"http://h/'x", "http://h/\"x", "http://h/<x", "http://h/>x",
+                       "http://h/`x", "http://h/a b", "http://h/\x01", "http://h/\xc3\xa4",
+                       "http://h/\x7f", "http://h/a\tb"};
+  for (const char* url : bad) {
+    gb::Settings s{};
+    std::string err;
+    TEST_ASSERT_FALSE_MESSAGE(gb::applyServerUrl(s, url, &err), url);
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("invalid_chars", err.c_str(), url);
+    TEST_ASSERT_EQUAL_STRING("", s.serverUrl);
+  }
+}
+
+void test_server_url_still_accepts_normal_urls() {  // surrounding spaces are trimmed as before
+  gb::Settings s{};
+  std::string err;
+  TEST_ASSERT_TRUE(gb::applyServerUrl(s, "  http://192.168.1.10:8090/base/a-b_c.d~e  ", &err));
+  TEST_ASSERT_EQUAL_STRING("http://192.168.1.10:8090/base/a-b_c.d~e", s.serverUrl);
+}
+
+void test_stored_url_with_old_chars_still_loads() {
+  // Settings written by older firmware may hold characters that input now rejects.
+  gb::Settings s{};
+  std::strcpy(s.serverUrl, "http://h/a'b");
+  std::strcpy(s.updatePassword, "abcdefgh");
+  gb::Settings back;
+  TEST_ASSERT_TRUE(gb::parseSettings(gb::encodeSettings(s), &back));
+  TEST_ASSERT_EQUAL_STRING("http://h/a'b", back.serverUrl);
+  TEST_ASSERT_TRUE(gb::settingsComplete(back));  // the device keeps running with it
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_fresh_magic);
@@ -990,5 +1021,8 @@ int main() {
   RUN_TEST(test_apply_night);
   RUN_TEST(test_settings_night_roundtrip_and_old_file);
   RUN_TEST(test_portal_ap_password_only_when_configured);
+  RUN_TEST(test_server_url_rejects_markup_chars);
+  RUN_TEST(test_server_url_still_accepts_normal_urls);
+  RUN_TEST(test_stored_url_with_old_chars_still_loads);
   return UNITY_END();
 }

@@ -12,6 +12,9 @@ All notable changes to this project are documented here. The format follows
   the saved network was gone and store new Wi-Fi credentials without the password. The first setup
   still uses an open Wi-Fi. The setup portal also no longer offers WiFiManager's restart, exit,
   close and info pages.
+- Firmware: a server URL typed in the setup portal or on the device web page may no longer contain
+  quotes, `<`, `>`, a backtick, inner spaces, control characters or non-ASCII characters. A URL
+  already stored on the device keeps working.
 
 ## [0.6.1]
 

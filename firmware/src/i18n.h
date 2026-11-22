@@ -84,6 +84,7 @@ enum class Msg : uint8_t {
   NightBrightness2,
   LastFrame2,
   Frames2,
+  ErrUrlChars,
   Count
 };
 
@@ -91,5 +92,5 @@ enum class Msg : uint8_t {
 Lang langFromHeader(const String& acceptLanguage);
 const __FlashStringHelper* tr(Lang lang, Msg msg);
 // Maps a gb::apply* error code ("too_short", "https_unsupported", ...) to a message.
-// isPassword selects the password variant of "too_long".
+// isPassword selects the password variant of "too_long" and "invalid_chars".
 Msg msgForError(const std::string& code, bool isPassword);

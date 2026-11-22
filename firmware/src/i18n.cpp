@@ -85,6 +85,7 @@ GB_STR(en73, "Brightness")
 GB_STR(en74, "Brightness at night")
 GB_STR(en75, "Last image")
 GB_STR(en76, "Images shown")
+GB_STR(en77, "Server URL: no spaces, quotes or special chars")
 
 // German
 GB_STR(de0, "Status")
@@ -164,11 +165,12 @@ GB_STR(de73, "Helligkeit")
 GB_STR(de74, "Helligkeit nachts")
 GB_STR(de75, "Letztes Bild")
 GB_STR(de76, "Bilder gezeigt")
+GB_STR(de77, "Server-URL: keine Leerzeichen, Anführungszeichen oder Sonderzeichen")
 
 #undef GB_STR
 
-const char* const kEn[] PROGMEM = {en0, en1, en2, en3, en4, en5, en6, en7, en8, en9, en10, en11, en12, en13, en14, en15, en16, en17, en18, en19, en20, en21, en22, en23, en24, en25, en26, en27, en28, en29, en30, en31, en32, en33, en34, en35, en36, en37, en38, en39, en40, en41, en42, en43, en44, en45, en46, en47, en48, en49, en50, en51, en52, en53, en54, en55, en56, en57, en58, en59, en60, en61, en62, en63, en64, en65, en66, en67, en68, en69, en70, en71, en72, en73, en74, en75, en76};
-const char* const kDe[] PROGMEM = {de0, de1, de2, de3, de4, de5, de6, de7, de8, de9, de10, de11, de12, de13, de14, de15, de16, de17, de18, de19, de20, de21, de22, de23, de24, de25, de26, de27, de28, de29, de30, de31, de32, de33, de34, de35, de36, de37, de38, de39, de40, de41, de42, de43, de44, de45, de46, de47, de48, de49, de50, de51, de52, de53, de54, de55, de56, de57, de58, de59, de60, de61, de62, de63, de64, de65, de66, de67, de68, de69, de70, de71, de72, de73, de74, de75, de76};
+const char* const kEn[] PROGMEM = {en0, en1, en2, en3, en4, en5, en6, en7, en8, en9, en10, en11, en12, en13, en14, en15, en16, en17, en18, en19, en20, en21, en22, en23, en24, en25, en26, en27, en28, en29, en30, en31, en32, en33, en34, en35, en36, en37, en38, en39, en40, en41, en42, en43, en44, en45, en46, en47, en48, en49, en50, en51, en52, en53, en54, en55, en56, en57, en58, en59, en60, en61, en62, en63, en64, en65, en66, en67, en68, en69, en70, en71, en72, en73, en74, en75, en76, en77};
+const char* const kDe[] PROGMEM = {de0, de1, de2, de3, de4, de5, de6, de7, de8, de9, de10, de11, de12, de13, de14, de15, de16, de17, de18, de19, de20, de21, de22, de23, de24, de25, de26, de27, de28, de29, de30, de31, de32, de33, de34, de35, de36, de37, de38, de39, de40, de41, de42, de43, de44, de45, de46, de47, de48, de49, de50, de51, de52, de53, de54, de55, de56, de57, de58, de59, de60, de61, de62, de63, de64, de65, de66, de67, de68, de69, de70, de71, de72, de73, de74, de75, de76, de77};
 static_assert(sizeof(kEn) / sizeof(kEn[0]) == static_cast<size_t>(Msg::Count), "kEn size");
 static_assert(sizeof(kDe) / sizeof(kDe[0]) == static_cast<size_t>(Msg::Count), "kDe size");
 }  // namespace
@@ -188,7 +190,7 @@ Msg msgForError(const std::string& code, bool isPassword) {
   if (code == "unsupported_scheme") return Msg::ErrScheme;
   if (code == "empty_host") return Msg::ErrEmptyHost;
   if (code == "too_short") return Msg::ErrPwShort;
-  if (code == "invalid_chars") return Msg::ErrPwChars;
+  if (code == "invalid_chars") return isPassword ? Msg::ErrPwChars : Msg::ErrUrlChars;
   if (code == "too_long") return isPassword ? Msg::ErrPwLong : Msg::ErrTooLong;
   return Msg::ErrSaveFailed;
 }
