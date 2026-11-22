@@ -322,6 +322,29 @@ def test_uvicorn_config_ignores_proxy_headers():
     assert cfg.proxy_headers is False and cfg.server_header is False
 
 
+def test_serve_ctrl_c_exits_cleanly(monkeypatch, tmp_path):
+    import argparse
+
+    import uvicorn
+
+    from glancebox import __main__ as cli
+    from glancebox import addon
+
+    class InterruptedServer:
+        def __init__(self, config):
+            pass
+
+        def run(self):
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(uvicorn, "Server", InterruptedServer)
+    monkeypatch.setattr(addon, "is_addon", lambda environ: False)
+    config = tmp_path / "config.yaml"
+    config.write_text("pages:\n  - type: url\n    url: http://example.org/\n")
+    args = argparse.Namespace(config=str(config), host="127.0.0.1", port=0)
+    assert cli._serve(args) == 0
+
+
 def test_overview_security_headers():   # Docker mode
     client, _ = make_client(filled_store())
     r = client.get("/")

@@ -8,6 +8,7 @@ import io
 import logging
 import secrets
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -135,10 +136,11 @@ async def refresh_once(cfg: AppConfig, types: dict[str, PageType], renderer,
             if ptype is None:
                 raise LookupError(f"unknown page type {page.type!r}")
             jpeg = await render_page(page, ptype, cfg, renderer, now, inbox)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - any page may fail; logged with traceback below
             error = redact_urls(f"{type(e).__name__}: {e}")
-            log.warning("%s: refresh failed: %s", label, error)
-            log.debug("%s: refresh failed", label, exc_info=True)
+            # One record: the short error, then the traceback, both without URL secrets.
+            log.warning("%s: refresh failed: %s\n%s", label, error,
+                        redact_urls(traceback.format_exc()).rstrip())
             store.mark_attempt(page.index, now, error)
             continue
         store.put(page.index, jpeg, now)

@@ -26,9 +26,9 @@ def _load(path: str):
 
 
 def uvicorn_config(app, host: str, port: int):
-    """Server settings for both apps. Proxy headers are ignored: nothing sits in front of us
-    that we trust, so ``X-Forwarded-For`` must not change the client address (the Ingress app
-    checks it). No ``Server`` header either."""
+    """Server settings for both apps. No proxy's headers are trusted, so ``X-Forwarded-For``
+    cannot change the client address: the Ingress check needs the real peer address. No
+    ``Server`` header either."""
     import uvicorn
 
     return uvicorn.Config(app, host=host, port=port, proxy_headers=False, server_header=False)
@@ -74,7 +74,10 @@ def _serve(args) -> int:
         return _serve_addon(args)
     cfg, types = _load(args.config)
     app = create_app(cfg, FrameStore(len(cfg.pages)), types=types)
-    uvicorn.Server(uvicorn_config(app, args.host, args.port)).run()
+    try:
+        uvicorn.Server(uvicorn_config(app, args.host, args.port)).run()
+    except KeyboardInterrupt:  # Ctrl+C: uvicorn already shut down, no traceback
+        pass
     return 0
 
 

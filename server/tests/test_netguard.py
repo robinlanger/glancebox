@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import logging
+import socket
 
 import pytest
 
@@ -221,6 +222,88 @@ async def test_proxy_exempt_internal_name_skips_address_check(make_proxy, upstre
     assert _status(answer) == 200
     assert upstream.paths() == ["/ha"]
     assert calls == ["homeassistant"]  # resolved once, then connected to that address
+
+
+async def test_proxy_exempt_single_label_name_skips_address_check(make_proxy, upstream):
+    # Other add-ons are reached by a single-label host name that resolves into the hassio
+    # network; the configured page host may show one.
+    proxy = make_proxy(_resolver({"a0d7b954-grafana": ["127.0.0.1"]}))
+    url = await proxy.url_for("a0d7b954-grafana")
+    answer = await _ask(url, f"GET http://a0d7b954-grafana:{upstream.port}/g HTTP/1.1\r\n\r\n"
+                        .encode())
+    assert _status(answer) == 200
+    assert upstream.paths() == ["/g"]
+
+
+@pytest.mark.parametrize("page_host", [None, "page.test", "other-addon"])
+async def test_proxy_single_label_name_checked_unless_it_is_the_page_host(
+        make_proxy, upstream, page_host):
+    proxy = make_proxy(_resolver({"a0d7b954-grafana": ["127.0.0.1"], "page.test": ["127.0.0.1"],
+                                  "other-addon": ["127.0.0.1"]}))
+    url = await proxy.url_for(page_host)
+    answer = await _ask(url, f"GET http://a0d7b954-grafana:{upstream.port}/g HTTP/1.1\r\n\r\n"
+                        .encode())
+    assert _status(answer) == 403
+    assert upstream.seen == []
+
+
+def _closed_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+async def test_proxy_tries_each_checked_address_in_order(make_proxy, upstream, monkeypatch):
+    monkeypatch.setattr(netguard, "CONNECT_TIMEOUT_S", 2)
+    # ::1 has nothing listening on this port (the upstream is IPv4 only): refused or unroutable.
+    calls: list[str] = []
+    proxy = make_proxy(_resolver({"multi.local.hass.io": ["::1", "127.0.0.1"]}, calls))
+    url = await proxy.url_for("multi.local.hass.io")
+    answer = await _ask(url, f"GET http://multi.local.hass.io:{upstream.port}/m HTTP/1.1\r\n\r\n"
+                        .encode())
+    assert _status(answer) == 200
+    assert upstream.paths() == ["/m"]
+    assert calls == ["multi.local.hass.io"]
+
+
+async def test_proxy_all_addresses_unreachable_is_502_and_logged(make_proxy, caplog):
+    port = _closed_port()
+    proxy = make_proxy(_resolver({"dead.local.hass.io": ["127.0.0.1", "127.0.0.1"]}))
+    url = await proxy.url_for("dead.local.hass.io")
+    with caplog.at_level(logging.INFO, logger="glancebox.netguard"):
+        answer = await _ask(url, f"GET http://dead.local.hass.io:{port}/ HTTP/1.1\r\n\r\n"
+                            .encode())
+    assert _status(answer) == 502
+    assert b"X-Glancebox-Guard: unreachable\r\n" in answer
+    msgs = [r for r in caplog.records if r.name == "glancebox.netguard"]
+    assert [(r.levelno, r.getMessage()) for r in msgs] == [
+        (logging.INFO, "page request failed: dead.local.hass.io: cannot connect")]
+
+
+@pytest.mark.parametrize("mapping", [{"empty.test": []}, {}])
+async def test_proxy_resolve_failure_is_logged_with_host_only(make_proxy, caplog, mapping):
+    async def resolve(host, port):
+        if host not in mapping:
+            raise OSError("resolver says no for http://x/?secret")
+        return mapping[host]
+
+    url = await make_proxy(resolve).url_for(None)
+    with caplog.at_level(logging.INFO, logger="glancebox.netguard"):
+        answer = await _ask(url, b"GET http://empty.test/ HTTP/1.1\r\n\r\n")
+    assert _status(answer) == 502
+    msgs = [r for r in caplog.records if r.name == "glancebox.netguard"]
+    assert [(r.levelno, r.getMessage()) for r in msgs] == [
+        (logging.INFO, "page request failed: empty.test: cannot resolve")]
+
+
+async def test_proxy_error_answers_carry_guard_header(make_proxy):
+    url = await make_proxy(_resolver({"empty.test": []})).url_for(None)
+    blocked = await _ask(url, b"GET http://supervisor/ HTTP/1.1\r\n\r\n")
+    assert b"\r\nX-Glancebox-Guard: blocked\r\n" in blocked
+    unresolved = await _ask(url, b"GET http://empty.test/ HTTP/1.1\r\n\r\n")
+    assert b"\r\nX-Glancebox-Guard: unreachable\r\n" in unresolved
+    bad = await _ask(url, b"FOO\r\n\r\n")
+    assert b"\r\nX-Glancebox-Guard: unreachable\r\n" in bad
 
 
 async def test_proxy_unreachable_upstream_is_502(make_proxy):

@@ -233,7 +233,8 @@ class AddonSetup:
     defaults: Callable[[dict], dict]
     connect: str | None
     config_note: str | None
-    # Copy of the environment plus the form's secrets; only for ${NAME} in the playlist.
+    # Copy of the environment plus the form's secrets and SUPERVISOR_TOKEN; only for ${NAME} in
+    # the playlist, never handed to a process.
     environ: dict[str, str]
 
 
@@ -243,18 +244,19 @@ def addon_setup(environ: MutableMapping[str, str], config_path: Path,
     """Everything add-on mode needs before ``load_config``.
 
     Removes ``SUPERVISOR_TOKEN`` from ``environ`` so Chromium and page code never inherit it.
-    The form's secrets go into ``AddonSetup.environ`` (pass it to ``load_config``), never into
-    ``environ``.
+    The token and the form's secrets go into ``AddonSetup.environ`` (pass it to
+    ``load_config``, so ``${SUPERVISOR_TOKEN}`` keeps working), never into ``environ``.
     """
     # /data/options.json is root-only (0600) and we run as pwuser: ask the Supervisor instead.
     token = environ.pop("SUPERVISOR_TOKEN")
     options = fetch_options(token, get=get, sleep=sleep)
     # The token name stays reserved, so an extra secret cannot shadow it.
-    merged = {**environ, **secrets_env(options, {**environ, "SUPERVISOR_TOKEN": token})}
+    merged = {**environ, **secrets_env(options, {**environ, "SUPERVISOR_TOKEN": token}),
+              "SUPERVISOR_TOKEN": token}
     info = fetch_ha_info(token, get=get, sleep=sleep)
     path, own = ensure_config(config_path, fallback_dir)
     note = None if own else (
         f"The starter playlist could not be saved to {config_path}, so it runs from a temporary "
         "copy. Create config.yaml in the add-on's config folder (File editor) to keep your pages.")
-    defaults = ha_defaults(info, {**merged, "SUPERVISOR_TOKEN": token})
+    defaults = ha_defaults(info, merged)
     return AddonSetup(path, defaults, connect_url(token, get=get), note, environ=merged)

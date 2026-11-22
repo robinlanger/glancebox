@@ -17,7 +17,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
 from .http import redact_urls
-from .netguard import GuardProxy, normalize_host
+from .netguard import GUARD_HEADER, GuardProxy, normalize_host
 
 MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_timing.h
 QUALITY_STEPS = (85, 75, 65, 55, 45, 40)
@@ -136,8 +136,10 @@ class Renderer:
         if self.sandboxed is None:
             try:
                 self._browser = await self._pw.chromium.launch(env=env, chromium_sandbox=True)
-            except PlaywrightError:
-                log.warning("Chromium sandbox not available in this container; running without it")
+            except PlaywrightError as exc:
+                cause = next(iter(str(exc).strip().splitlines()), "")
+                log.warning("Chromium sandbox not available in this container; running without "
+                            "it (%s)", redact_urls(cause))
                 self.sandboxed = False
             else:
                 log.info("Chromium sandbox enabled")
@@ -170,7 +172,14 @@ class Renderer:
         self, url: str, wait_ms: int, wait_for: str | None, timeout_s: float
     ) -> bytes:
         async def load(page):
-            await page.goto(url, wait_until="load", timeout=timeout_s * 1000)
+            response = await page.goto(url, wait_until="load", timeout=timeout_s * 1000)
+            # A plain-HTTP page the proxy refused or could not reach arrives as the proxy's own
+            # error answer; never show that as the page.
+            guard = response and response.headers.get(GUARD_HEADER.lower())
+            if guard == "blocked":
+                raise RenderError("page blocked by the request guard")
+            if guard:
+                raise RenderError("page server unreachable")
             if wait_for:
                 await page.wait_for_selector(wait_for, timeout=timeout_s * 1000)
             if wait_ms:

@@ -44,6 +44,8 @@ _ERRORS = {
     403: ("Forbidden", "blocked by glancebox\n"),
     502: ("Bad Gateway", "upstream unreachable\n"),
 }
+# Marks the proxy's own error answers, so the renderer never shows one as the page.
+GUARD_HEADER = "X-Glancebox-Guard"
 
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
@@ -189,7 +191,9 @@ def _origin_head(req: _Request) -> bytes:
 
 async def _answer(writer: asyncio.StreamWriter, status: int) -> None:
     reason, body = _ERRORS[status]
+    guard = "blocked" if status == 403 else "unreachable"
     writer.write(f"HTTP/1.1 {status} {reason}\r\nContent-Type: text/plain\r\n"
+                 f"{GUARD_HEADER}: {guard}\r\n"
                  f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n{body}".encode())
     await writer.drain()
 
@@ -282,18 +286,16 @@ class GuardProxy:
             log.debug("malformed proxy request refused")
             await _answer(writer, 400)
             return True
-        status, address = await self._check(page_host, req.host, req.port)
-        if address is None:
+        status, addresses = await self._check(page_host, req.host, req.port)
+        if not addresses:
             await _answer(writer, status)
             return True
-        try:
-            async with asyncio.timeout(CONNECT_TIMEOUT_S):
-                up_reader, upstream = await asyncio.open_connection(
-                    address, req.port, flags=socket.AI_NUMERICHOST)
-        except (OSError, TimeoutError) as exc:
-            log.debug("page request to %s failed: %s", req.host, exc)
+        connection = await self._connect(addresses, req.port)
+        if connection is None:
+            log.info("page request failed: %s: cannot connect", req.host)
             await _answer(writer, 502)
             return True
+        up_reader, upstream = connection
         opened.append(upstream)
         self._transports.add(upstream.transport)
         if req.target is None:
@@ -303,36 +305,53 @@ class GuardProxy:
         await self._relay(reader, writer, up_reader, upstream)
         return True
 
-    async def _check(self, page_host: str | None, host: str, port: int) -> tuple[int, str | None]:
-        """(status, None) to refuse, or (0, address) to connect to; resolves exactly once.
+    async def _check(self, page_host: str | None, host: str,
+                     port: int) -> tuple[int, list[str]]:
+        """(status, []) to refuse, or (0, addresses) to connect to; resolves exactly once.
 
         The page's own host is exempt from the name rule. Its addresses are still checked unless
-        it is an IP literal or an internal Home Assistant name, so a public name whose DNS points
-        at loopback or an internal network cannot be used as a door.
+        it is an IP literal, an internal Home Assistant name or a single-label name (another
+        add-on, such as ``core-mosquitto``), so a public name whose DNS points at loopback or an
+        internal network cannot be used as a door. Every other host must have all its addresses
+        pass ``blocked_ip``.
         """
         exempt = page_host is not None and host == page_host
-        trust_address = exempt and (_ip_literal(host) or _internal_name(host))
+        trust_address = exempt and (
+            _ip_literal(host) or _internal_name(host) or "." not in host)
         if not exempt and blocked_host(host, None):
             log.info("page request blocked: %s", host)
-            return 403, None
+            return 403, []
         try:
             async with asyncio.timeout(RESOLVE_TIMEOUT_S):
-                addresses = list(await self._resolve(host, port))
-        except (OSError, TimeoutError, ValueError) as exc:  # ValueError: bad IDNA label
-            log.debug("cannot resolve %s: %s", host, exc)
-            return 502, None
+                addresses = [str(a) for a in await self._resolve(host, port)]
+        except (OSError, TimeoutError, ValueError):  # ValueError: bad IDNA label
+            addresses = []
         if not addresses:
-            return 502, None
+            log.info("page request failed: %s: cannot resolve", host)
+            return 502, []
         if not trust_address:
             for address in addresses:
                 try:
-                    ip = ipaddress.ip_address(str(address).split("%", 1)[0])
+                    ip = ipaddress.ip_address(address.split("%", 1)[0])
                 except ValueError:
                     ip = None
                 if ip is None or blocked_ip(ip):
                     log.info("page request blocked: %s", host)
-                    return 403, None
-        return 0, str(addresses[0])
+                    return 403, []
+        return 0, addresses
+
+    @staticmethod
+    async def _connect(addresses: list[str], port: int) -> tuple[
+            asyncio.StreamReader, asyncio.StreamWriter] | None:
+        """Connect to the first of the checked ``addresses`` that answers, by IP only."""
+        for address in addresses:
+            try:
+                async with asyncio.timeout(CONNECT_TIMEOUT_S):
+                    return await asyncio.open_connection(
+                        address, port, flags=socket.AI_NUMERICHOST)
+            except (OSError, TimeoutError):
+                continue
+        return None
 
     @staticmethod
     async def _relay(reader: asyncio.StreamReader, writer: asyncio.StreamWriter,

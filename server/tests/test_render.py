@@ -233,6 +233,32 @@ async def test_url_page_same_host_subrequests_work():
         page.close()
 
 
+@pytest.mark.browser
+async def test_url_page_on_closed_port_raises():
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    async with Renderer() as r:
+        with pytest.raises(RenderError, match="page server unreachable"):
+            await r.render_url(f"http://127.0.0.1:{port}/", 0, None, 5)
+
+
+@pytest.mark.browser
+async def test_url_page_blocked_by_guard_raises():
+    internal = _Site({"/": _html("<p>internal</p>")})
+    page = _Site({"/": (302, {"Location": f"http://localhost:{internal.port}/"}, b"")})
+    try:
+        _assert_reachable("localhost", internal.port)
+        async with Renderer() as r:
+            with pytest.raises(RenderError, match="page blocked by the request guard"):
+                await r.render_url(f"http://127.0.0.1:{page.port}/", 0, None, 5)
+        assert page.seen == ["/"]
+        assert internal.seen == []
+    finally:
+        page.close()
+        internal.close()
+
+
 class _DeadBrowser:
     def is_connected(self):
         return False
@@ -294,18 +320,20 @@ async def test_sandbox_falls_back_once(caplog, monkeypatch):
     assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True, False]
     assert all("SUPERVISOR_TOKEN" not in k["env"] for k in r._pw.chromium.calls)
     assert sum("sandbox" in rec.message.lower() for rec in caplog.records) == 1
+    assert "No usable sandbox!" in caplog.text  # the cause, in case it is another one
     await r._launch()  # relaunch does not retry the sandbox, no second warning
     assert r._pw.chromium.calls[-1]["chromium_sandbox"] is False
     assert len(r._pw.chromium.calls) == 3
     assert sum("sandbox" in rec.message.lower() for rec in caplog.records) == 1
 
 
-async def test_sandbox_used_when_available(caplog, monkeypatch):
+async def test_sandbox_used_when_available(caplog):
     caplog.set_level("INFO")
     r = Renderer()
     r._pw = _SandboxlessPlaywright(sandbox_works=True)
     await r._launch()
     assert r.sandboxed is True
+    assert "Chromium sandbox enabled" in caplog.text
     assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True]
     await r._launch()
     assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True, True]

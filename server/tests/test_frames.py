@@ -188,13 +188,35 @@ async def test_refresh_error_redacts_schemeless_request_url(tmp_path, caplog):
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
 
-    def fetch(o, c):
-        http.get_json(f"http://127.0.0.1:{port}/api/x", params={"lat": "48.1234"}, timeout=2)
+    def fetch(o, c):  # the value comes from options, so the traceback's source lines lack it
+        http.get_json(f"http://127.0.0.1:{port}/api/x", params={"lat": o["lat"]}, timeout=2)
 
     t = script_type(tmp_path, "a", fetch)
     store = FrameStore(1)
     caplog.set_level(logging.WARNING)
-    await refresh_once(make_cfg(page(0, "a")), {"a": t}, FakeRenderer(), store, 0)
+    await refresh_once(make_cfg(page(0, "a", lat="48.1234")), {"a": t}, FakeRenderer(), store, 0)
     assert "ConnectionError" in store.last_error(0)
     assert "48.1234" not in store.last_error(0)
     assert "refresh failed" in caplog.text and "48.1234" not in caplog.text
+
+
+def _load_remote(url):
+    raise ValueError(f"cannot load {url}")
+
+
+async def test_refresh_failure_logs_redacted_traceback_at_warning(tmp_path, caplog):
+    t = script_type(tmp_path, "a", lambda o, c: _load_remote(o["src"]))
+    store = FrameStore(1)
+    caplog.set_level(logging.INFO)
+    cfg = make_cfg(page(0, "a", src="http://h/x?token=abc"))
+    await refresh_once(cfg, {"a": t}, FakeRenderer(), store, 0)
+    records = [r for r in caplog.records if r.name == "glancebox.frames"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    text = records[0].getMessage()
+    first, _, trace = text.partition("\n")
+    assert first == "pages[0] (a): refresh failed: ValueError: cannot load http://h/x?***"
+    assert "Traceback (most recent call last)" in trace
+    assert "_load_remote" in trace and "test_frames.py" in trace
+    assert "http://h/x?***" in trace
+    assert "abc" not in caplog.text

@@ -90,7 +90,8 @@ Dependabot opens weekly pull requests for the Python dependencies, the Docker ba
 GitHub Actions. A Dependabot PR that changes `server/requirements.in` or
 `server/requirements-dev.in` needs the lock files regenerated with the commands in their headers
 (run in `server/`, first `requirements.lock`, then `requirements-dev.lock`), and the CI job
-`server` fails until then.
+`server` fails until then. The lock check can also turn red without any change in the repo, when a
+pinned version gains a new wheel on PyPI; regenerating the lock files fixes it.
 
 ## The smoketest
 

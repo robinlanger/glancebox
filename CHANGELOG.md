@@ -20,16 +20,19 @@ All notable changes to this project are documented here. The format follows
   through a filtering proxy inside the server that checks the name and every address it resolves
   to and connects only to the address it checked, so a name that resolves to an internal address
   is refused too. Addresses in your own LAN, including the LAN address of the Home Assistant host,
-  stay reachable. A `url` page may still load everything from its own host; if that host is an
-  ordinary name, it must not resolve to one of the blocked addresses. Service workers are
+  stay reachable. A `url` page may still load everything from its own host; if that host is a
+  name with a dot, it must not resolve to one of the blocked addresses. A host name without a
+  dot is not checked by address, so a `url` page may show another add-on by its host name (for
+  example `http://a0d7b954-grafana:3000/`). If the `url` page itself is refused or cannot be
+  reached, the refresh fails and the display keeps its last picture. Service workers are
   disabled, and a proxy connection lasts at most 120 seconds.
 - Addresses in error texts and logs no longer show credentials or query strings: in every
   `http(s)://` address, `user:password@` becomes `***@` and `?…` or `#…` becomes `?***`; the
   `url: /path?…` form in connection errors is masked the same way. This covers the last error
   shown on the overview page, the server log, invalid-YAML and invalid `url` messages, and the
   logs of the `homeassistant`, `kuma` and `bahn` pages. A secret that is part of the path itself
-  (webhook-style addresses) is not masked. A failed page refresh now logs one warning line; the
-  full traceback appears only at debug level.
+  (webhook-style addresses) is not masked. A failed page refresh logs one warning: the error
+  line followed by the traceback, both masked the same way.
 - The overview page sends a Content Security Policy: only its own inline script (with a fresh
   nonce on every load) may run, images only from the server itself, no forms, no `<base>`. In
   Docker mode no other site may embed it in a frame; the add-on page stays embeddable so Home
@@ -40,9 +43,11 @@ All notable changes to this project are documented here. The format follows
 - The supplied `docker-compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`) and sets
   `no-new-privileges`. CI runs the browser tests in the image with the same restrictions. If you
   keep your own compose file, you can add the same two settings.
-- Supply chain: the image installs its Python dependencies only from a lock file with a hash for
-  every package, and no longer contains the test tools (`pytest`, `ruff`, `httpx`). The base image
-  and all GitHub Actions are pinned by digest or commit. CI checks the dependencies for known
+- Supply chain: the image installs the server's Python dependencies from a lock file with a hash
+  for every package, and no longer contains the test tools (`pytest`, `ruff`, `httpx`). Not every
+  download is hashed: installing the server package itself fetches its build tool (`setuptools`)
+  without a hash, and CI pins its tools `uv` and `pip-audit` by version only. The base image and
+  all GitHub Actions are pinned by digest or commit. CI checks the dependencies for known
   vulnerabilities (`pip-audit`), and Dependabot proposes updates weekly. Release images and
   firmware files carry a signed build provenance attestation; `SECURITY.md` shows how to check it
   with `gh attestation verify`.
@@ -51,7 +56,8 @@ All notable changes to this project are documented here. The format follows
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
   in `config.yaml`, no longer as environment variables. Your own `page.py` that reads one with
   `os.environ` must get it through a `${NAME}` option instead. `SUPERVISOR_TOKEN` is removed from
-  the environment at start; the `homeassistant` page still gets it automatically.
+  the environment at start; the `homeassistant` page still gets it automatically, and
+  `${SUPERVISOR_TOKEN}` in `config.yaml` still works.
 
 ## [0.6.1]
 

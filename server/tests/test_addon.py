@@ -234,8 +234,20 @@ def test_addon_setup_keeps_secrets_out_of_process_env(tmp_path):
     assert "ANTHROPIC_ADMIN_KEY" not in environ
     assert "SUPERVISOR_TOKEN" not in environ
     assert setup.environ["ANTHROPIC_ADMIN_KEY"] == "sk-secret"
-    assert "SUPERVISOR_TOKEN" not in setup.environ
+    assert setup.environ["SUPERVISOR_TOKEN"] == "tok"  # only for ${NAME} lookups
     assert setup.environ["PATH"] == "/usr/bin"
+
+
+def test_addon_setup_supervisor_token_resolves_in_config(tmp_path):
+    environ = {"SUPERVISOR_TOKEN": "tok"}
+    config = tmp_path / "config.yaml"
+    config.write_text("pages:\n  - type: homeassistant\n    url: http://supervisor/core\n"
+                      "    token: ${SUPERVISOR_TOKEN}\n")
+    setup = addon_setup(environ, config, tmp_path / "fb", get=setup_routes(),
+                        sleep=lambda s: None)
+    assert "SUPERVISOR_TOKEN" not in environ
+    cfg = load_config(setup.config_path, defaults=setup.defaults, environ=setup.environ)
+    assert cfg.pages[0].options["token"] == "tok"
 
 
 def test_addon_setup_homeassistant_page_still_gets_supervisor_token(tmp_path):
@@ -254,7 +266,7 @@ def test_addon_setup_extra_secret_cannot_take_the_supervisor_token_name(tmp_path
     extra = [{"name": "SUPERVISOR_TOKEN", "value": "mine"}]
     setup = addon_setup({"SUPERVISOR_TOKEN": "tok"}, tmp_path / "config.yaml", tmp_path / "fb",
                         get=setup_routes({"extra_secrets": extra}), sleep=lambda s: None)
-    assert "SUPERVISOR_TOKEN" not in setup.environ
+    assert setup.environ["SUPERVISOR_TOKEN"] == "tok"
     assert "already in use" in caplog.text
 
 
