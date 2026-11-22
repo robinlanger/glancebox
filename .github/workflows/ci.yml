@@ -31,6 +31,14 @@ jobs:
         run: |
           pip install --require-hashes -r requirements.lock -r requirements-dev.lock
           pip install --no-deps -e .
+      - name: Lock files match their inputs (commands as in the lock headers)
+        run: |
+          pip install uv==0.11.16
+          uv pip compile -q --universal --python-version 3.12 --generate-hashes \
+            requirements.in -o requirements.lock
+          uv pip compile -q --universal --python-version 3.12 --generate-hashes \
+            requirements-dev.in -o requirements-dev.lock
+          git diff --exit-code requirements.lock requirements-dev.lock
       - name: Ruff
         run: ruff check . ../pages
       - name: Tests (browser tests run in the server-image job)

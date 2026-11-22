@@ -75,6 +75,7 @@ def test_runtime_lock_is_hashed_and_has_no_dev_tools():
     assert "--hash=sha256:" in text
     for dev in ("pytest", "ruff", "httpx"):
         assert not re.search(rf"^{dev}==", text, re.MULTILINE)
+    assert "--hash=sha256:" in (ROOT / "server/requirements-dev.lock").read_text()
 
 
 def test_workflows_pin_actions_by_commit():

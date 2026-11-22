@@ -84,6 +84,14 @@ duplicate tag pushes nothing.
 to GHCR, pushes, attests, or creates a release. The firmware files are kept as the workflow artifact
 `firmware-<ver>`. Publishing is only possible by pushing a `v*` tag.
 
+## Dependency updates
+
+Dependabot opens weekly pull requests for the Python dependencies, the Docker base image and the
+GitHub Actions. A Dependabot PR that changes `server/requirements.in` or
+`server/requirements-dev.in` needs the lock files regenerated with the commands in their headers
+(run in `server/`, first `requirements.lock`, then `requirements-dev.lock`), and the CI job
+`server` fails until then.
+
 ## The smoketest
 
 `tools/ota-smoketest.sh [--skip-frames] <device-ip> <new.bin> <previous.bin>`, with the OTA
