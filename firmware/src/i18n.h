@@ -85,6 +85,7 @@ enum class Msg : uint8_t {
   LastFrame2,
   Frames2,
   ErrUrlChars,
+  ErrLockedFmt,  // "{}" = seconds until the password lock ends
   Count
 };
 

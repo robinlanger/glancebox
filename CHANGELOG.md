@@ -20,6 +20,11 @@ All notable changes to this project are documented here. The format follows
   impersonated server could send header lines slowly without end; the display then hung and its
   web page (settings, updates) no longer answered, even after a restart. The offline screen now
   shows "server too slow", "reply too large" or "bad reply" in these cases.
+- Firmware: after five wrong passwords in a row the device web page refuses every password for
+  30 seconds (HTTP 429, the page says how long to wait). The lock applies to all clients at once.
+  The page also answers only when it is opened by the device's IP address or its own device name;
+  any other name gets "open this page by the device's IP address". This blocks websites that try to
+  reach the device through DNS rebinding. Open the page by its IP address, as before.
 
 ## [0.6.1]
 

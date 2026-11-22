@@ -38,8 +38,10 @@ void webUiLoop();
 // header list of web_ui.cpp (kCollectedHeaders), and the Origin check then refuses
 // every state-changing request.
 ESP8266WebServer& webUiServer();
-// Origin (CSRF) check plus Basic auth "admin"/update password. Sends 403/401 itself
-// and returns false when the request must not proceed.
+// Host (DNS rebinding) and Origin (CSRF) checks, the lock after five wrong passwords,
+// then Basic auth "admin"/update password. Sends 403/429/401 itself and returns false when
+// the request must not proceed. Routes added via webUiServer() get the Host check only
+// through this call.
 bool webUiAuthorize();
 // Restart about 1 s from now (lets the response reach the client).
 void webUiScheduleRestart();

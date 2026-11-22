@@ -3,6 +3,7 @@
 #include <cstring>
 #include <string>
 
+#include "auth_throttle.h"
 #include "boot_guard.h"
 #include "frame_poll.h"
 #include "http_head.h"
@@ -1128,6 +1129,75 @@ void test_frame_error_text_new_codes() {
   TEST_ASSERT_EQUAL_STRING("bad reply", b);
 }
 
+void test_auth_throttle_locks_after_five() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 4; ++i) t.onFailure(1000);
+  TEST_ASSERT_FALSE(t.locked(1000));
+  t.onFailure(1000);
+  TEST_ASSERT_TRUE(t.locked(1000));
+  TEST_ASSERT_EQUAL(30, t.retryAfterS(1000));
+  TEST_ASSERT_TRUE(t.locked(30999));
+  TEST_ASSERT_FALSE(t.locked(31000));
+  t.onFailure(31000);                    // after a lock one more failure locks again
+  TEST_ASSERT_TRUE(t.locked(31000));
+}
+
+void test_auth_throttle_success_resets() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 4; ++i) t.onFailure(1000);
+  t.onSuccess();
+  for (int i = 0; i < 4; ++i) t.onFailure(2000);
+  TEST_ASSERT_FALSE(t.locked(2000));
+  TEST_ASSERT_EQUAL(0, t.retryAfterS(2000));
+}
+
+void test_auth_throttle_wraparound() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 5; ++i) t.onFailure(0xFFFFFF00u);
+  TEST_ASSERT_TRUE(t.locked(0x10));
+  TEST_ASSERT_EQUAL(30, t.retryAfterS(0x10));  // 30000 - 0x110 ms, rounded up
+  TEST_ASSERT_FALSE(t.locked(0x8000));
+}
+
+void test_auth_throttle_retry_after_rounds_up() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 5; ++i) t.onFailure(0);
+  TEST_ASSERT_EQUAL(1, t.retryAfterS(29999));
+  TEST_ASSERT_EQUAL(29, t.retryAfterS(1000));
+  TEST_ASSERT_EQUAL(0, t.retryAfterS(30000));
+}
+
+void test_host_allowed() {
+  TEST_ASSERT_TRUE(gb::hostAllowed("192.168.1.50", "ESP-AB12CD"));
+  TEST_ASSERT_TRUE(gb::hostAllowed("192.168.1.50:80", "ESP-AB12CD"));
+  TEST_ASSERT_TRUE(gb::hostAllowed("esp-ab12cd", "ESP-AB12CD"));
+  TEST_ASSERT_TRUE(gb::hostAllowed("ESP-AB12CD.local", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("evil.example", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168.1.50.evil.example", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("ESP-AB12CD.evil.example", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("999.1.1.1", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("", "ESP-AB12CD"));
+  TEST_ASSERT_TRUE(gb::hostAllowed("192.168.1.50", ""));    // IPv4 needs no device name
+  TEST_ASSERT_FALSE(gb::hostAllowed(".local", ""));
+}
+
+void test_host_allowed_edge_cases() {
+  TEST_ASSERT_TRUE(gb::hostAllowed("192.168.4.1", "ESP-AB12CD"));  // safe-mode access point
+  TEST_ASSERT_TRUE(gb::hostAllowed("esp-ab12cd.local:8080", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168.1", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168.1.50.", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168..50", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("1.2.3.4.5", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("0x7f.0.0.1", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("1234.1.1.1", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168.1.50:", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("192.168.1.50:80x", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed(":80", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("ESP-AB12CD.lan", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("xESP-AB12CD", "ESP-AB12CD"));
+  TEST_ASSERT_FALSE(gb::hostAllowed("", ""));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_fresh_magic);
@@ -1217,5 +1287,11 @@ int main() {
   RUN_TEST(test_server_target_userinfo);
   RUN_TEST(test_deadline_wraparound);
   RUN_TEST(test_frame_error_text_new_codes);
+  RUN_TEST(test_auth_throttle_locks_after_five);
+  RUN_TEST(test_auth_throttle_success_resets);
+  RUN_TEST(test_auth_throttle_wraparound);
+  RUN_TEST(test_auth_throttle_retry_after_rounds_up);
+  RUN_TEST(test_host_allowed);
+  RUN_TEST(test_host_allowed_edge_cases);
   return UNITY_END();
 }

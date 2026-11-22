@@ -94,6 +94,7 @@ function init() {
       throw new Error(T.error);
     }
     if (r.status === 401) throw new Error(T.auth);
+    if (r.status === 429) throw new Error((await r.text()).trim() || T.error); // password lock
     let j = {};
     try { j = await r.json(); } catch (e) { /* not JSON */ }
     if (!r.ok || !j.ok) throw new Error(j.error || T.error);
@@ -292,6 +293,7 @@ function init() {
       try {
         const r = await fetch("/restart", { method: "POST", credentials: "same-origin" });
         if (r.status === 401) throw new Error(T.auth);
+        if (r.status === 429) throw new Error((await r.text()).trim() || T.error); // password lock
         if (!r.ok) throw new Error(T.error);
         setState(row, "saving");
         row.querySelector("button").textContent = T.restarting;
