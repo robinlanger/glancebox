@@ -4,7 +4,7 @@ Was du tust, wenn etwas schiefgeht: eine Geräteseite, die den Zugriff verweiger
 
 ## Die Geräteseite verweigert den Zugriff
 
-- **Öffne die Geräteseite über ihre IP-Adresse**, zum Beispiel `http://192.168.1.50/`, oder im eigenen Netz des Safe Mode `http://192.168.4.1/`. Das Gerät antwortet nur auf seine IP-Adresse und seinen eigenen Gerätenamen; bei jedem anderen Namen (zum Beispiel einem, den dein Router vergeben hat) antwortet es `open this page by the device's IP address`. Das schützt es vor Webseiten, die es über einen falschen Namen erreichen wollen (DNS-Rebinding).
+- **Öffne die Geräteseite über ihre IP-Adresse**, zum Beispiel `http://192.168.1.50/`, oder im eigenen Netz des Safe Mode `http://192.168.4.1/`. Das Gerät antwortet nur auf seine IP-Adresse (und, nebenbei, auf seinen eingebauten Gerätenamen der Form `ESP-XXXXXX`); bei jedem anderen Namen, zum Beispiel einem, den dein Router vergeben hat, antwortet es `open this page by the device's IP address`. Das schützt es vor Webseiten, die es über einen falschen Namen erreichen wollen (DNS-Rebinding).
 - **Nach fünf falschen Passwörtern hintereinander sperrt das Gerät die Passwortprüfung für 30 Sekunden**, für alle. In dieser Zeit lehnt es auch das richtige Passwort ab und sagt, wie viele Sekunden noch fehlen (HTTP-Status 429). Warte und gib dann das richtige Passwort ein. Das erste falsche Passwort nach einer Sperre sperrt erneut.
 
 ## Safe Mode

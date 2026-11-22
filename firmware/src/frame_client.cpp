@@ -128,7 +128,7 @@ int exchange(WiFiClient& client, const gb::ServerTarget& t, const char* etag, Fr
 
 FrameResult fetchFrame(const char* serverUrl, const char* etag) {
   FrameResult r{gb::kErrBadUrl, 0, "", -1, -1};
-  static gb::ServerTarget target;  // ~290 bytes: static, off the 4 kB stack
+  static gb::ServerTarget target;  // ~322 bytes: static, off the 4 kB stack
   if (!gb::parseServerTarget(serverUrl, &target)) return r;  // no connection opened
 
   WiFiClient client;

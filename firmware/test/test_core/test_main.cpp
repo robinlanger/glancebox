@@ -1073,7 +1073,7 @@ void test_server_target() {
   TEST_ASSERT_FALSE(gb::parseServerTarget("box", &t));
   TEST_ASSERT_FALSE(gb::parseServerTarget("http://box?k=v", &t));        // query
   TEST_ASSERT_FALSE(gb::parseServerTarget("http://box/base?k=v", &t));   // query
-  const std::string longHost = "http://" + std::string(70, 'h');
+  const std::string longHost = "http://" + std::string(96, 'h');  // host[96] holds 95
   TEST_ASSERT_FALSE(gb::parseServerTarget(longHost.c_str(), &t));
   const std::string longPath = "http://box/" + std::string(130, 'p');
   TEST_ASSERT_FALSE(gb::parseServerTarget(longPath.c_str(), &t));
@@ -1198,6 +1198,164 @@ void test_host_allowed_edge_cases() {
   TEST_ASSERT_FALSE(gb::hostAllowed("", ""));
 }
 
+void test_server_target_long_host() {
+  // A stored URL holds up to 95 characters; 0.6.1 (HTTPClient) took hosts of that length.
+  gb::ServerTarget t;
+  const std::string host80(80, 'h');
+  const std::string url80 = "http://" + host80 + ":8090";
+  TEST_ASSERT_TRUE(gb::parseServerTarget(url80.c_str(), &t));
+  TEST_ASSERT_EQUAL_STRING(host80.c_str(), t.host);
+  TEST_ASSERT_EQUAL(8090, t.port);
+  const std::string url95 = "http://" + std::string(95, 'h');
+  TEST_ASSERT_TRUE(gb::parseServerTarget(url95.c_str(), &t));
+  TEST_ASSERT_EQUAL(95, strlen(t.host));
+}
+
+void test_server_target_question_mark_only_in_userinfo() {
+  // HTTPClient sent "u:p?x" as Basic auth; a '?' after the '@' is still refused.
+  gb::ServerTarget t;
+  TEST_ASSERT_TRUE(gb::parseServerTarget("http://u:p?x@box", &t));
+  TEST_ASSERT_EQUAL_STRING("u:p?x", t.userinfo);
+  TEST_ASSERT_EQUAL_STRING("box", t.host);
+  TEST_ASSERT_EQUAL(80, t.port);
+  TEST_ASSERT_EQUAL_STRING("", t.path);
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box/a?b=1", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://box?x", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://u:p@box?x", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://u:p@box:80?x", &t));
+  TEST_ASSERT_FALSE(gb::parseServerTarget("http://u?@box/a?b", &t));
+}
+
+void test_display_server_url_hides_userinfo() {
+  char b[96];
+  gb::displayServerUrl("http://user:pass@box:8090/base", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("http://box:8090/base", b);
+  gb::displayServerUrl("http://box:8090/base", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("http://box:8090/base", b);
+  gb::displayServerUrl("http://u:p?x@box", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("http://box", b);
+  // The first '/' after the scheme ends the authority (as in HTTPClient): this '@' is path.
+  gb::displayServerUrl("http://u:p/x@box", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("http://u:p/x@box", b);
+  gb::displayServerUrl("http://box/a@b", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("http://box/a@b", b);
+  gb::displayServerUrl("http://u:p@ss@box/x", b, sizeof(b));  // nothing of the secret shown
+  TEST_ASSERT_EQUAL_STRING("http://box/x", b);
+  gb::displayServerUrl("", b, sizeof(b));
+  TEST_ASSERT_EQUAL_STRING("", b);
+}
+
+void test_display_server_url_truncates_safely() {
+  char b[12];
+  std::memset(b, 'Z', sizeof(b));
+  gb::displayServerUrl("http://user:pass@box:8090/base", b, 12);
+  TEST_ASSERT_EQUAL_STRING("http://box:", b);  // 11 characters and the NUL
+  char one[1] = {'Z'};
+  gb::displayServerUrl("http://u:p@box", one, sizeof(one));
+  TEST_ASSERT_EQUAL_CHAR('\0', one[0]);
+  char guard[4] = {'Z', 'Z', 'Z', 'Z'};
+  gb::displayServerUrl("http://u:p@box", guard, 0);  // cap 0: nothing written
+  TEST_ASSERT_EQUAL_CHAR('Z', guard[0]);
+  char five[6];
+  gb::displayServerUrl("http://u:p@box", five, sizeof(five));
+  TEST_ASSERT_EQUAL_STRING("http:", five);  // never part of the userinfo
+}
+
+void test_server_url_resubmitted_legacy_value_accepted() {
+  // A stored URL from older firmware may hold a character input now rejects; saving other
+  // settings resubmits it unchanged and must not fail.
+  gb::Settings s{};
+  std::strcpy(s.serverUrl, "http://h/a'b");
+  std::string err;
+  TEST_ASSERT_TRUE(gb::applyServerUrl(s, "http://h/a'b", &err));
+  TEST_ASSERT_EQUAL_STRING("http://h/a'b", s.serverUrl);
+  TEST_ASSERT_TRUE(gb::applyServerUrl(s, "  http://h/a'b  ", &err));  // trimmed first
+  TEST_ASSERT_EQUAL_STRING("http://h/a'b", s.serverUrl);
+  TEST_ASSERT_FALSE(gb::applyServerUrl(s, "http://h/a'c", &err));
+  TEST_ASSERT_EQUAL_STRING("invalid_chars", err.c_str());
+  TEST_ASSERT_EQUAL_STRING("http://h/a'b", s.serverUrl);
+
+  gb::SettingsPatch p;
+  p.serverUrl = "http://h/a'b";
+  p.brightness = "40";
+  std::string field;
+  TEST_ASSERT_TRUE(gb::applySettingsPatch(s, p, &field, &err));
+  TEST_ASSERT_EQUAL(40, s.brightness);
+  TEST_ASSERT_EQUAL_STRING("http://h/a'b", s.serverUrl);
+}
+
+namespace {
+int gCredentialChecks = 0;
+bool credsGood() {
+  ++gCredentialChecks;
+  return true;
+}
+bool credsBad() {
+  ++gCredentialChecks;
+  return false;
+}
+gb::Access decide(gb::AuthThrottle& t, bool host, bool origin, bool header, bool (*creds)(),
+                  uint32_t now = 1000) {
+  return gb::decideAccess(host, origin, header, creds, t, now);
+}
+}  // namespace
+
+void test_access_order_host_origin_lock_credentials() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 5; ++i) t.onFailure(1000);  // locked
+  gCredentialChecks = 0;
+  TEST_ASSERT_EQUAL(gb::Access::HostDenied, decide(t, false, false, true, credsBad));
+  TEST_ASSERT_EQUAL(gb::Access::OriginDenied, decide(t, true, false, true, credsBad));
+  TEST_ASSERT_EQUAL(gb::Access::Locked, decide(t, true, true, true, credsBad));
+  TEST_ASSERT_EQUAL(gb::Access::Locked, decide(t, true, true, false, credsBad));
+  TEST_ASSERT_EQUAL(0, gCredentialChecks);  // nothing before credentials looks at them
+
+  gb::AuthThrottle fresh;
+  TEST_ASSERT_EQUAL(gb::Access::HostDenied, decide(fresh, false, true, true, credsGood));
+  TEST_ASSERT_EQUAL(gb::Access::OriginDenied, decide(fresh, true, false, true, credsGood));
+  TEST_ASSERT_EQUAL(gb::Access::NeedAuth, decide(fresh, true, true, false, credsGood));
+  TEST_ASSERT_EQUAL(0, gCredentialChecks);
+  TEST_ASSERT_EQUAL(gb::Access::Granted, decide(fresh, true, true, true, credsGood));
+  TEST_ASSERT_EQUAL(1, gCredentialChecks);
+}
+
+void test_access_missing_header_does_not_count() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 20; ++i) {
+    TEST_ASSERT_EQUAL(gb::Access::NeedAuth, decide(t, true, true, false, credsBad));
+  }
+  TEST_ASSERT_FALSE(t.locked(1000));
+  // Refused host/origin attempts do not count either.
+  for (int i = 0; i < 20; ++i) decide(t, false, true, true, credsBad);
+  for (int i = 0; i < 20; ++i) decide(t, true, false, true, credsBad);
+  TEST_ASSERT_FALSE(t.locked(1000));
+}
+
+void test_access_wrong_password_counts_and_locks() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 4; ++i) {
+    TEST_ASSERT_EQUAL(gb::Access::WrongPassword, decide(t, true, true, true, credsBad));
+  }
+  TEST_ASSERT_FALSE(t.locked(1000));
+  TEST_ASSERT_EQUAL(gb::Access::WrongPassword, decide(t, true, true, true, credsBad));
+  TEST_ASSERT_TRUE(t.locked(1000));
+  gCredentialChecks = 0;
+  // A correct password during the lock is refused and not even checked.
+  TEST_ASSERT_EQUAL(gb::Access::Locked, decide(t, true, true, true, credsGood, 30999));
+  TEST_ASSERT_EQUAL(0, gCredentialChecks);
+  TEST_ASSERT_EQUAL(gb::Access::Granted, decide(t, true, true, true, credsGood, 31000));
+}
+
+void test_access_success_resets_counter() {
+  gb::AuthThrottle t;
+  for (int i = 0; i < 4; ++i) decide(t, true, true, true, credsBad);
+  TEST_ASSERT_EQUAL(gb::Access::Granted, decide(t, true, true, true, credsGood));
+  for (int i = 0; i < 4; ++i) {
+    TEST_ASSERT_EQUAL(gb::Access::WrongPassword, decide(t, true, true, true, credsBad));
+  }
+  TEST_ASSERT_FALSE(t.locked(1000));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_fresh_magic);
@@ -1293,5 +1451,14 @@ int main() {
   RUN_TEST(test_auth_throttle_retry_after_rounds_up);
   RUN_TEST(test_host_allowed);
   RUN_TEST(test_host_allowed_edge_cases);
+  RUN_TEST(test_server_target_long_host);
+  RUN_TEST(test_server_target_question_mark_only_in_userinfo);
+  RUN_TEST(test_display_server_url_hides_userinfo);
+  RUN_TEST(test_display_server_url_truncates_safely);
+  RUN_TEST(test_server_url_resubmitted_legacy_value_accepted);
+  RUN_TEST(test_access_order_host_origin_lock_credentials);
+  RUN_TEST(test_access_missing_header_does_not_count);
+  RUN_TEST(test_access_wrong_password_counts_and_locks);
+  RUN_TEST(test_access_success_resets_counter);
   return UNITY_END();
 }

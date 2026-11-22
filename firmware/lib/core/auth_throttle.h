@@ -22,4 +22,13 @@ class AuthThrottle {
   uint32_t lockStartMs_ = 0;
 };
 
+// Access decision for the device web UI, checks in this order: Host, Origin, lock,
+// credentials. Updates the throttle: a wrong password counts once per call, success resets
+// the counter; refused Host/Origin, a missing Authorization header and a lock do not count.
+// credentialsOk is called only when the result depends on it (never while locked, so the
+// lock is no oracle); it must not be null.
+enum class Access : uint8_t { HostDenied, OriginDenied, Locked, NeedAuth, WrongPassword, Granted };
+Access decideAccess(bool hostOk, bool originOk, bool hasAuthorization, bool (*credentialsOk)(),
+                    AuthThrottle& throttle, uint32_t nowMs);
+
 }  // namespace gb

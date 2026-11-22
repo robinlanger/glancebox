@@ -27,14 +27,22 @@ bool parseHttpHead(const char* data, size_t len, HttpHead* out);
 
 struct ServerTarget {
   char userinfo[96];  // raw text before '@' ("user:pass"), "" if none; sent as Basic auth
-  char host[64];
+  char host[96];      // a stored URL has at most 95 characters
   uint16_t port;
   char path[128];     // "" or "/base", no trailing slash
 };
 // Splits a normalized server URL (http://[userinfo@]host[:port][/path]); false if a part
-// does not fit, the host is empty, the port is not 1..65535 or the URL carries a query.
-// Userinfo ends at the first '@' before the path, as in ESP8266HTTPClient.
+// does not fit, the host is empty, the port is not 1..65535 or host, port or path hold a '?'
+// (a query is not supported; inside the userinfo it is part of the Basic-auth text).
+// The authority ends at the first '/'; userinfo ends at the first '@' in it, as in
+// ESP8266HTTPClient.
 bool parseServerTarget(const char* serverUrl, ServerTarget* out);
+
+// The server URL for the screen and the serial log: without "userinfo@" (credentials), else
+// unchanged. The authority ends at the first '/' after "://" (as in parseServerTarget), the
+// userinfo at its last '@', so no part of it is shown. Always NUL-terminated when cap > 0,
+// cut to cap - 1 characters.
+void displayServerUrl(const char* serverUrl, char* out, size_t cap);
 
 // Wraparound-safe: true once nowMs is at or past startMs + budgetMs.
 bool deadlinePassed(uint32_t startMs, uint32_t nowMs, uint32_t budgetMs);

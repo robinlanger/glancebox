@@ -14,7 +14,9 @@ All notable changes to this project are documented here. The format follows
   close and info pages.
 - Firmware: a server URL typed in the setup portal or on the device web page may no longer contain
   quotes, `<`, `>`, a backtick, inner spaces, control characters or non-ASCII characters. A URL
-  already stored on the device keeps working.
+  already stored on the device keeps working, and other settings can still be saved with it.
+- Firmware: the display no longer shows a user name and password that are part of the server URL
+  (`http://user:password@host`); the boot and offline screens show the URL without them.
 - Firmware: the reply header of the frame request must now be complete within 8 seconds of
   starting the request, and it may be at most 1024 bytes long. Before, a wrong or
   impersonated server could send header lines slowly without end; the display then hung and its

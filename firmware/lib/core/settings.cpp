@@ -193,7 +193,9 @@ bool hasUnsafeUrlChar(const std::string& url) {
 bool applyServerUrl(Settings& s, const std::string& raw, std::string* error) {
   auto url = normalizeServerUrl(raw, error);
   if (!url) return false;
-  if (hasUnsafeUrlChar(*url)) {  // after trimming: only inner spaces count
+  // The stored URL resubmitted unchanged (forms always send it) stays accepted, so a device
+  // whose URL predates the character check can still save its other settings.
+  if (*url != s.serverUrl && hasUnsafeUrlChar(*url)) {  // after trimming: only inner spaces count
     setError(error, "invalid_chars");
     return false;
   }

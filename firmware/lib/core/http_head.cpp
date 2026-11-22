@@ -148,8 +148,6 @@ bool parseServerTarget(const char* url, ServerTarget* out) {
   for (size_t i = 0; i < sizeof(kScheme) - 1; ++i) {
     if (lowerAscii(url[i]) != kScheme[i]) return false;  // also stops at the NUL
   }
-  if (strchr(url, '?') != nullptr) return false;  // a query is not supported
-
   const char* a = url + sizeof(kScheme) - 1;  // authority: [userinfo@]host[:port]
   const char* slash = strchr(a, '/');
   const char* aEnd = slash != nullptr ? slash : a + strlen(a);
@@ -163,6 +161,8 @@ bool parseServerTarget(const char* url, ServerTarget* out) {
     a = at + 1;
     if (memchr(a, '@', static_cast<size_t>(aEnd - a)) != nullptr) return false;
   }
+  // A query is not supported. A '?' in the userinfo is part of the Basic-auth text.
+  if (strchr(a, '?') != nullptr) return false;
 
   const char* colon = static_cast<const char*>(memchr(a, ':', static_cast<size_t>(aEnd - a)));
   const char* hostEnd = colon != nullptr ? colon : aEnd;
@@ -184,6 +184,30 @@ bool parseServerTarget(const char* url, ServerTarget* out) {
   const char* pEnd = aEnd + strlen(aEnd);
   while (pEnd > aEnd && pEnd[-1] == '/') --pEnd;
   return copySpan(aEnd, static_cast<size_t>(pEnd - aEnd), out->path, sizeof(out->path));
+}
+
+void displayServerUrl(const char* url, char* out, size_t cap) {
+  if (out == nullptr || cap == 0) return;
+  out[0] = '\0';
+  if (url == nullptr) return;
+  const char* scheme = strstr(url, "://");
+  const char* a = scheme != nullptr ? scheme + 3 : nullptr;
+  const char* aEnd = a != nullptr ? a + strcspn(a, "/") : nullptr;
+  const char* at = nullptr;  // last '@' of the authority
+  for (const char* p = a; p != nullptr && p < aEnd; ++p) {
+    if (*p == '@') at = p;
+  }
+  // Copies "<scheme>://" and then everything after the userinfo, cut to the room left.
+  size_t n = 0;
+  const char* parts[2] = {url, at != nullptr ? at + 1 : nullptr};
+  const size_t lens[2] = {at != nullptr ? static_cast<size_t>(a - url) : strlen(url),
+                          at != nullptr ? strlen(at + 1) : 0};
+  for (int i = 0; i < 2; ++i) {
+    const size_t take = lens[i] < cap - 1 - n ? lens[i] : cap - 1 - n;
+    if (take > 0) memcpy(out + n, parts[i], take);
+    n += take;
+  }
+  out[n] = '\0';
 }
 
 bool deadlinePassed(uint32_t startMs, uint32_t nowMs, uint32_t budgetMs) {

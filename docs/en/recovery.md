@@ -4,7 +4,7 @@ What to do when something goes wrong: a device page that refuses access, safe mo
 
 ## The device page refuses access
 
-- **Open the device page by its IP address**, for example `http://192.168.1.50/`, or in safe mode's own network `http://192.168.4.1/`. The device answers only to its IP address and its own device name; for any other name (for example one your router added) it answers `open this page by the device's IP address`. This protects it against websites that try to reach it through a fake name (DNS rebinding).
+- **Open the device page by its IP address**, for example `http://192.168.1.50/`, or in safe mode's own network `http://192.168.4.1/`. The device answers only to its IP address (and, as an aside, to its built-in device name of the form `ESP-XXXXXX`); for any other name, for example one your router added, it answers `open this page by the device's IP address`. This protects it against websites that try to reach it through a fake name (DNS rebinding).
 - **After five wrong passwords in a row the device locks the password check for 30 seconds**, for everyone. During that time it refuses even the correct password and says how many seconds are left (HTTP status 429). Wait, then enter the correct password. The first wrong password after a lock locks it again.
 
 ## Safe mode

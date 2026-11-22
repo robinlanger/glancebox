@@ -39,14 +39,12 @@ uint32_t restartAtMs = 0;
 // Lock after repeated wrong passwords (global: no memory for per-client state).
 gb::AuthThrottle throttle;
 
-// Outcome of the access checks, in this order: Host, Origin, lock, credentials.
-enum class Access : uint8_t { Ok, BadHost, BadOrigin, Locked, NoCredentials, WrongPassword };
-
 // ---- OTA (one upload at a time; the server is single-threaded) ----
 // Decisions live in gb::OtaFlow (native-tested); this file only executes them.
 gb::OtaFlow flow;
 char otaMd5[33];
-Access uploadAccess = Access::Ok;  // checked once at file start; read only while flow.started()
+// Checked once at file start; read only while flow.started().
+gb::Access uploadAccess = gb::Access::Granted;
 
 Lang requestLang() { return langFromHeader(server.header(F("Accept-Language"))); }
 
@@ -84,19 +82,14 @@ void refuseHost() {
   server.send(403, F("text/plain"), F("open this page by the device's IP address\n"));
 }
 
-// Counts a wrong password once per call; while locked, credentials are not even checked
-// (a correct password is refused too, so the lock is no oracle).
-Access checkAccess() {
-  if (!hostOk()) return Access::BadHost;
-  if (!originOk()) return Access::BadOrigin;
-  if (throttle.locked(millis())) return Access::Locked;
-  if (!server.hasHeader(F("Authorization"))) return Access::NoCredentials;  // not a failure
-  if (!credentialsOk()) {
-    throttle.onFailure(millis());
-    return Access::WrongPassword;
-  }
-  throttle.onSuccess();
-  return Access::Ok;
+// Order and counting live in gb::decideAccess (native-tested): Host, Origin, lock,
+// credentials. Counts a wrong password once per call; while locked, credentials are not
+// even checked (a correct password is refused too, so the lock is no oracle).
+gb::Access checkAccess() {
+  const bool host = hostOk();
+  const bool origin = host && originOk();  // only read when it can matter, as before
+  return gb::decideAccess(host, origin, server.hasHeader(F("Authorization")), credentialsOk,
+                          throttle, millis());
 }
 
 void sendLocked() {
@@ -109,12 +102,14 @@ void sendLocked() {
   server.send(429, F("text/plain; charset=utf-8"), msg);
 }
 
-void refuse(Access a) {
+// Never called with Granted.
+void refuse(gb::Access a) {
   switch (a) {
-    case Access::BadHost: return refuseHost();
-    case Access::BadOrigin: return server.send(403, F("text/plain"), F("origin not allowed\n"));
-    case Access::Locked: return sendLocked();
-    default: return server.requestAuthentication();
+    case gb::Access::HostDenied: return refuseHost();
+    case gb::Access::OriginDenied:
+      return server.send(403, F("text/plain"), F("origin not allowed\n"));
+    case gb::Access::Locked: return sendLocked();
+    default: return server.requestAuthentication();  // NeedAuth, WrongPassword
   }
 }
 
@@ -158,8 +153,9 @@ void handleUpload() {
     case UPLOAD_FILE_START: {
       // Once per request: a second file part must not count as another wrong password.
       if (!flow.started()) uploadAccess = checkAccess();
-      const bool origin = uploadAccess != Access::BadHost && uploadAccess != Access::BadOrigin;
-      const bool auth = uploadAccess == Access::Ok;
+      const bool origin =
+          uploadAccess != gb::Access::HostDenied && uploadAccess != gb::Access::OriginDenied;
+      const bool auth = uploadAccess == gb::Access::Granted;
       const String md5 = server.arg(F("md5"));
       const size_t minImage =
           up.contentLength > kMultipartSlack ? up.contentLength - kMultipartSlack : 0;
@@ -211,11 +207,11 @@ void handleUpload() {
 void handleUpdateDone() {
   if (!flow.started()) {
     // No file part at all: still enforce host/origin/lock/auth before saying anything.
-    const Access a = checkAccess();
-    if (a != Access::Ok) return refuse(a);
+    const gb::Access a = checkAccess();
+    if (a != gb::Access::Granted) return refuse(a);
     return server.send(400, F("text/plain"), F("update failed: firmware missing\n"));
   }
-  if (uploadAccess != Access::Ok) return refuse(uploadAccess);  // decided at file start
+  if (uploadAccess != gb::Access::Granted) return refuse(uploadAccess);  // decided at file start
   const gb::OtaResponse r = flow.response();
   if (r.code == 401) return server.requestAuthentication();
   if (r.code == 200) return server.send(200, F("text/plain"), F("update ok, restarting\n"));
@@ -796,8 +792,8 @@ void webUiLoop() {
 ESP8266WebServer& webUiServer() { return server; }
 
 bool webUiAuthorize() {
-  const Access a = checkAccess();
-  if (a == Access::Ok) return true;
+  const gb::Access a = checkAccess();
+  if (a == gb::Access::Granted) return true;
   refuse(a);
   return false;
 }
