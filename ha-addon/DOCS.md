@@ -66,3 +66,7 @@ Restart the add-on after changing them.
 - **Display port (8090) has no login.** It serves only the pictures for the display and accepts
   pushed data with the push key. Keep it in your LAN; do not forward it to the internet.
 - The overview with previews is only in the add-on's web UI, behind your Home Assistant login.
+- **Chromium** (which renders the pages) does not get the Home Assistant access token or your
+  secrets in its environment. It tries to run with its sandbox; where the add-on container does
+  not allow that (usually the case), it runs without it and the log says so once. This does not
+  make untrusted web pages safe: only add `url` pages you trust.

@@ -34,7 +34,7 @@ def _serve_addon(args) -> int:
 
     setup = addon.addon_setup(os.environ, Path(args.config),
                               Path("/tmp/glancebox"))
-    cfg = load_config(setup.config_path, defaults=setup.defaults)
+    cfg = load_config(setup.config_path, defaults=setup.defaults, environ=setup.environ)
     types = load_page_types(cfg.pages_dirs)
     cfg = validate_config(cfg, types)
     store = FrameStore(len(cfg.pages))

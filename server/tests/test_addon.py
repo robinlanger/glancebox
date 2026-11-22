@@ -217,12 +217,45 @@ def test_addon_setup_end_to_end(tmp_path):
         opts.chmod(0o600)
     assert setup.config_path == tmp_path / "config" / "config.yaml"
     assert setup.config_path.exists() and setup.config_note is None
-    assert environ["GLANCEBOX_PUSH_KEY"] == "p" * 16
+    assert setup.environ["GLANCEBOX_PUSH_KEY"] == "p" * 16
+    assert environ == {}
     assert setup.connect == "http://192.168.1.5:8090"
-    cfg = load_config(setup.config_path, defaults=setup.defaults)
+    cfg = load_config(setup.config_path, defaults=setup.defaults, environ=setup.environ)
     assert [pg.type for pg in cfg.pages] == ["clock", "weather"]
     assert cfg.pages[1].options["latitude"] == 50.1
     assert cfg.push_key == "p" * 16 and cfg.timezone == "Europe/Berlin" and cfg.lang == "de"
+
+
+def test_addon_setup_keeps_secrets_out_of_process_env(tmp_path):
+    environ = {"SUPERVISOR_TOKEN": "tok", "PATH": "/usr/bin"}
+    setup = addon_setup(environ, tmp_path / "config.yaml", tmp_path / "fb",
+                        get=setup_routes({"anthropic_admin_key": "sk-secret"}),
+                        sleep=lambda s: None)
+    assert "ANTHROPIC_ADMIN_KEY" not in environ
+    assert "SUPERVISOR_TOKEN" not in environ
+    assert setup.environ["ANTHROPIC_ADMIN_KEY"] == "sk-secret"
+    assert "SUPERVISOR_TOKEN" not in setup.environ
+    assert setup.environ["PATH"] == "/usr/bin"
+
+
+def test_addon_setup_homeassistant_page_still_gets_supervisor_token(tmp_path):
+    environ = {"SUPERVISOR_TOKEN": "tok"}
+    config = tmp_path / "config.yaml"
+    config.write_text("pages:\n  - type: homeassistant\n")
+    setup = addon_setup(environ, config, tmp_path / "fb", get=setup_routes(),
+                        sleep=lambda s: None)
+    assert "SUPERVISOR_TOKEN" not in environ
+    cfg = load_config(setup.config_path, defaults=setup.defaults, environ=setup.environ)
+    assert cfg.pages[0].options["url"] == "http://supervisor/core"
+    assert cfg.pages[0].options["token"] == "tok"
+
+
+def test_addon_setup_extra_secret_cannot_take_the_supervisor_token_name(tmp_path, caplog):
+    extra = [{"name": "SUPERVISOR_TOKEN", "value": "mine"}]
+    setup = addon_setup({"SUPERVISOR_TOKEN": "tok"}, tmp_path / "config.yaml", tmp_path / "fb",
+                        get=setup_routes({"extra_secrets": extra}), sleep=lambda s: None)
+    assert "SUPERVISOR_TOKEN" not in setup.environ
+    assert "already in use" in caplog.text
 
 
 def test_addon_setup_note_when_config_not_writable(tmp_path):

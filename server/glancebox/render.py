@@ -4,6 +4,9 @@ import asyncio
 import base64
 import contextlib
 import io
+import logging
+import os
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from typing import Self
@@ -16,6 +19,13 @@ MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_ti
 QUALITY_STEPS = (85, 75, 65, 55, 45, 40)
 SIZE = 240
 
+log = logging.getLogger(__name__)
+
+# Chromium gets only these variables (plus the prefixes below), never tokens or keys.
+BROWSER_ENV_NAMES = frozenset(
+    {"PATH", "HOME", "USER", "LOGNAME", "LANG", "LANGUAGE", "TZ", "TMPDIR"})
+BROWSER_ENV_PREFIXES = ("LC_", "XDG_", "FONTCONFIG_")
+
 FONTS_DIR = Path(__file__).parent / "fonts"
 _FONTS = (
     ("DejaVuSans.ttf", "normal", "normal"),
@@ -27,6 +37,12 @@ _FONTS = (
 
 class RenderError(Exception):
     """Rendering failed (browser error, timeout, or image too large)."""
+
+
+def browser_env(environ: Mapping[str, str]) -> dict[str, str]:
+    """The part of ``environ`` Chromium may see (allowlist, so secrets never reach it)."""
+    return {k: v for k, v in environ.items()
+            if k in BROWSER_ENV_NAMES or k.startswith(BROWSER_ENV_PREFIXES)}
 
 
 @cache
@@ -69,11 +85,12 @@ class Renderer:
         self._pw = None
         self._browser = None
         self._lock = asyncio.Lock()
+        self.sandboxed: bool | None = None  # None until Chromium first started
 
     async def __aenter__(self) -> Self:
         try:
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch()
+            await self._launch()
         except Exception as exc:
             await self.__aexit__(None, None, None)
             raise RenderError(f"cannot start Chromium: {exc}") from exc
@@ -89,6 +106,21 @@ class Renderer:
             if pw:
                 await pw.stop()
 
+    async def _launch(self) -> None:
+        """Start Chromium with a clean environment; try the sandbox once, remember the outcome."""
+        env = browser_env(os.environ)
+        if self.sandboxed is None:
+            try:
+                self._browser = await self._pw.chromium.launch(env=env, chromium_sandbox=True)
+            except PlaywrightError:
+                log.warning("Chromium sandbox not available in this container; running without it")
+                self.sandboxed = False
+            else:
+                log.info("Chromium sandbox enabled")
+                self.sandboxed = True
+                return
+        self._browser = await self._pw.chromium.launch(env=env, chromium_sandbox=self.sandboxed)
+
     def healthy(self) -> bool:
         """True while the shared Chromium is running and connected."""
         return self._browser is not None and self._browser.is_connected()
@@ -100,7 +132,7 @@ class Renderer:
             with contextlib.suppress(Exception):
                 await old.close()
         try:
-            self._browser = await self._pw.chromium.launch()
+            await self._launch()
         except Exception as exc:
             raise RenderError(f"cannot restart Chromium: {exc}") from exc
 

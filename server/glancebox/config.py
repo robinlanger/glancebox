@@ -109,9 +109,11 @@ def _parse_page(index: int, raw: Any, interval: int) -> PageConfig:
     return PageConfig(index, page_type, options, duration, refresh, refresh_explicit)
 
 
-def load_config(path: Path, defaults: Callable[[dict], dict] | None = None) -> AppConfig:
+def load_config(path: Path, defaults: Callable[[dict], dict] | None = None,
+                environ: Mapping[str, str] | None = None) -> AppConfig:
     """Load ``path``. ``defaults`` (add-on mode) may fill in missing keys of the top-level mapping
-    after ``${NAME}`` expansion and before validation; YAML values must win."""
+    after ``${NAME}`` expansion and before validation; YAML values must win. ``${NAME}`` is
+    looked up in ``environ`` (default: ``os.environ``)."""
     path = Path(path)
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -121,7 +123,7 @@ def load_config(path: Path, defaults: Callable[[dict], dict] | None = None) -> A
         raise ConfigError(f"{path}: invalid YAML: {e}") from e
     if not isinstance(data, dict):
         raise ConfigError(f"{path}: top level must be a mapping")
-    data = expand_env(data, "", os.environ)
+    data = expand_env(data, "", os.environ if environ is None else environ)
     if defaults is not None:
         data = defaults(data)
         if not isinstance(data, dict):

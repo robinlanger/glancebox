@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+- Chromium (which renders the pages) now starts with only a short list of harmless environment
+  variables (`PATH`, `HOME`, locale, time zone and similar). Tokens and keys are no longer
+  inherited by it.
+- Chromium first tries to start with its sandbox. Where the container does not allow it (usual
+  under Docker's default seccomp profile and in the add-on), it starts without it as before and
+  logs one warning.
+
+### Changed
+- Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
+  in `config.yaml`, no longer as environment variables. Your own `page.py` that reads one with
+  `os.environ` must get it through a `${NAME}` option instead. `SUPERVISOR_TOKEN` is removed from
+  the environment at start; the `homeassistant` page still gets it automatically.
+
 ## [0.6.1]
 
 Server and add-on update; the firmware is unchanged (no need to update the display).

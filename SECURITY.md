@@ -20,5 +20,6 @@ Glance Box is built for a home network. These are design decisions, not vulnerab
 - The **display talks plain HTTP**. Firmware updates and settings changes are protected by the update password (HTTP Basic auth, user `admin`), but the password is not encrypted on the network. `/status` is readable without a password.
 - The setup portal (`GlanceBox-XXXX`) is an open Wi-Fi network while it runs. It only opens when no Wi-Fi is configured or the saved network is unreachable, and changing an existing setup there needs the current update password.
 - Tokens for pages (Home Assistant, AI providers) belong in `.env`, not in `config.yaml`.
+- **Chromium** renders the pages with only an allowlist of environment variables, so it does not inherit tokens or keys. Its sandbox is tried at start, but Docker's default seccomp profile and the Home Assistant add-on usually do not allow it; Chromium then runs without a sandbox and the server logs one warning. A process running as the same user can still read the server's own start environment (`/proc/<pid>/environ`), which only the sandbox prevents.
 
 Reports that show a way around these protections, for example installing firmware without the update password, reading tokens from the server, or code execution through a page or a pushed value, are very welcome.

@@ -6,8 +6,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 from PIL import Image
+from playwright.async_api import Error as PlaywrightError
 
-from glancebox.render import MAX_JPEG_BYTES, Renderer, RenderError, encode_jpeg
+from glancebox.render import MAX_JPEG_BYTES, Renderer, RenderError, browser_env, encode_jpeg
 
 
 def test_encode_jpeg_baseline_and_size():
@@ -97,12 +98,73 @@ class _DeadBrowser:
 
 
 class _FailingChromium:
-    async def launch(self):
+    async def launch(self, **kwargs):
         raise RuntimeError("no chromium")
 
 
 class _FakePlaywright:
     chromium = _FailingChromium()
+
+
+def test_browser_env_is_allowlist():
+    env = browser_env({"PATH": "/usr/bin", "HOME": "/home/pwuser", "TZ": "Europe/Berlin",
+                       "LC_ALL": "C.UTF-8", "XDG_CACHE_HOME": "/tmp/c", "FONTCONFIG_PATH": "/f",
+                       "SUPERVISOR_TOKEN": "tok", "ANTHROPIC_ADMIN_KEY": "sk", "LD_PRELOAD": "x",
+                       "GLANCEBOX_PUSH_KEY": "p"})
+    assert set(env) == {"PATH", "HOME", "TZ", "LC_ALL", "XDG_CACHE_HOME", "FONTCONFIG_PATH"}
+    assert env["PATH"] == "/usr/bin"
+
+
+class _LiveBrowser:
+    def is_connected(self):
+        return True
+
+    async def close(self):
+        pass
+
+
+class _SandboxlessChromium:
+    def __init__(self, sandbox_works=False):
+        self.calls = []
+        self.sandbox_works = sandbox_works
+
+    async def launch(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs["chromium_sandbox"] and not self.sandbox_works:
+            raise PlaywrightError("No usable sandbox!")
+        return _LiveBrowser()
+
+
+class _SandboxlessPlaywright:
+    def __init__(self, sandbox_works=False):
+        self.chromium = _SandboxlessChromium(sandbox_works)
+
+
+async def test_sandbox_falls_back_once(caplog, monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "tok")
+    r = Renderer()
+    r._pw = _SandboxlessPlaywright()
+    assert r.sandboxed is None
+    await r._launch()
+    assert r.sandboxed is False
+    assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True, False]
+    assert all("SUPERVISOR_TOKEN" not in k["env"] for k in r._pw.chromium.calls)
+    assert sum("sandbox" in rec.message.lower() for rec in caplog.records) == 1
+    await r._launch()  # relaunch does not retry the sandbox, no second warning
+    assert r._pw.chromium.calls[-1]["chromium_sandbox"] is False
+    assert len(r._pw.chromium.calls) == 3
+    assert sum("sandbox" in rec.message.lower() for rec in caplog.records) == 1
+
+
+async def test_sandbox_used_when_available(caplog, monkeypatch):
+    caplog.set_level("INFO")
+    r = Renderer()
+    r._pw = _SandboxlessPlaywright(sandbox_works=True)
+    await r._launch()
+    assert r.sandboxed is True
+    assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True]
+    await r._launch()
+    assert [k["chromium_sandbox"] for k in r._pw.chromium.calls] == [True, True]
 
 
 async def test_render_relaunch_failure_is_render_error():
