@@ -25,6 +25,15 @@ def _load(path: str):
     return validate_config(cfg, types), types
 
 
+def uvicorn_config(app, host: str, port: int):
+    """Server settings for both apps. Proxy headers are ignored: nothing sits in front of us
+    that we trust, so ``X-Forwarded-For`` must not change the client address (the Ingress app
+    checks it). No ``Server`` header either."""
+    import uvicorn
+
+    return uvicorn.Config(app, host=host, port=port, proxy_headers=False, server_header=False)
+
+
 def _serve_addon(args) -> int:
     import uvicorn
 
@@ -46,9 +55,8 @@ def _serve_addon(args) -> int:
                                  seen=seen)
 
     async def run_both() -> None:
-        servers = [uvicorn.Server(uvicorn.Config(lan, host=args.host, port=args.port)),
-                   uvicorn.Server(uvicorn.Config(ingress, host=args.host,
-                                                 port=args.ingress_port))]
+        servers = [uvicorn.Server(uvicorn_config(lan, args.host, args.port)),
+                   uvicorn.Server(uvicorn_config(ingress, args.host, args.ingress_port))]
         await asyncio.gather(*(s.serve() for s in servers))
 
     asyncio.run(run_both())
@@ -66,7 +74,7 @@ def _serve(args) -> int:
         return _serve_addon(args)
     cfg, types = _load(args.config)
     app = create_app(cfg, FrameStore(len(cfg.pages)), types=types)
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.Server(uvicorn_config(app, args.host, args.port)).run()
     return 0
 
 

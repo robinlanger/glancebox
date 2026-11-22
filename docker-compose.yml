@@ -4,6 +4,11 @@ services:
     image: glancebox:dev
     container_name: glancebox
     restart: unless-stopped
+    # No Linux capabilities and no privilege gain: the server and Chromium need neither.
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
     # Secrets (tokens, keys) go into a .env file next to this file and are referenced
     # as ${NAME} in config.yaml. After editing .env run `docker compose up -d`;
     # `docker compose restart` does not re-read it.

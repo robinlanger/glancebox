@@ -49,8 +49,10 @@ jobs:
           tags: glancebox:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Browser tests inside the image
-        run: docker run --rm glancebox:ci pytest -q -m browser
+      - name: Browser tests inside the image (same restrictions as docker-compose.yml)
+        run: >-
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges
+          glancebox:ci pytest -q -m browser
 
   firmware:
     runs-on: ubuntu-24.04

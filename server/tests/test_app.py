@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import re
 import subprocess
 import sys
 import time
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from glancebox.__main__ import uvicorn_config
 from glancebox.app import create_app, on_worker_done
 from glancebox.config import AppConfig, PageConfig
 from glancebox.frames import FrameStore
@@ -312,3 +315,33 @@ def test_display_seen_goes_stale():
                          client=("172.30.32.2", 5000))
     html = ingress.get("/").text
     assert "Waiting for your display" in html and "10 min ago" in html
+
+
+def test_uvicorn_config_ignores_proxy_headers():
+    cfg = uvicorn_config(FastAPI(), "0.0.0.0", 8080)
+    assert cfg.proxy_headers is False and cfg.server_header is False
+
+
+def test_overview_security_headers():   # Docker mode
+    client, _ = make_client(filled_store())
+    r = client.get("/")
+    csp = r.headers["content-security-policy"]
+    assert "default-src 'none'" in csp and "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp.split("script-src")[1].split(";")[0]
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["referrer-policy"] == "no-referrer"
+
+
+def test_preview_sends_nosniff():
+    client, _ = make_client(filled_store())
+    assert client.get("/preview/0.jpg").headers["x-content-type-options"] == "nosniff"
+
+
+def test_ingress_csp_allows_framing_by_home_assistant():
+    ingress = ingress_client()
+    first, second = ingress.get("/"), ingress.get("/")
+    csp = first.headers["content-security-policy"]
+    assert "frame-ancestors" not in csp
+    nonce = re.search(r"script-src 'nonce-([^']+)'", csp).group(1)
+    assert f'<script nonce="{nonce}">' in first.text
+    assert nonce not in second.headers["content-security-policy"]  # fresh per response

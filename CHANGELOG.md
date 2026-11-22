@@ -30,6 +30,16 @@ All notable changes to this project are documented here. The format follows
   logs of the `homeassistant`, `kuma` and `bahn` pages. A secret that is part of the path itself
   (webhook-style addresses) is not masked. A failed page refresh now logs one warning line; the
   full traceback appears only at debug level.
+- The overview page sends a Content Security Policy: only its own inline script (with a fresh
+  nonce on every load) may run, images only from the server itself, no forms, no `<base>`. In
+  Docker mode no other site may embed it in a frame; the add-on page stays embeddable so Home
+  Assistant can show it in the sidebar. The page and the previews also send
+  `X-Content-Type-Options: nosniff`, the page `Referrer-Policy: no-referrer`.
+- The server ignores `X-Forwarded-For` and similar proxy headers, so a client cannot claim a
+  different address, and sends no `Server` header.
+- The supplied `docker-compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`) and sets
+  `no-new-privileges`. CI runs the browser tests in the image with the same restrictions. If you
+  keep your own compose file, you can add the same two settings.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
