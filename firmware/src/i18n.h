@@ -86,12 +86,14 @@ enum class Msg : uint8_t {
   Frames2,
   ErrUrlChars,
   ErrLockedFmt,  // "{}" = seconds until the password lock ends
+  ErrUrlRequired,
   Count
 };
 
 // German when the first Accept-Language entry is "de*", English otherwise.
 Lang langFromHeader(const String& acceptLanguage);
 const __FlashStringHelper* tr(Lang lang, Msg msg);
-// Maps a gb::apply* error code ("too_short", "https_unsupported", ...) to a message.
+// Maps a gb::apply* error code ("required", "too_short", "https_unsupported",
+// "wrong_password", "bad_brightness", ...) to a message; unknown codes give ErrSaveFailed.
 // isPassword selects the password variant of "too_long" and "invalid_chars".
 Msg msgForError(const std::string& code, bool isPassword);

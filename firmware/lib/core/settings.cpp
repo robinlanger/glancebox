@@ -136,6 +136,10 @@ std::optional<std::string> normalizeServerUrl(std::string in, std::string* error
   while (b < e && std::isspace(static_cast<unsigned char>(in[b]))) ++b;
   while (e > b && std::isspace(static_cast<unsigned char>(in[e - 1]))) --e;
   std::string s = in.substr(b, e - b);
+  if (s.empty()) {
+    setError(error, "required");
+    return std::nullopt;
+  }
 
   if (ieq(s, 0, "https://")) {
     setError(error, "https_unsupported");
@@ -274,6 +278,27 @@ bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field,
     }
   }
   s = next;
+  return true;
+}
+
+bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std::string* field,
+                     std::string* error) {
+  *next = s;
+  std::string code;
+  if (!applyServerUrl(*next, f.serverUrl, &code)) return fail(field, "server_url", error, code);
+  if ((!f.password.empty() || !validPassword(next->updatePassword)) &&
+      !applyPassword(*next, f.password, &code)) {
+    return fail(field, "update_password", error, code);
+  }
+  if (!f.brightness.empty() && !parseDayBrightness(f.brightness, &next->brightness)) {
+    return fail(field, "brightness", error, "bad_brightness");
+  }
+  // Any change needs the current password once one exists; resubmitting the stored values
+  // (a Wi-Fi-only change) does not.
+  if (encodeSettings(*next) != encodeSettings(s) && validPassword(s.updatePassword) &&
+      f.currentPassword != s.updatePassword) {
+    return fail(field, "current_password", error, "wrong_password");
+  }
   return true;
 }
 

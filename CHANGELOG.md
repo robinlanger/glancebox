@@ -11,6 +11,10 @@ All notable changes to this project are documented here. The format follows
   pointer. Dragging a slider no longer brings up the prompt; it comes with the save when you let
   go. Until the browser knows the password, the display changes only on release (#20).
 
+### Changed
+- An empty Server URL field now reports "Server URL is required" instead of "host is missing",
+  in the setup portal and on the device web page (#22).
+
 ## [0.6.2]
 
 Security release for server, Home Assistant add-on and firmware, after a review of the whole

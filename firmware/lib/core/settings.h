@@ -19,14 +19,15 @@ struct Settings {
 };
 
 // Returns the normalized "http://host[:port][/path]" URL without trailing
-// slash, or nullopt with *error set ("https_unsupported", "empty_host").
+// slash, or nullopt with *error set ("required" for empty or whitespace-only input,
+// "https_unsupported", "unsupported_scheme", "empty_host").
 std::optional<std::string> normalizeServerUrl(std::string in, std::string* error);
 bool validPassword(const std::string& pw);
 uint8_t clampBrightness(int pct);
 // Night brightness: 0..100 (0 allowed, unlike the day brightness).
 uint8_t clampNightBrightness(int pct);
 
-// Normalize and store the server URL. On failure *error is one of
+// Normalize and store the server URL. On failure *error is one of "required",
 // "https_unsupported", "unsupported_scheme", "empty_host", "invalid_chars" (one of ' " < > `,
 // an inner space, a control character or a byte >= 0x80; not checked when the normalized
 // URL equals the stored one), "too_long" and s is unchanged.
@@ -43,6 +44,19 @@ struct SettingsPatch {
 // *error the code ("https_unsupported", "too_short", "bad_brightness", "bad_time",
 // "bad_night_brightness", ...). Brightness: digits only, 5..100.
 bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field, std::string* error);
+
+// Values of the setup-portal form, as submitted.
+struct PortalForm {
+  std::string serverUrl, password, brightness, currentPassword;
+};
+// Validates the form against s and writes s with the form applied to *next. Order:
+// "server_url" (applyServerUrl codes), "update_password" (applyPassword codes; required while s
+// has no valid password, empty = keep otherwise), "brightness" ("bad_brightness"; empty =
+// keep, else digits only, 5..100), "current_password" ("wrong_password"; only checked when
+// *next differs from s and s has a valid password). On failure *field/*error are set and
+// *next is unspecified.
+bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std::string* field,
+                     std::string* error);
 
 // True when the device can run: valid server URL and update password.
 bool settingsComplete(const Settings& s);
