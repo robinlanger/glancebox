@@ -1,6 +1,11 @@
 # Rettung
 
-Was du tust, wenn etwas schiefgeht: der Safe Mode nach einem fehlerhaften Update, der Boot-Zähler und der serielle Weg als letzte Möglichkeit.
+Was du tust, wenn etwas schiefgeht: eine Geräteseite, die den Zugriff verweigert, der Safe Mode nach einem fehlerhaften Update, der Boot-Zähler und der serielle Weg als letzte Möglichkeit.
+
+## Die Geräteseite verweigert den Zugriff
+
+- **Öffne die Geräteseite über ihre IP-Adresse**, zum Beispiel `http://192.168.1.50/`, oder im eigenen Netz des Safe Mode `http://192.168.4.1/`. Das Gerät antwortet nur auf seine IP-Adresse (und, nebenbei, auf seinen eingebauten Gerätenamen der Form `ESP-XXXXXX`); bei jedem anderen Namen, zum Beispiel einem, den dein Router vergeben hat, antwortet es `open this page by the device's IP address`. Das schützt es vor Webseiten, die es über einen falschen Namen erreichen wollen (DNS-Rebinding).
+- **Nach fünf falschen Passwörtern hintereinander sperrt das Gerät die Passwortprüfung für 30 Sekunden**, für alle. In dieser Zeit lehnt es auch das richtige Passwort ab und sagt, wie viele Sekunden noch fehlen (HTTP-Status 429). Warte und gib dann das richtige Passwort ein. Das erste falsche Passwort nach einer Sperre sperrt erneut.
 
 ## Safe Mode
 
@@ -73,7 +78,7 @@ Die letzte Möglichkeit. Sie funktioniert auch bei komplett kaputter Firmware, w
 esptool.py --port <port> -b 115200 write_flash 0x0 glancebox-ultra-<version>.bin
 ```
 
-Entferne danach den GPIO0-Draht und unterbrich den Strom des Displays (abziehen, einstecken). Es startet die neue Firmware und öffnet das Einrichtungsportal, wenn keine Einstellungen gespeichert sind. Der genaue Flash-Befehl samt Flash-Parametern steht noch aus, bis der Maintainer den seriellen Test selbst gemacht hat.
+Entferne danach den GPIO0-Draht und unterbrich den Strom des Displays (abziehen, einstecken). Es startet die neue Firmware und öffnet das Einrichtungsportal, wenn keine Einstellungen gespeichert sind. Sind noch Einstellungen gespeichert und ist das gespeicherte WLAN nicht erreichbar, öffnet sich das Einrichtungsportal ebenfalls, und sein WLAN `GlanceBox-XXXX` fragt nach einem Passwort: Gib dein Update-Passwort ein. Der genaue Flash-Befehl samt Flash-Parametern steht noch aus, bis der Maintainer den seriellen Test selbst gemacht hat.
 
 ## Sicherung zurückspielen
 

@@ -1,6 +1,11 @@
 # Recovery
 
-What to do when something goes wrong: safe mode after a bad update, the boot counter, and the serial route as the last resort.
+What to do when something goes wrong: a device page that refuses access, safe mode after a bad update, the boot counter, and the serial route as the last resort.
+
+## The device page refuses access
+
+- **Open the device page by its IP address**, for example `http://192.168.1.50/`, or in safe mode's own network `http://192.168.4.1/`. The device answers only to its IP address (and, as an aside, to its built-in device name of the form `ESP-XXXXXX`); for any other name, for example one your router added, it answers `open this page by the device's IP address`. This protects it against websites that try to reach it through a fake name (DNS rebinding).
+- **After five wrong passwords in a row the device locks the password check for 30 seconds**, for everyone. During that time it refuses even the correct password and says how many seconds are left (HTTP status 429). Wait, then enter the correct password. The first wrong password after a lock locks it again.
 
 ## Safe mode
 
@@ -73,7 +78,7 @@ The last resort. It works even if the firmware is completely broken, because it 
 esptool.py --port <port> -b 115200 write_flash 0x0 glancebox-ultra-<version>.bin
 ```
 
-Afterwards remove the GPIO0 wire and power-cycle the display (unplug, plug in). It starts the new firmware and opens the setup portal if no settings are stored. The exact flash command, including flash parameters, is pending the maintainer's own serial test.
+Afterwards remove the GPIO0 wire and power-cycle the display (unplug, plug in). It starts the new firmware and opens the setup portal if no settings are stored. If settings are still stored and the saved Wi-Fi cannot be reached, the setup portal opens too, and its Wi-Fi `GlanceBox-XXXX` asks for a password: enter your update password. The exact flash command, including flash parameters, is pending the maintainer's own serial test.
 
 ## Restoring the backup
 

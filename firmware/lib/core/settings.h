@@ -27,7 +27,9 @@ uint8_t clampBrightness(int pct);
 uint8_t clampNightBrightness(int pct);
 
 // Normalize and store the server URL. On failure *error is one of
-// "https_unsupported", "unsupported_scheme", "empty_host", "too_long" and s is unchanged.
+// "https_unsupported", "unsupported_scheme", "empty_host", "invalid_chars" (one of ' " < > `,
+// an inner space, a control character or a byte >= 0x80; not checked when the normalized
+// URL equals the stored one), "too_long" and s is unchanged.
 bool applyServerUrl(Settings& s, const std::string& raw, std::string* error);
 // Store the update password (8..32 printable ASCII chars). On failure *error is one of
 // "too_short", "too_long", "invalid_chars" and s is unchanged.
@@ -44,6 +46,9 @@ bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field,
 
 // True when the device can run: valid server URL and update password.
 bool settingsComplete(const Settings& s);
+// WPA2 password for the setup Wi-Fi: the update password once the device is configured
+// (and 8..63 chars, the WPA2 range), otherwise nullptr = open AP for the first setup.
+const char* portalApPassword(const Settings& s);
 
 // Flat JSON object {"server_url", "update_password", "brightness", "night_start",
 // "night_end", "night_brightness"} plus newline.

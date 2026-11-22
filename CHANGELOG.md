@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2]
+
+Security release for server, Home Assistant add-on and firmware, after a review of the whole
+project. Update the server or add-on and the display. The firmware changes passed the unit tests
+and the build; they were not yet tested on a real device when this version was tagged.
+
 ### Security
 - Chromium (which renders the pages) now starts with only a short list of harmless environment
   variables (`PATH`, `HOME`, locale, time zone and similar). Tokens and keys are no longer
@@ -51,6 +57,26 @@ All notable changes to this project are documented here. The format follows
   vulnerabilities (`pip-audit`), and Dependabot proposes updates weekly. Release images and
   firmware files carry a signed build provenance attestation; `SECURITY.md` shows how to check it
   with `gh attestation verify`.
+- Firmware: on a device that is already set up, the setup Wi-Fi `GlanceBox-XXXX` is now protected
+  with WPA2; its Wi-Fi password is the update password. Before, anyone in range could join it while
+  the saved network was gone and store new Wi-Fi credentials without the password. The first setup
+  still uses an open Wi-Fi. The setup portal also no longer offers WiFiManager's restart, exit,
+  close and info pages.
+- Firmware: a server URL typed in the setup portal or on the device web page may no longer contain
+  quotes, `<`, `>`, a backtick, inner spaces, control characters or non-ASCII characters. A URL
+  already stored on the device keeps working, and other settings can still be saved with it.
+- Firmware: the display no longer shows a user name and password that are part of the server URL
+  (`http://user:password@host`); the boot and offline screens show the URL without them.
+- Firmware: the reply header of the frame request must now be complete within 8 seconds of
+  starting the request, and it may be at most 1024 bytes long. Before, a wrong or
+  impersonated server could send header lines slowly without end; the display then hung and its
+  web page (settings, updates) no longer answered, even after a restart. The offline screen now
+  shows "server too slow", "reply too large" or "bad reply" in these cases.
+- Firmware: after five wrong passwords in a row the device web page refuses every password for
+  30 seconds (HTTP 429, the page says how long to wait). The lock applies to all clients at once.
+  The page also answers only when it is opened by the device's IP address or its own device name;
+  any other name gets "open this page by the device's IP address". This blocks websites that try to
+  reach the device through DNS rebinding. Open the page by its IP address, as before.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`

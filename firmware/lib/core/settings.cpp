@@ -177,9 +177,28 @@ uint8_t clampBrightness(int pct) {
   return static_cast<uint8_t>(pct);
 }
 
+namespace {
+// Characters a typed server URL may not contain: they could break out of the markup of
+// the portal or web page that shows the URL. Checked on input only, so stored settings
+// from older firmware still load.
+bool hasUnsafeUrlChar(const std::string& url) {
+  for (char ch : url) {
+    const unsigned char c = static_cast<unsigned char>(ch);
+    if (c <= 0x20 || c >= 0x7F || std::strchr("'\"<>`", ch)) return true;
+  }
+  return false;
+}
+}  // namespace
+
 bool applyServerUrl(Settings& s, const std::string& raw, std::string* error) {
   auto url = normalizeServerUrl(raw, error);
   if (!url) return false;
+  // The stored URL resubmitted unchanged (forms always send it) stays accepted, so a device
+  // whose URL predates the character check can still save its other settings.
+  if (*url != s.serverUrl && hasUnsafeUrlChar(*url)) {  // after trimming: only inner spaces count
+    setError(error, "invalid_chars");
+    return false;
+  }
   if (url->size() >= sizeof(s.serverUrl)) {
     setError(error, "too_long");
     return false;
@@ -260,6 +279,12 @@ bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field,
 
 bool settingsComplete(const Settings& s) {
   return normalizeServerUrl(s.serverUrl, nullptr).has_value() && validPassword(s.updatePassword);
+}
+
+const char* portalApPassword(const Settings& s) {
+  if (!settingsComplete(s)) return nullptr;
+  const size_t n = std::strlen(s.updatePassword);
+  return (n >= 8 && n <= 63) ? s.updatePassword : nullptr;
 }
 
 std::string encodeSettings(const Settings& s) {

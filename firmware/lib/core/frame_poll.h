@@ -8,12 +8,16 @@ namespace gb {
 constexpr size_t kEtagCap = 40;
 constexpr size_t kErrorTextCap = 32;
 
-// Frame fetch status codes: HTTP status (> 0), HTTPClient errors (-1..-11) or these.
+// Frame fetch status codes: HTTP status (> 0), network errors (src/frame_client.cpp:
+// -1 connection failed, -2 request not sent, -5 connection lost) or these.
 constexpr int kErrFrameLength = -100;  // Content-Length missing, 0 or > kMaxFrameBytes
 constexpr int kErrBodyRead = -101;     // body ended/stalled before the deadline (mid-draw)
 constexpr int kErrDecode = -102;       // JPEG could not be decoded
 constexpr int kErrNoWifi = -103;       // no request made: Wi-Fi not connected
 constexpr int kErrBadUrl = -104;       // request URL could not be built/parsed
+constexpr int kErrHeadTooLarge = -105;   // response head longer than kMaxHeadBytes
+constexpr int kErrHeadTimeout = -106;    // head not complete within the deadline
+constexpr int kErrHeadMalformed = -107;  // no valid HTTP status line
 
 // X-Next-In header value in whole seconds; -1 when absent or malformed.
 // Large values saturate (nextDelayMs clamps them to 30 s).

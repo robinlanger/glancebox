@@ -15,11 +15,15 @@ constexpr unsigned long kConnectTimeoutS = 20;
 char apName[20];
 char noticeHtml[200];   // shown on the portal page above the fields
 char noticeScreen[48];  // shown on the display (ASCII, English)
+bool apProtected;       // setup Wi-Fi uses WPA2 with the update password
 
 void showPortalScreen() {
-  const char* lines[] = {"Connect to Wi-Fi:", apName, "then open", "http://192.168.4.1",
-                         noticeScreen};
-  displayStatus("Glance Box setup", lines, noticeScreen[0] ? 5 : 4);
+  // Five lines at most; an error notice takes precedence over the password hint.
+  const char* last = noticeScreen[0] ? noticeScreen
+                     : apProtected   ? "Wi-Fi password = update password"
+                                     : nullptr;
+  const char* lines[] = {"Connect to Wi-Fi:", apName, "then open", "http://192.168.4.1", last};
+  displayStatus("Glance Box setup", lines, last ? 5 : 4);
 }
 
 void setNotice(Msg msg) {
@@ -37,19 +41,26 @@ void clearNotice() {
   noticeScreen[0] = '\0';
 }
 
-// Rejects routes of WiFiManager that must not exist on an open AP: its own
-// unauthenticated OTA (/update, /u) and Wi-Fi erase. Our handlers are registered
-// before WiFiManager's, and ESP8266WebServer uses the first matching handler.
+// Rejects routes of WiFiManager that need no exposure on the setup AP: its own
+// unauthenticated OTA (/update, /u), Wi-Fi erase, restart, leaving the portal and the
+// device info page. Choosing and saving a network (/wifi, /0wifi, /wifisave, /param,
+// /paramsave) and the captive-portal redirect (onNotFound) use none of them.
+// Our handlers are registered before WiFiManager's, and ESP8266WebServer uses the
+// first matching handler.
 void blockUnsafeRoutes(WiFiManager& wm) {
   auto deny = [&wm]() { wm.server->send(403, F("text/plain"), F("disabled\n")); };
   wm.server->on("/update", HTTP_ANY, deny);
   wm.server->on("/u", HTTP_ANY, deny);
   wm.server->on("/erase", HTTP_ANY, deny);
+  wm.server->on("/restart", HTTP_ANY, deny);
+  wm.server->on("/exit", HTTP_ANY, deny);
+  wm.server->on("/close", HTTP_ANY, deny);
+  wm.server->on("/info", HTTP_ANY, deny);
 }
 
 // Validates the portal values into a copy; on success stores and persists them.
-// The AP is open, so on a configured device any change needs the current password:
-// otherwise jamming the Wi-Fi would let anyone in range take over the OTA password.
+// The AP is open only for the first setup; on a configured device it uses WPA2 with the
+// update password, and any change still needs the current password as a second check.
 bool applyPortalValues(gb::Settings& s, const char* url, const char* pw, const char* bright,
                        const char* current) {
   gb::Settings next = s;
@@ -131,13 +142,17 @@ void portalRun(gb::Settings& s) {
     bool paramsSaved = false;
     wm.setSaveParamsCallback([&paramsSaved]() { paramsSaved = true; });
 
+    // Configured device: WPA2 with the update password, so nobody in range can store
+    // new Wi-Fi credentials through /wifisave. First setup: open AP (nullptr).
+    const char* apPassword = gb::portalApPassword(s);
+    apProtected = apPassword != nullptr;
     bool connected;
     if (complete && wm.getWiFiIsSaved()) {
       wm.setConfigPortalTimeout(kConfiguredPortalTimeoutS);
-      connected = wm.autoConnect(apName);  // portal only if the saved network fails
+      connected = wm.autoConnect(apName, apPassword);  // portal only if the saved network fails
     } else {
       wm.setConfigPortalTimeout(0);
-      connected = wm.startConfigPortal(apName);
+      connected = wm.startConfigPortal(apName, apPassword);
     }
 
     if (paramsSaved) {

@@ -5,6 +5,7 @@
 #include <WiFiUdp.h>
 #include <eboot_command.h>
 
+#include "auth_throttle.h"
 #include "display.h"
 #include "i18n.h"
 #include "ota_check.h"
@@ -35,10 +36,15 @@ bool restartPending = false;
 bool wifiErasePending = false;  // factory reset: forget Wi-Fi right before restarting
 uint32_t restartAtMs = 0;
 
+// Lock after repeated wrong passwords (global: no memory for per-client state).
+gb::AuthThrottle throttle;
+
 // ---- OTA (one upload at a time; the server is single-threaded) ----
 // Decisions live in gb::OtaFlow (native-tested); this file only executes them.
 gb::OtaFlow flow;
 char otaMd5[33];
+// Checked once at file start; read only while flow.started().
+gb::Access uploadAccess = gb::Access::Granted;
 
 Lang requestLang() { return langFromHeader(server.header(F("Accept-Language"))); }
 
@@ -65,6 +71,46 @@ bool credentialsOk() {
   // Never accept an unset/short password.
   return settings != nullptr && gb::validPassword(settings->updatePassword) &&
          server.authenticate(kUser, settings->updatePassword);
+}
+
+// DNS rebinding guard: only the device's IP address or its own name may be in Host.
+bool hostOk() {
+  return gb::hostAllowed(strOrEmpty(server.hostHeader()), strOrEmpty(WiFi.hostname()));
+}
+
+void refuseHost() {
+  server.send(403, F("text/plain"), F("open this page by the device's IP address\n"));
+}
+
+// Order and counting live in gb::decideAccess (native-tested): Host, Origin, lock,
+// credentials. Counts a wrong password once per call; while locked, credentials are not
+// even checked (a correct password is refused too, so the lock is no oracle).
+gb::Access checkAccess() {
+  const bool host = hostOk();
+  const bool origin = host && originOk();  // only read when it can matter, as before
+  return gb::decideAccess(host, origin, server.hasHeader(F("Authorization")), credentialsOk,
+                          throttle, millis());
+}
+
+void sendLocked() {
+  uint32_t s = throttle.retryAfterS(millis());
+  if (s == 0) s = 1;  // the lock ended just now; still answer with a usable value
+  server.sendHeader(F("Retry-After"), String(s));
+  String msg = tr(requestLang(), Msg::ErrLockedFmt);
+  msg.replace(F("{}"), String(s));
+  msg += '\n';
+  server.send(429, F("text/plain; charset=utf-8"), msg);
+}
+
+// Never called with Granted.
+void refuse(gb::Access a) {
+  switch (a) {
+    case gb::Access::HostDenied: return refuseHost();
+    case gb::Access::OriginDenied:
+      return server.send(403, F("text/plain"), F("origin not allowed\n"));
+    case gb::Access::Locked: return sendLocked();
+    default: return server.requestAuthentication();  // NeedAuth, WrongPassword
+  }
 }
 
 // Drop an uncommitted update: abort the Updater and clear any eboot copy command, so
@@ -105,8 +151,11 @@ void handleUpload() {
   const gb::OtaError before = flow.error();
   switch (up.status) {
     case UPLOAD_FILE_START: {
-      const bool origin = originOk();
-      const bool auth = origin && credentialsOk();
+      // Once per request: a second file part must not count as another wrong password.
+      if (!flow.started()) uploadAccess = checkAccess();
+      const bool origin =
+          uploadAccess != gb::Access::HostDenied && uploadAccess != gb::Access::OriginDenied;
+      const bool auth = uploadAccess == gb::Access::Granted;
       const String md5 = server.arg(F("md5"));
       const size_t minImage =
           up.contentLength > kMultipartSlack ? up.contentLength - kMultipartSlack : 0;
@@ -157,11 +206,12 @@ void handleUpload() {
 
 void handleUpdateDone() {
   if (!flow.started()) {
-    // No file part at all: still enforce origin/auth before saying anything.
-    if (!originOk()) return server.send(403, F("text/plain"), F("origin not allowed\n"));
-    if (!credentialsOk()) return server.requestAuthentication();
+    // No file part at all: still enforce host/origin/lock/auth before saying anything.
+    const gb::Access a = checkAccess();
+    if (a != gb::Access::Granted) return refuse(a);
     return server.send(400, F("text/plain"), F("update failed: firmware missing\n"));
   }
+  if (uploadAccess != gb::Access::Granted) return refuse(uploadAccess);  // decided at file start
   const gb::OtaResponse r = flow.response();
   if (r.code == 401) return server.requestAuthentication();
   if (r.code == 200) return server.send(200, F("text/plain"), F("update ok, restarting\n"));
@@ -669,22 +719,32 @@ void sendAsset(const char* type, const uint8_t* data, size_t len) {
   server.send_P(200, type, reinterpret_cast<PGM_P>(data), len);
 }
 
+// Every route is registered through this: the Host check runs first, GET included.
+// (POST /update: the upload callback checks Host itself, via checkAccess().)
+ESP8266WebServer::THandlerFunction guarded(void (*handler)()) {
+  return [handler]() {
+    if (!hostOk()) return refuseHost();
+    handler();
+  };
+}
+
 void beginCommon(gb::Settings& s, const StatusProvider& st, bool safe) {
   settings = &s;
   status = st;
   safeModeUi = safe;
   server.collectHeaders(kCollectedHeaders, sizeof(kCollectedHeaders) / sizeof(kCollectedHeaders[0]));
-  server.on("/status", HTTP_GET, handleStatus);
-  server.on("/update", HTTP_POST, handleUpdateDone, handleUpload);
-  server.on("/restart", HTTP_POST, handleRestart);
-  server.on("/app.css", HTTP_GET, []() { sendAsset("text/css", kWeb_app_css, kWeb_app_cssLen); });
-  server.on("/app.js", HTTP_GET, []() {
-    sendAsset("application/javascript", kWeb_app_js, kWeb_app_jsLen);
-  });
+  server.on("/status", HTTP_GET, guarded(handleStatus));
+  server.on("/update", HTTP_POST, guarded(handleUpdateDone), handleUpload);
+  server.on("/restart", HTTP_POST, guarded(handleRestart));
+  server.on("/app.css", HTTP_GET,
+            guarded([]() { sendAsset("text/css", kWeb_app_css, kWeb_app_cssLen); }));
+  server.on("/app.js", HTTP_GET, guarded([]() {
+              sendAsset("application/javascript", kWeb_app_js, kWeb_app_jsLen);
+            }));
 }
 
 void start() {
-  server.onNotFound([]() { server.send(404, F("text/plain"), F("not found\n")); });
+  server.onNotFound(guarded([]() { server.send(404, F("text/plain"), F("not found\n")); }));
   server.begin();
   running = true;
 }
@@ -693,22 +753,22 @@ void start() {
 
 void webUiBegin(gb::Settings& s, const StatusProvider& st) {
   beginCommon(s, st, false);
-  server.on("/", HTTP_GET, handleRoot);
-  server.on("/update", HTTP_GET, []() {  // the address printed on the safe-mode screen
-    server.sendHeader(F("Location"), F("/#update"));
-    server.send(302);
-  });
-  server.on("/settings", HTTP_POST, handleSettings);
-  server.on("/reset", HTTP_POST, handleReset);
-  server.on("/api/brightness-preview", HTTP_POST, handlePreview);
-  server.on("/api/settings", HTTP_POST, handleApiSettings);
+  server.on("/", HTTP_GET, guarded(handleRoot));
+  server.on("/update", HTTP_GET, guarded([]() {  // the address printed on the safe-mode screen
+              server.sendHeader(F("Location"), F("/#update"));
+              server.send(302);
+            }));
+  server.on("/settings", HTTP_POST, guarded(handleSettings));
+  server.on("/reset", HTTP_POST, guarded(handleReset));
+  server.on("/api/brightness-preview", HTTP_POST, guarded(handlePreview));
+  server.on("/api/settings", HTTP_POST, guarded(handleApiSettings));
   start();
 }
 
 void webUiBeginSafe(gb::Settings& s, const StatusProvider& st) {
   beginCommon(s, st, true);
-  server.on("/", HTTP_GET, handleSafePage);
-  server.on("/update", HTTP_GET, handleSafePage);
+  server.on("/", HTTP_GET, guarded(handleSafePage));
+  server.on("/update", HTTP_GET, guarded(handleSafePage));
   start();
 }
 
@@ -732,15 +792,10 @@ void webUiLoop() {
 ESP8266WebServer& webUiServer() { return server; }
 
 bool webUiAuthorize() {
-  if (!originOk()) {
-    server.send(403, F("text/plain"), F("origin not allowed\n"));
-    return false;
-  }
-  if (!credentialsOk()) {
-    server.requestAuthentication();
-    return false;
-  }
-  return true;
+  const gb::Access a = checkAccess();
+  if (a == gb::Access::Granted) return true;
+  refuse(a);
+  return false;
 }
 
 void webUiScheduleRestart() {

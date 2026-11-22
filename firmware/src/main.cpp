@@ -5,6 +5,7 @@
 #include "display.h"
 #include "frame_client.h"
 #include "frame_poll.h"
+#include "http_head.h"
 #include "night.h"
 #include "portal.h"
 #include "rtc_boot.h"
@@ -25,6 +26,7 @@ gb::FramePoller poller;
 
 char etag[gb::kEtagCap] = "";
 char lastError[gb::kErrorTextCap] = "";
+char shownUrl[sizeof(gb::Settings::serverUrl)];  // server URL without credentials, for the screen
 uint32_t framesOk = 0;
 uint32_t lastSuccessMs = 0;
 bool anySuccess = false;
@@ -42,14 +44,16 @@ void formatIp(char* buf, size_t cap) {
 void showBootScreen() {
   char ip[20];
   formatIp(ip, sizeof(ip));
-  const char* lines[] = {ip, settings.serverUrl, "waiting for first frame..."};
+  gb::displayServerUrl(settings.serverUrl, shownUrl, sizeof(shownUrl));
+  const char* lines[] = {ip, shownUrl, "waiting for first frame..."};
   displayStatus("Glance Box " GB_VERSION, lines, 3);
 }
 
 void showOfflineScreen() {
   char ip[20];
   formatIp(ip, sizeof(ip));
-  const char* lines[] = {"Server not reachable", ip, settings.serverUrl, lastError};
+  gb::displayServerUrl(settings.serverUrl, shownUrl, sizeof(shownUrl));
+  const char* lines[] = {"Server not reachable", ip, shownUrl, lastError};
   displayStatus("Glance Box offline", lines, 4);
 }
 
