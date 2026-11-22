@@ -60,9 +60,9 @@ struct PortalForm {
 // "server_url" (applyServerUrl codes), "update_password" (applyNewPassword codes; checked when
 // password or passwordRepeat is not empty or s has no valid password, so both empty = keep on
 // a configured device; "mismatch" is reported as "update_password_repeat"), "brightness"
-// ("bad_brightness"; empty = keep, else digits only, 5..100), "current_password" ("wrong_password"; only checked when
-// *next differs from s and s has a valid password). On failure *field/*error are set and
-// *next is unspecified.
+// ("bad_brightness"; empty = keep, else digits only, 5..100), "current_password"
+// ("wrong_password"; only checked when *next differs from s and s has a valid password). On
+// failure *field/*error are set and *next is unspecified.
 bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std::string* field,
                      std::string* error);
 

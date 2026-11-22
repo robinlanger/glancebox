@@ -955,8 +955,10 @@ void test_portal_form_password_repeat() {
   TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.2:8090", "newpassword1", "newpassword1", "", "oldpassword"},
                                    &next, &field, &err));
   TEST_ASSERT_EQUAL_STRING("newpassword1", next.updatePassword);
+  // The new password never stands in for the current one.
+  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.2:8090", "newpassword1", "newpassword1", "", "newpassword1"},
+                               "current_password", "wrong_password"));
 }
-
 
 void test_wifi_quality() {
   TEST_ASSERT_TRUE(wifiQuality(-50) == WifiQuality::Excellent);
