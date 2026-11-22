@@ -34,20 +34,23 @@ On the real display: departures, Uptime Kuma, weather and Claude limits.
 
 All built-in pages:
 
-| `bahn`: live departures | `clock`: clock and date | `weather`: forecast |
-| --- | --- | --- |
-| ![Departure board page](docs/img/templates/bahn.png) | ![Clock page](docs/img/templates/clock.png) | ![Weather page](docs/img/templates/weather.png) |
-| Delays, platform changes and cancellations for German stations. | Large clock with weekday and date. A good start for your own pages. | Now, today's high and low and the next four hours, from Open-Meteo. |
-
-| `kuma`: Uptime Kuma | `ai`: Claude limits | `ai`: API cost |
-| --- | --- | --- |
-| ![Uptime Kuma page](docs/img/templates/kuma-down.png) | ![Claude limits page](docs/img/templates/ai-claude.png) | ![API cost page](docs/img/templates/ai-cost.png) |
-| All green, or which services are down and since when. | 5-hour and weekly limits of your Claude plan. | Monthly cost or balance of the Anthropic, OpenAI or xAI API, or your GitHub Copilot usage. |
-
-| `homeassistant`: tiles | `homeassistant`: list | |
-| --- | --- | --- |
-| ![Home Assistant page with four tiles](docs/img/templates/homeassistant-tiles.png) | ![Home Assistant page with a list](docs/img/templates/homeassistant-list.png) | |
-| Up to four large values, for example solar power and battery. | Up to six rows: temperatures, doors, windows, lights. | |
+<table>
+<tr>
+<td width="33%" valign="top"><b><code>bahn</code>: live departures</b><br><img src="docs/img/templates/bahn.png" alt="Departure board page" width="240" height="240"><br>Delays, platform changes and cancellations for German stations.</td>
+<td width="33%" valign="top"><b><code>clock</code>: clock and date</b><br><img src="docs/img/templates/clock.png" alt="Clock page" width="240" height="240"><br>Large clock with weekday and date. A good start for your own pages.</td>
+<td width="33%" valign="top"><b><code>weather</code>: forecast</b><br><img src="docs/img/templates/weather.png" alt="Weather page" width="240" height="240"><br>Now, today's high and low and the next four hours, from Open-Meteo.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>kuma</code>: Uptime Kuma</b><br><img src="docs/img/templates/kuma-down.png" alt="Uptime Kuma page" width="240" height="240"><br>All green, or which services are down and since when.</td>
+<td width="33%" valign="top"><b><code>ai</code>: Claude limits</b><br><img src="docs/img/templates/ai-claude.png" alt="Claude limits page" width="240" height="240"><br>5-hour and weekly limits of your Claude plan.</td>
+<td width="33%" valign="top"><b><code>ai</code>: API cost</b><br><img src="docs/img/templates/ai-cost.png" alt="API cost page" width="240" height="240"><br>Monthly cost or balance of the Anthropic, OpenAI or xAI API, or your GitHub Copilot usage.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>homeassistant</code>: tiles</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home Assistant page with four tiles" width="240" height="240"><br>Up to four large values, for example solar power and battery.</td>
+<td width="33%" valign="top"><b><code>homeassistant</code>: list</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home Assistant page with a list" width="240" height="240"><br>Up to six rows: temperatures, doors, windows, lights.</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 The pictures are 240x240 frames rendered by the server with sample data, exactly as the display gets them. Every template, with all options, is in the [template catalog](docs/en/templates/README.md). The `url` page type shows any web page you point it at. If you want to keep the stock firmware, [geekmagic-hacs](https://github.com/adrienbrault/geekmagic-hacs) is the better fit: a Home Assistant integration that drives the display with its original firmware. Write your own pages with [docs/en/writing-pages.md](docs/en/writing-pages.md).
 
