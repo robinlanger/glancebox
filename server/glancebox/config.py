@@ -13,6 +13,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
+from .http import redact_urls
+
 log = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL = 30
@@ -120,7 +122,8 @@ def load_config(path: Path, defaults: Callable[[dict], dict] | None = None,
     except OSError as e:
         raise ConfigError(f"{path}: cannot read config: {e}") from e
     except yaml.YAMLError as e:
-        raise ConfigError(f"{path}: invalid YAML: {e}") from e
+        # The parser quotes the offending line, which may hold an address with a token.
+        raise ConfigError(redact_urls(f"{path}: invalid YAML: {e}")) from e
     if not isinstance(data, dict):
         raise ConfigError(f"{path}: top level must be a mapping")
     data = expand_env(data, "", os.environ if environ is None else environ)

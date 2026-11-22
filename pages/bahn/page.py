@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from glancebox.http import redact_urls
+
 from . import departures
 
 DEFAULT_DBF_URL = "https://dbf.finalrewind.org"
@@ -87,7 +89,7 @@ def fetch(options: dict, ctx) -> dict:
             via=_joined(options.get("via")), platforms=_joined(options.get("platforms")),
             limit=limit, tz=ctx.timezone)
     except Exception as exc:  # noqa: BLE001  network error, DBF down, unknown station ...
-        log.warning("departures unavailable: %s", exc)
+        log.warning("departures unavailable: %s", redact_urls(str(exc)))
         data["message"], data["sub"] = "Keine Daten", f"Stand {clock}"
         return data
     if not deps:

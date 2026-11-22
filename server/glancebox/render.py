@@ -16,6 +16,7 @@ from PIL import Image
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
+from .http import redact_urls
 from .netguard import GuardProxy, normalize_host
 
 MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_timing.h
@@ -112,7 +113,7 @@ class Renderer:
             await self._launch()
         except Exception as exc:
             await self.__aexit__(None, None, None)
-            raise RenderError(f"cannot start Chromium: {exc}") from exc
+            raise RenderError(redact_urls(f"cannot start Chromium: {exc}")) from exc
         return self
 
     async def __aexit__(self, *exc) -> None:
@@ -157,7 +158,7 @@ class Renderer:
         try:
             await self._launch()
         except Exception as exc:
-            raise RenderError(f"cannot restart Chromium: {exc}") from exc
+            raise RenderError(redact_urls(f"cannot restart Chromium: {exc}")) from exc
 
     async def render_html(self, html: str, timeout_s: float = 10) -> bytes:
         async def load(page):
@@ -203,7 +204,7 @@ class Renderer:
                         type="png", clip={"x": 0, "y": 0, "width": SIZE, "height": SIZE}
                     )
             except (PlaywrightError, TimeoutError) as exc:
-                raise RenderError(f"render failed: {exc}") from exc
+                raise RenderError(redact_urls(f"render failed: {exc}")) from exc
             finally:
                 for obj in (page, context):
                     if obj is not None:

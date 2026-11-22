@@ -17,6 +17,7 @@ import jinja2
 from PIL import Image
 
 from .config import AppConfig, PageConfig
+from .http import redact_urls
 from .pages import PageContext, PageType
 from .push import PushInbox
 from .render import SIZE, font_face_css, serif_face_css
@@ -135,8 +136,10 @@ async def refresh_once(cfg: AppConfig, types: dict[str, PageType], renderer,
                 raise LookupError(f"unknown page type {page.type!r}")
             jpeg = await render_page(page, ptype, cfg, renderer, now, inbox)
         except Exception as e:
-            log.exception("%s: refresh failed", label)
-            store.mark_attempt(page.index, now, f"{type(e).__name__}: {e}")
+            error = redact_urls(f"{type(e).__name__}: {e}")
+            log.warning("%s: refresh failed: %s", label, error)
+            log.debug("%s: refresh failed", label, exc_info=True)
+            store.mark_attempt(page.index, now, error)
             continue
         store.put(page.index, jpeg, now)
         store.mark_attempt(page.index, now, None)

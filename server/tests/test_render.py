@@ -69,9 +69,10 @@ async def test_render_url_timeout_raises():
     try:
         async with Renderer() as r:
             t0 = time.monotonic()
-            with pytest.raises(RenderError):
-                await r.render_url(f"http://127.0.0.1:{srv.server_port}/", 0, None, 1)
+            with pytest.raises(RenderError) as err:
+                await r.render_url(f"http://127.0.0.1:{srv.server_port}/?token=abc", 0, None, 1)
             assert time.monotonic() - t0 < 3
+            assert "abc" not in str(err.value)
     finally:
         srv.shutdown()
 

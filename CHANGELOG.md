@@ -23,6 +23,11 @@ All notable changes to this project are documented here. The format follows
   stay reachable. A `url` page may still load everything from its own host; if that host is an
   ordinary name, it must not resolve to one of the blocked addresses. Service workers are
   disabled, and a proxy connection lasts at most 120 seconds.
+- Addresses in error texts and logs no longer show credentials or query strings: in every
+  `http(s)://` address, `user:password@` becomes `***@` and `?…` or `#…` becomes `?***`. This
+  covers the last error shown on the overview page, the server log, invalid-YAML and invalid
+  `url` messages, and the logs of the `homeassistant`, `kuma` and `bahn` pages. A failed page
+  refresh now logs one warning line; the full traceback appears only at debug level.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`

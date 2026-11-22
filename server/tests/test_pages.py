@@ -77,6 +77,13 @@ def test_url_invalid_options(opts):
         validate_config(cfg_of(("url", opts, {})), load_page_types([]))
 
 
+@pytest.mark.parametrize("url", ["htps://user:pw@h/x?token=abc", "http:///x?token=abc"])
+def test_url_error_does_not_echo_secrets(url):
+    with pytest.raises(ConfigError) as err:
+        validate_config(cfg_of(("url", {"url": url}, {})), load_page_types([]))
+    assert "abc" not in str(err.value) and "pw" not in str(err.value)
+
+
 def test_url_valid_options():
     opts = {"url": "https://x", "wait_ms": 500, "wait_for": "#a", "timeout_s": 2.5}
     cfg = cfg_of(("url", opts, {}))

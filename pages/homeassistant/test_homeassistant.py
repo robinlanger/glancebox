@@ -584,3 +584,12 @@ async def test_common_values_fit_without_ellipsis(ha, mod, serve):
                     ".filter(e => e.scrollWidth > e.clientWidth).map(e => e.textContent)")
                 assert cut == [], (lang, layout, [i["value"] for i in data["items"]])
         await browser.close()
+
+
+def test_failure_log_redacts_url_credentials(ha, serve, caplog):
+    base = "http://user:pw@homeassistant.lan:8123/api/states/"
+    serve({base + "sensor.a": requests.ConnectionError(f"cannot reach {base}sensor.a?x=1")})
+    with caplog.at_level(logging.DEBUG):
+        ha.fetch({**OPTIONS, "url": "http://user:pw@homeassistant.lan:8123"}, ctx())
+    assert "http://***@homeassistant.lan:8123/api/states/sensor.a" in caplog.text
+    assert "pw" not in caplog.text and "x=1" not in caplog.text

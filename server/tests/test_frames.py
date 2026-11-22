@@ -1,4 +1,5 @@
 import io
+import logging
 from pathlib import Path
 
 from PIL import Image
@@ -159,3 +160,20 @@ async def test_build_error_frame_failure_keeps_fallback():
     before = store.error_frame
     await store.build_error_frame(r)
     assert store.error_frame is before
+
+
+async def test_refresh_error_redacts_urls(tmp_path, caplog):
+    from glancebox.render import RenderError
+
+    class LeakyRenderer(FakeRenderer):
+        async def render_url(self, url, wait_ms, wait_for, timeout_s):
+            raise RenderError(f"render failed: net::ERR at {url}")
+
+    cfg = make_cfg(page(0, "url", url="http://h/x?token=abc"))
+    store = FrameStore(1)
+    caplog.set_level(logging.WARNING)
+    await refresh_once(cfg, {"url": PageType("url", "url")}, LeakyRenderer(), store, 0)
+    assert "http://h/x?***" in store.last_error(0)
+    assert "abc" not in store.last_error(0)
+    assert "refresh failed" in caplog.text
+    assert "abc" not in caplog.text
