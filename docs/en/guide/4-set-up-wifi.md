@@ -17,8 +17,8 @@ The display opens its own Wi-Fi so you can tell it your network and your server.
 ## Fill in the form
 
 1. Tap **Configure WiFi** and choose your 2.4 GHz network, then enter its password.
-2. **Server URL:** the address from step 2, for example `http://192.168.1.50:8080`. Only `http://` works.
-3. **Update password:** a new password you choose, 8 to 32 characters, no umlauts. You need it for updates and for changing settings. The user name is always `admin`.
+2. **Server URL:** the address from step 2, for example `http://192.168.1.50:8080`. Only `http://` works. The empty field shows `http://192.168.x.x:8090` as an example; use your server's IP address and port (8080 for the Docker server unless you changed it, 8090 for the Home Assistant add-on). If a field is invalid, the form comes back at once with the error, before the display tries your Wi-Fi: choose your network again and enter the passwords again.
+3. **Update password:** a new password you choose, 8 to 32 characters, no umlauts. Enter it again in **Repeat update password**; the portal stores it only when both match. You need it for updates and for changing settings. The user name is always `admin`.
 4. **Brightness:** 5 to 100 %. You can change it later with a slider.
 5. Tap **Save**.
 

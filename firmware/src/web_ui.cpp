@@ -376,6 +376,7 @@ String i18nJson(Lang l) {
   addI18n(j, "undo", tr(l, Msg::Undo));
   addI18n(j, "auth", tr(l, Msg::AuthCancelled));
   addI18n(j, "pw_changed", tr(l, Msg::PwChanged));
+  addI18n(j, "pw_mismatch", tr(l, Msg::ErrPwMismatch));
   addI18n(j, "upload_ok", tr(l, Msg::UploadOk));
   addI18n(j, "uploading", tr(l, Msg::Uploading));
   addI18n(j, "error", tr(l, Msg::ErrSaveFailed));
@@ -466,7 +467,10 @@ void appendNoscriptForm(String& b, Lang l) {
   b += F("</small><label>");
   b += tr(l, Msg::NewPassword);
   b += F("<input name=password type=password maxlength=32 autocomplete=new-password></label>"
-         "<button class=btn>");
+         "<label>");
+  b += tr(l, Msg::PwRepeat);
+  b += F("<input name=password_repeat type=password maxlength=32 autocomplete=new-password>"
+         "</label><button class=btn>");
   b += tr(l, Msg::Save);
   b += F("</button></form></noscript>");
 }
@@ -538,8 +542,13 @@ void handleRoot() {
   appendUpdateForm(b, l);
   b += F("</details><details class='row js-only'><summary>");
   b += tr(l, Msg::ChangePassword);
-  b += F("</summary><form id=pw-form class=stack><input type=password name=password minlength=8 "
-         "maxlength=32 required autocomplete=new-password><span class=msg></span><button class=btn>");
+  b += F("</summary><form id=pw-form class=stack><label>");
+  b += tr(l, Msg::PwNew);
+  b += F("<input type=password name=password minlength=8 maxlength=32 required "
+         "autocomplete=new-password></label><label>");
+  b += tr(l, Msg::PwRepeat);
+  b += F("<input type=password name=password_repeat minlength=8 maxlength=32 required "
+         "autocomplete=new-password></label><span class=msg></span><button class=btn>");
   b += tr(l, Msg::Change);
   b += F("</button></form></details><form class=row method=post action=/restart><button class=lnk>");
   b += tr(l, Msg::Restart);
@@ -604,8 +613,11 @@ void handleSettings() {
   if (!gb::applyServerUrl(next, server.arg(F("server_url")).c_str(), &err)) {
     return sendMessage(400, l, tr(l, msgForError(err, false)), true);
   }
+  // Both empty = keep; otherwise both must match (also when only the repeat is filled).
   const String pw = server.arg(F("password"));
-  if (pw.length() > 0 && !gb::applyPassword(next, pw.c_str(), &err)) {
+  const String pwRepeat = server.arg(F("password_repeat"));
+  if ((pw.length() > 0 || pwRepeat.length() > 0) &&
+      !gb::applyNewPassword(next, pw.c_str(), pwRepeat.c_str(), &err)) {
     return sendMessage(400, l, tr(l, msgForError(err, true)), true);
   }
   const String br = server.arg(F("brightness"));
@@ -638,8 +650,10 @@ void sendJson(int code, const String& body) {
   server.send(code, F("application/json"), body);
 }
 
+// Answered without a password challenge: the preview runs while the slider is held, and a
+// browser password dialog then would swallow the release (#20). The save asks instead.
 void handlePreview() {
-  if (!webUiAuthorize()) return;
+  if (!webUiAuthorize(false)) return;
   const String v = server.arg(F("pct"));
   char* end = nullptr;
   const long pct = strtol(v.c_str(), &end, 10);
@@ -667,6 +681,7 @@ void handleApiSettings() {
   gb::SettingsPatch p;
   patchArg(p.serverUrl, F("server_url"));
   patchArg(p.password, F("password"));
+  patchArg(p.passwordRepeat, F("password_repeat"));
   patchArg(p.brightness, F("brightness"));
   patchArg(p.nightStart, F("night_start"));
   patchArg(p.nightEnd, F("night_end"));
@@ -791,10 +806,15 @@ void webUiLoop() {
 
 ESP8266WebServer& webUiServer() { return server; }
 
-bool webUiAuthorize() {
+bool webUiAuthorize(bool challenge) {
   const gb::Access a = checkAccess();
   if (a == gb::Access::Granted) return true;
-  refuse(a);
+  if (!challenge && (a == gb::Access::NeedAuth || a == gb::Access::WrongPassword)) {
+    // No WWW-Authenticate: the browser shows no password dialog for this answer.
+    server.send(401, F("text/plain"), F("password required\n"));
+  } else {
+    refuse(a);
+  }
   return false;
 }
 

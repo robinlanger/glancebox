@@ -6,6 +6,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Device web page: after the browser's password prompt, a slider no longer keeps following the
+  pointer. Dragging a slider no longer brings up the prompt; it comes with the save when you let
+  go. Until the browser knows the password, the display changes only on release (#20).
+- Setup portal: a device with a valid update password but an invalid stored server URL now
+  shows "Current update password" and keeps its password when the new-password fields are
+  empty. On 0.6.2 such a device was stuck with "wrong password" (#22).
+
+### Changed
+- An empty Server URL field now reports "Server URL is required" instead of "host is missing",
+  in the setup portal and on the device web page (#22).
+- The setup portal checks server URL, update password, brightness and current password before
+  it connects to Wi-Fi. An invalid form comes back at once with the error; before, the portal
+  connected first, reported success and reopened with the error afterwards. The Server URL
+  field shows the example `http://192.168.x.x:8090` and is marked as required (#22).
+- A new update password is asked for twice: in the setup portal and on the device web page,
+  with and without JavaScript. It is stored only when both entries match. `POST /api/settings`
+  now needs `password_repeat` next to `password` to set a new password; a call with only
+  `password` gets HTTP 400 (#21).
+
+### Security
+- The setup portal no longer writes entered passwords back into the page source (before, they
+  appeared there after a failed Wi-Fi connection). WiFiManager's separate parameter pages
+  `/param` and `/paramsave`, which took the same fields without the check, are blocked (#22).
+
 ## [0.6.2]
 
 Security release for server, Home Assistant add-on and firmware, after a review of the whole

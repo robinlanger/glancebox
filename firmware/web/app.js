@@ -40,11 +40,14 @@ function md5(buffer) {
 }
 
 // ---- Live preview while dragging: one request at a time, at most one per minGapMs,
-// the latest value always wins. flush() drops what is pending and waits for the open one. ----
+// the latest value always wins. flush() drops what is pending and waits for the open one.
+// If send(v) resolves to exactly false (refused, e.g. no password yet), the pump drops the
+// pending value and ignores push() until flush() has run. A rejected send (network error)
+// does not stop it. ----
 function createPreviewPump(send, minGapMs) {
-  let inFlight = null, queued = null, timer = null, lastSent = -Infinity;
+  let inFlight = null, queued = null, timer = null, lastSent = -Infinity, stopped = false;
   const pump = () => {
-    if (inFlight || timer || queued === null) return;
+    if (stopped || inFlight || timer || queued === null) return;
     const wait = lastSent + minGapMs - Date.now();
     if (wait > 0) {
       timer = setTimeout(() => {
@@ -58,6 +61,12 @@ function createPreviewPump(send, minGapMs) {
     lastSent = Date.now();
     inFlight = Promise.resolve()
       .then(() => send(v))
+      .then((ok) => {
+        if (ok === false) {
+          stopped = true;
+          queued = null;
+        }
+      })
       .catch(() => {})
       .finally(() => {
         inFlight = null;
@@ -66,6 +75,7 @@ function createPreviewPump(send, minGapMs) {
   };
   return {
     push(v) {
+      if (stopped) return;
       queued = v;
       pump();
     },
@@ -74,6 +84,7 @@ function createPreviewPump(send, minGapMs) {
       clearTimeout(timer);
       timer = null;
       while (inFlight) await inFlight;
+      stopped = false;
     },
   };
 }
@@ -85,7 +96,8 @@ function init() {
   const T = JSON.parse(document.body.dataset.i18n || "{}");
   const CHECK = "\u2713";
 
-  // POST form fields, expect {"ok":true}. Throws Error(message for the user).
+  // POST form fields, expect {"ok":true}. Throws Error(message for the user); errors from an
+  // HTTP answer carry its status as .status (network errors have none).
   async function post(url, fields) {
     let r;
     try {
@@ -93,11 +105,12 @@ function init() {
     } catch (e) {
       throw new Error(T.error);
     }
-    if (r.status === 401) throw new Error(T.auth);
-    if (r.status === 429) throw new Error((await r.text()).trim() || T.error); // password lock
+    const fail = (message) => Object.assign(new Error(message), { status: r.status });
+    if (r.status === 401) throw fail(T.auth);
+    if (r.status === 429) throw fail((await r.text()).trim() || T.error); // password lock
     let j = {};
     try { j = await r.json(); } catch (e) { /* not JSON */ }
-    if (!r.ok || !j.ok) throw new Error(j.error || T.error);
+    if (!r.ok || !j.ok) throw fail(j.error || T.error);
     return j;
   }
 
@@ -137,7 +150,15 @@ function init() {
   for (const input of document.querySelectorAll("input[type=range]")) {
     const row = rowOf(input);
     let saved = input.value;
-    const preview = createPreviewPump((v) => post("/api/brightness-preview", { pct: v }), 100);
+    // The preview never brings up the password dialog (401 without WWW-Authenticate): on 401
+    // or 429 the pump stops until release, where the save asks for the password.
+    const preview = createPreviewPump(
+      (v) => post("/api/brightness-preview", { pct: v }).then(
+        () => true,
+        (e) => e.status !== 401 && e.status !== 429,
+      ),
+      100,
+    );
     paint(input);
     input.addEventListener("input", () => {
       paint(input);
@@ -223,12 +244,20 @@ function init() {
   if (pw) {
     pw.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const input = pw.elements.password, m = pw.querySelector(".msg");
+      const input = pw.elements.password, repeat = pw.elements.password_repeat;
+      const m = pw.querySelector(".msg");
+      // Checked here first, so a typo sends no request (and brings up no password dialog).
+      if (input.value !== repeat.value) {
+        m.className = "msg err";
+        m.textContent = T.pw_mismatch;
+        return;
+      }
       try {
-        await post("/api/settings", { password: input.value });
+        await post("/api/settings", { password: input.value, password_repeat: repeat.value });
         m.className = "msg";
         m.textContent = T.pw_changed;
         input.value = "";
+        repeat.value = "";
       } catch (err) {
         m.className = "msg err";
         m.textContent = err.message;

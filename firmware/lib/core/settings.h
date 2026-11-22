@@ -19,14 +19,15 @@ struct Settings {
 };
 
 // Returns the normalized "http://host[:port][/path]" URL without trailing
-// slash, or nullopt with *error set ("https_unsupported", "empty_host").
+// slash, or nullopt with *error set ("required" for empty or whitespace-only input,
+// "https_unsupported", "unsupported_scheme", "empty_host").
 std::optional<std::string> normalizeServerUrl(std::string in, std::string* error);
 bool validPassword(const std::string& pw);
 uint8_t clampBrightness(int pct);
 // Night brightness: 0..100 (0 allowed, unlike the day brightness).
 uint8_t clampNightBrightness(int pct);
 
-// Normalize and store the server URL. On failure *error is one of
+// Normalize and store the server URL. On failure *error is one of "required",
 // "https_unsupported", "unsupported_scheme", "empty_host", "invalid_chars" (one of ' " < > `,
 // an inner space, a control character or a byte >= 0x80; not checked when the normalized
 // URL equals the stored one), "too_long" and s is unchanged.
@@ -34,15 +35,36 @@ bool applyServerUrl(Settings& s, const std::string& raw, std::string* error);
 // Store the update password (8..32 printable ASCII chars). On failure *error is one of
 // "too_short", "too_long", "invalid_chars" and s is unchanged.
 bool applyPassword(Settings& s, const std::string& pw, std::string* error);
+// A new update password with its repetition: "mismatch" when they differ (byte-exact, checked
+// first), otherwise the applyPassword rules and codes.
+bool applyNewPassword(Settings& s, const std::string& pw, const std::string& repeat,
+                      std::string* error);
 // Partial update from the web page: an absent field leaves the setting unchanged.
 struct SettingsPatch {
-  std::optional<std::string> serverUrl, password, brightness, nightStart, nightEnd, nightBrightness;
+  std::optional<std::string> serverUrl, password, passwordRepeat, brightness, nightStart, nightEnd,
+      nightBrightness;
 };
 // Applies all present fields to a copy; on any error s is unchanged, *field is the form name
-// ("server_url", "password", "brightness", "night_start", "night_end", "night_brightness") and
-// *error the code ("https_unsupported", "too_short", "bad_brightness", "bad_time",
-// "bad_night_brightness", ...). Brightness: digits only, 5..100.
+// ("server_url", "password", "password_repeat", "brightness", "night_start", "night_end",
+// "night_brightness") and *error the code ("https_unsupported", "too_short", "mismatch",
+// "bad_brightness", "bad_time", "bad_night_brightness", ...). Brightness: digits only, 5..100.
+// A present password needs an equal passwordRepeat (applyNewPassword; absent counts as
+// different, reported as "password_repeat"/"mismatch"); passwordRepeat alone is ignored.
 bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field, std::string* error);
+
+// Values of the setup-portal form, as submitted.
+struct PortalForm {
+  std::string serverUrl, password, passwordRepeat, brightness, currentPassword;
+};
+// Validates the form against s and writes s with the form applied to *next. Order:
+// "server_url" (applyServerUrl codes), "update_password" (applyNewPassword codes; checked when
+// password or passwordRepeat is not empty or s has no valid password, so both empty = keep on
+// a configured device; "mismatch" is reported as "update_password_repeat"), "brightness"
+// ("bad_brightness"; empty = keep, else digits only, 5..100), "current_password"
+// ("wrong_password"; only checked when *next differs from s and s has a valid password). On
+// failure *field/*error are set and *next is unspecified.
+bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std::string* field,
+                     std::string* error);
 
 // True when the device can run: valid server URL and update password.
 bool settingsComplete(const Settings& s);
