@@ -262,6 +262,12 @@ bool settingsComplete(const Settings& s) {
   return normalizeServerUrl(s.serverUrl, nullptr).has_value() && validPassword(s.updatePassword);
 }
 
+const char* portalApPassword(const Settings& s) {
+  if (!settingsComplete(s)) return nullptr;
+  const size_t n = std::strlen(s.updatePassword);
+  return (n >= 8 && n <= 63) ? s.updatePassword : nullptr;
+}
+
 std::string encodeSettings(const Settings& s) {
   std::string out = "{\"server_url\":";
   appendJsonString(out, s.serverUrl);

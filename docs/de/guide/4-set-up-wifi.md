@@ -7,7 +7,7 @@ Das Display öffnet ein eigenes WLAN, damit du ihm dein Netz und deinen Server n
 
 ## Mit dem Display verbinden
 
-1. Verbinde Handy oder Rechner mit dem WLAN **`GlanceBox-XXXX`**, das auf dem Display steht. Es hat kein Passwort.
+1. Verbinde Handy oder Rechner mit dem WLAN **`GlanceBox-XXXX`**, das auf dem Display steht. Es hat kein Passwort. War das Display schon einmal eingerichtet (etwa weil sein gespeichertes Netz weg ist), fragt es nach einem Passwort: Gib dein Update-Passwort ein.
 2. Die meisten Handys öffnen die Einrichtungsseite von selbst. Sonst öffne `http://192.168.4.1`.
 
 <figure class="gb-figure" markdown>

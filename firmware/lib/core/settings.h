@@ -44,6 +44,9 @@ bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field,
 
 // True when the device can run: valid server URL and update password.
 bool settingsComplete(const Settings& s);
+// WPA2 password for the setup Wi-Fi: the update password once the device is configured
+// (and 8..63 chars, the WPA2 range), otherwise nullptr = open AP for the first setup.
+const char* portalApPassword(const Settings& s);
 
 // Flat JSON object {"server_url", "update_password", "brightness", "night_start",
 // "night_end", "night_brightness"} plus newline.

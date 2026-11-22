@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+- Firmware: on a device that is already set up, the setup Wi-Fi `GlanceBox-XXXX` is now protected
+  with WPA2; its Wi-Fi password is the update password. Before, anyone in range could join it while
+  the saved network was gone and store new Wi-Fi credentials without the password. The first setup
+  still uses an open Wi-Fi. The setup portal also no longer offers WiFiManager's restart, exit,
+  close and info pages.
+
 ## [0.6.1]
 
 Server and add-on update; the firmware is unchanged (no need to update the display).

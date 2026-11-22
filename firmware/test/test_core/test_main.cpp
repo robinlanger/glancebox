@@ -904,6 +904,16 @@ void test_settings_night_roundtrip_and_old_file() {
   TEST_ASSERT_EQUAL_UINT8(100, bad.nightBrightness);
 }
 
+void test_portal_ap_password_only_when_configured() {
+  gb::Settings s{};                       // unconfigured: open AP
+  TEST_ASSERT_NULL(gb::portalApPassword(s));
+  std::string err;
+  TEST_ASSERT_TRUE(gb::applyPassword(s, "correct-horse", &err));
+  TEST_ASSERT_NULL(gb::portalApPassword(s));  // password alone: still not configured
+  TEST_ASSERT_TRUE(gb::applyServerUrl(s, "http://192.168.1.10:8080", &err));
+  TEST_ASSERT_EQUAL_STRING("correct-horse", gb::portalApPassword(s));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_fresh_magic);
@@ -979,5 +989,6 @@ int main() {
   RUN_TEST(test_format_duration);
   RUN_TEST(test_apply_night);
   RUN_TEST(test_settings_night_roundtrip_and_old_file);
+  RUN_TEST(test_portal_ap_password_only_when_configured);
   return UNITY_END();
 }

@@ -7,7 +7,7 @@ The display opens its own Wi-Fi so you can tell it your network and your server.
 
 ## Connect to the display
 
-1. On your phone or computer, join the Wi-Fi **`GlanceBox-XXXX`** shown on the display. It has no password.
+1. On your phone or computer, join the Wi-Fi **`GlanceBox-XXXX`** shown on the display. It has no password. If the display was set up before (for example because its saved network is gone), it asks for a password: enter your update password.
 2. Most phones open the setup page by themselves. If not, open `http://192.168.4.1`.
 
 <figure class="gb-figure" markdown>

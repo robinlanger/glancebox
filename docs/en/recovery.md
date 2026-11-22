@@ -73,7 +73,7 @@ The last resort. It works even if the firmware is completely broken, because it 
 esptool.py --port <port> -b 115200 write_flash 0x0 glancebox-ultra-<version>.bin
 ```
 
-Afterwards remove the GPIO0 wire and power-cycle the display (unplug, plug in). It starts the new firmware and opens the setup portal if no settings are stored. The exact flash command, including flash parameters, is pending the maintainer's own serial test.
+Afterwards remove the GPIO0 wire and power-cycle the display (unplug, plug in). It starts the new firmware and opens the setup portal if no settings are stored. If settings are still stored and the saved Wi-Fi cannot be reached, the setup portal opens too, and its Wi-Fi `GlanceBox-XXXX` asks for a password: enter your update password. The exact flash command, including flash parameters, is pending the maintainer's own serial test.
 
 ## Restoring the backup
 

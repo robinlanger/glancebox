@@ -73,7 +73,7 @@ Die letzte Möglichkeit. Sie funktioniert auch bei komplett kaputter Firmware, w
 esptool.py --port <port> -b 115200 write_flash 0x0 glancebox-ultra-<version>.bin
 ```
 
-Entferne danach den GPIO0-Draht und unterbrich den Strom des Displays (abziehen, einstecken). Es startet die neue Firmware und öffnet das Einrichtungsportal, wenn keine Einstellungen gespeichert sind. Der genaue Flash-Befehl samt Flash-Parametern steht noch aus, bis der Maintainer den seriellen Test selbst gemacht hat.
+Entferne danach den GPIO0-Draht und unterbrich den Strom des Displays (abziehen, einstecken). Es startet die neue Firmware und öffnet das Einrichtungsportal, wenn keine Einstellungen gespeichert sind. Sind noch Einstellungen gespeichert und ist das gespeicherte WLAN nicht erreichbar, öffnet sich das Einrichtungsportal ebenfalls, und sein WLAN `GlanceBox-XXXX` fragt nach einem Passwort: Gib dein Update-Passwort ein. Der genaue Flash-Befehl samt Flash-Parametern steht noch aus, bis der Maintainer den seriellen Test selbst gemacht hat.
 
 ## Sicherung zurückspielen
 
