@@ -9,7 +9,14 @@ import pytest
 from PIL import Image
 from playwright.async_api import Error as PlaywrightError
 
-from glancebox.render import MAX_JPEG_BYTES, Renderer, RenderError, browser_env, encode_jpeg
+from glancebox.render import (
+    MAX_JPEG_BYTES,
+    Renderer,
+    RenderError,
+    browser_env,
+    encode_jpeg,
+    page_host,
+)
 
 
 def test_encode_jpeg_baseline_and_size():
@@ -22,6 +29,19 @@ def test_encode_jpeg_baseline_and_size():
     res = Image.open(io.BytesIO(out))
     assert not res.info.get("progressive")
     assert res.size == (240, 240)
+
+
+@pytest.mark.parametrize("url,expected", [
+    ("http://Example.ORG./x", "example.org"),
+    ("http://Bücher.example:8123/x", "xn--bcher-kva.example"),
+    ("http://[::1]:8080/", "::1"),
+    ("http://192.168.1.20:3000/d", "192.168.1.20"),
+    ("http://a..b/", "a..b"),  # not encodable: left unchanged (the proxy refuses it anyway)
+    ("http://[/", None),
+    ("about:blank", None),
+])
+def test_page_host(url, expected):
+    assert page_host(url) == expected
 
 
 @pytest.mark.browser

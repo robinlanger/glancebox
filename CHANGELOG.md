@@ -14,12 +14,15 @@ All notable changes to this project are documented here. The format follows
   under Docker's default seccomp profile and in the add-on), it starts without it as before and
   logs one warning.
 - Pages can no longer make the browser reach Home Assistant internal targets (`supervisor`,
-  `homeassistant`, `localhost`, any `*.localhost` or `*.local.hass.io` name, the add-on network
-  `172.30.32.0/23`, loopback, link-local, `0.0.0.0/8`, `::`). All page traffic, including
-  redirects and WebSockets, goes through a filtering proxy inside the server that checks the name
-  and every address it resolves to and connects only to the address it checked, so a name that
-  resolves to an internal address is refused too. A `url` page may still load everything from its
-  own host. Service workers are disabled.
+  `homeassistant`, `localhost`, any `*.localhost` or `*.local.hass.io` name, the Home Assistant
+  internal networks `172.30.32.0/23`, `172.30.232.0/23` and `fd0c:ac1e:2100::/48`, loopback,
+  link-local, `0.0.0.0/8`, `::`). All page traffic, including redirects and WebSockets, goes
+  through a filtering proxy inside the server that checks the name and every address it resolves
+  to and connects only to the address it checked, so a name that resolves to an internal address
+  is refused too. Addresses in your own LAN, including the LAN address of the Home Assistant host,
+  stay reachable. A `url` page may still load everything from its own host; if that host is an
+  ordinary name, it must not resolve to one of the blocked addresses. Service workers are
+  disabled, and a proxy connection lasts at most 120 seconds.
 
 ### Changed
 - Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`

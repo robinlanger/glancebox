@@ -31,6 +31,9 @@ from glancebox.netguard import GuardProxy, blocked_host
     ("::ffff:127.0.0.1", None, True),
     ("169.254.169.254", None, True),
     ("fe80::1", None, True),
+    ("172.30.232.1", None, True),
+    ("172.30.234.1", None, False),
+    ("fd0c:ac1e:2100::2", None, True),
     ("", None, True),
 ])
 def test_blocked_host(host, page_host, expected):
@@ -188,13 +191,36 @@ async def test_proxy_connect_tunnels(make_proxy, upstream):
 
 
 async def test_proxy_pins_checked_address(make_proxy, upstream):
+    # Only the injected resolver knows this name; the answer arriving proves the proxy connected
+    # to the address it checked instead of resolving again. (An internal page host is used
+    # because the only server here is on loopback.)
     calls: list[str] = []
-    proxy = make_proxy(_resolver({"pin.test": ["127.0.0.1"]}, calls))
-    url = await proxy.url_for("pin.test")
-    answer = await _ask(url, f"GET http://pin.test:{upstream.port}/p HTTP/1.1\r\n\r\n".encode())
+    proxy = make_proxy(_resolver({"pin.local.hass.io": ["127.0.0.1"]}, calls))
+    url = await proxy.url_for("pin.local.hass.io")
+    answer = await _ask(url, f"GET http://pin.local.hass.io:{upstream.port}/p HTTP/1.1\r\n\r\n"
+                        .encode())
     assert _status(answer) == 200
-    assert calls == ["pin.test"]
+    assert calls == ["pin.local.hass.io"]
     assert upstream.paths() == ["/p"]
+
+
+async def test_proxy_exempt_name_still_checked_by_address(make_proxy, upstream):
+    proxy = make_proxy(_resolver({"page.test": ["127.0.0.1"]}))
+    url = await proxy.url_for("page.test")
+    answer = await _ask(url, f"GET http://page.test:{upstream.port}/ HTTP/1.1\r\n\r\n".encode())
+    assert _status(answer) == 403
+    assert upstream.seen == []
+
+
+async def test_proxy_exempt_internal_name_skips_address_check(make_proxy, upstream):
+    calls: list[str] = []
+    proxy = make_proxy(_resolver({"homeassistant": ["127.0.0.1"]}, calls))
+    url = await proxy.url_for("homeassistant")
+    answer = await _ask(url, f"GET http://homeassistant:{upstream.port}/ha HTTP/1.1\r\n\r\n"
+                        .encode())
+    assert _status(answer) == 200
+    assert upstream.paths() == ["/ha"]
+    assert calls == ["homeassistant"]  # resolved once, then connected to that address
 
 
 async def test_proxy_unreachable_upstream_is_502(make_proxy):
@@ -305,6 +331,90 @@ async def test_proxy_close_does_not_wait_for_a_client_that_never_reads():
     server.close()
     async with asyncio.timeout(5):
         await server.wait_closed()
+
+
+class SilentUpstream:
+    """Accepts connections, reads the request head, then never answers nor closes."""
+
+    def __init__(self) -> None:
+        self.release = asyncio.Event()
+        self.heads = 0
+        self.server: asyncio.Server | None = None
+
+    async def _handle(self, reader, writer):
+        try:
+            with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
+                await reader.readuntil(b"\r\n\r\n")
+                self.heads += 1
+            await self.release.wait()
+        finally:
+            writer.close()
+
+    @property
+    def port(self) -> int:
+        return self.server.sockets[0].getsockname()[1]
+
+
+@pytest.fixture
+async def silent():
+    up = SilentUpstream()
+    up.server = await asyncio.start_server(up._handle, "127.0.0.1", 0)
+    yield up
+    up.release.set()
+    up.server.close()
+    async with asyncio.timeout(5):
+        await up.server.wait_closed()
+
+
+def _live(proxy: GuardProxy) -> tuple[int, int]:
+    """(handler tasks, transports not closing) the proxy still holds."""
+    return len(proxy._tasks), sum(not t.is_closing() for t in proxy._transports)
+
+
+async def _wait_until_idle(proxy: GuardProxy, within_s: float) -> tuple[int, int]:
+    deadline = asyncio.get_running_loop().time() + within_s
+    while _live(proxy) != (0, 0) and asyncio.get_running_loop().time() < deadline:
+        await asyncio.sleep(0.05)
+    return _live(proxy)
+
+
+@pytest.mark.parametrize("connect", [False, True])
+async def test_proxy_ends_connection_when_client_left_and_upstream_is_silent(
+        make_proxy, silent, monkeypatch, connect):
+    monkeypatch.setattr(netguard, "CLIENT_GONE_GRACE_S", 0.2)
+    proxy = make_proxy()
+    url = await proxy.url_for("127.0.0.1")
+    reader, writer = await asyncio.open_connection("127.0.0.1", _port(url))
+    if connect:
+        writer.write(f"CONNECT 127.0.0.1:{silent.port} HTTP/1.1\r\n\r\n".encode())
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+    else:
+        writer.write(f"GET http://127.0.0.1:{silent.port}/ HTTP/1.1\r\n\r\n".encode())
+    await writer.drain()
+    while silent.heads == 0:
+        await asyncio.sleep(0.01)
+    writer.close()  # Chromium is done with this connection
+    await writer.wait_closed()
+    assert await _wait_until_idle(proxy, 3) == (0, 0)
+
+
+async def test_proxy_closes_connection_after_lifetime_cap(make_proxy, silent, monkeypatch):
+    monkeypatch.setattr(netguard, "MAX_CONNECTION_S", 0.3)
+    proxy = make_proxy()
+    url = await proxy.url_for("127.0.0.1")
+    reader, writer = await asyncio.open_connection("127.0.0.1", _port(url))
+    try:
+        writer.write(f"CONNECT 127.0.0.1:{silent.port} HTTP/1.1\r\n\r\n".encode())
+        async with asyncio.timeout(5):
+            assert await reader.readuntil(b"\r\n\r\n") == (
+                b"HTTP/1.1 200 Connection established\r\n\r\n")
+            assert await reader.read() == b""  # idle tunnel, client still there: cap closes it
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionError):
+            await writer.wait_closed()
+    assert await _wait_until_idle(proxy, 3) == (0, 0)
 
 
 async def test_url_for_reuses_listener_per_page_host(make_proxy):

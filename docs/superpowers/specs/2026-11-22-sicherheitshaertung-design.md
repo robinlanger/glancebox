@@ -61,6 +61,12 @@ Lieferkette am 2026-11-22 ergab sieben Punkte. Dieses Dokument legt fest, wie si
 - Die Zielsperre ist ein filternder Proxy im Server-Prozess, über den jeder Browser-Kontext
   seinen ganzen Verkehr schickt. Er prüft Namen und jede aufgelöste Adresse und verbindet zur
   geprüften Adresse; DNS-Rebinding, Weiterleitungen und WebSockets sind damit abgedeckt.
+  Gesperrt sind die internen HA-Namen, Loopback, Link-Local, `0.0.0.0/8`, `::` und die internen
+  HA-Netze `172.30.32.0/23`, `172.30.232.0/23` und `fd0c:ac1e:2100::/48`. Adressen im LAN des
+  Nutzers, auch die LAN-Adresse des HA-Rechners, bleiben erreichbar.
+- Der eigene Host einer `url`-Seite ist von der Namensregel ausgenommen. Ist er eine IP-Adresse
+  oder ein interner HA-Name, auch von der Adressprüfung (`url: http://homeassistant:8123/...`
+  erreicht damit jeden Port dieses Hosts); ein gewöhnlicher Name wird über seine Adressen geprüft.
 - Direktes UDP, etwa WebRTC, läuft nicht über den Proxy und wird nicht gefiltert.
 
 ## Was dem Bauenden überlassen ist

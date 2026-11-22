@@ -20,13 +20,19 @@ log = logging.getLogger(__name__)
 BLOCKED_HOSTS = frozenset({"supervisor", "hassio", "homeassistant", "observer", "localhost"})
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local.hass.io")
 BLOCKED_NETWORKS = tuple(ipaddress.ip_network(n) for n in (
-    "0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "172.30.32.0/23",
-    "::/128", "::1/128", "fe80::/10"))
+    "0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16",
+    "172.30.32.0/23",  # hassio network (Supervisor, add-ons)
+    "172.30.232.0/23",  # HAOS docker0
+    "::/128", "::1/128", "fe80::/10",
+    "fd0c:ac1e:2100::/48",  # hassio network, IPv6
+))
 
 HEAD_LIMIT = 65536  # bytes of request head the proxy reads at most
 HEAD_TIMEOUT_S = 10
 RESOLVE_TIMEOUT_S = 10
 CONNECT_TIMEOUT_S = 10
+CLIENT_GONE_GRACE_S = 5  # once the client side ended, wait at most this long for the upstream
+MAX_CONNECTION_S = 120  # every proxy connection (tunnels included) is closed after this
 RELAY_CHUNK = 65536
 
 _TOKEN = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
@@ -57,6 +63,18 @@ def blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return any(ip.version == net.version and ip in net for net in BLOCKED_NETWORKS)
 
 
+def _internal_name(host: str) -> bool:
+    return host in BLOCKED_HOSTS or host.endswith(BLOCKED_HOST_SUFFIXES)
+
+
+def _ip_literal(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return True
+
+
 def blocked_host(host: str, page_host: str | None) -> bool:
     """True if a page must not request ``host`` judged by its name or IP literal alone.
 
@@ -68,7 +86,7 @@ def blocked_host(host: str, page_host: str | None) -> bool:
         return True
     if page_host is not None and host == normalize_host(page_host):
         return False
-    if host in BLOCKED_HOSTS or host.endswith(BLOCKED_HOST_SUFFIXES):
+    if _internal_name(host):
         return True
     try:
         ip = ipaddress.ip_address(host)
@@ -231,58 +249,69 @@ class GuardProxy:
         task = asyncio.current_task()
         self._tasks.add(task)
         self._transports.add(writer.transport)
-        upstream = None
+        opened: list[asyncio.StreamWriter] = []  # upstream connection, once there is one
         graceful = False
         try:
             if self._closed:
                 return
-            try:
-                async with asyncio.timeout(HEAD_TIMEOUT_S):
-                    head = await reader.readuntil(b"\r\n\r\n")
-            except (TimeoutError, asyncio.IncompleteReadError, asyncio.LimitOverrunError):
-                return
-            try:
-                req = _parse_request(head)
-            except _BadRequest:
-                log.debug("malformed proxy request refused")
-                await _answer(writer, 400)
-                graceful = True
-                return
-            status, address = await self._check(page_host, req.host, req.port)
-            if address is None:
-                await _answer(writer, status)
-                graceful = True
-                return
-            try:
-                async with asyncio.timeout(CONNECT_TIMEOUT_S):
-                    up_reader, upstream = await asyncio.open_connection(
-                        address, req.port, flags=socket.AI_NUMERICHOST)
-                self._transports.add(upstream.transport)
-            except (OSError, TimeoutError) as exc:
-                log.debug("page request to %s failed: %s", req.host, exc)
-                await _answer(writer, 502)
-                graceful = True
-                return
-            if req.target is None:
-                writer.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
-            else:
-                upstream.write(_origin_head(req))
-            await self._relay(reader, writer, up_reader, upstream)
-            graceful = True
+            async with asyncio.timeout(MAX_CONNECTION_S):
+                graceful = await self._serve(page_host, reader, writer, opened)
+        except TimeoutError:
+            log.debug("proxy connection closed after %s s", MAX_CONNECTION_S)
         except OSError as exc:
             log.debug("page request connection error: %s", exc)
         finally:
-            for w in (upstream, writer):
-                if w is not None:
-                    if graceful:
-                        w.close()
-                    else:
-                        w.transport.abort()
+            for w in (*opened, writer):
+                if graceful:
+                    w.close()
+                else:
+                    w.transport.abort()
             self._tasks.discard(task)
 
+    async def _serve(self, page_host: str | None, reader: asyncio.StreamReader,
+                     writer: asyncio.StreamWriter, opened: list[asyncio.StreamWriter]) -> bool:
+        """Handle one proxy request; True if the connection ended normally (close, not abort)."""
+        try:
+            async with asyncio.timeout(HEAD_TIMEOUT_S):
+                head = await reader.readuntil(b"\r\n\r\n")
+        except (TimeoutError, asyncio.IncompleteReadError, asyncio.LimitOverrunError):
+            return False
+        try:
+            req = _parse_request(head)
+        except _BadRequest:
+            log.debug("malformed proxy request refused")
+            await _answer(writer, 400)
+            return True
+        status, address = await self._check(page_host, req.host, req.port)
+        if address is None:
+            await _answer(writer, status)
+            return True
+        try:
+            async with asyncio.timeout(CONNECT_TIMEOUT_S):
+                up_reader, upstream = await asyncio.open_connection(
+                    address, req.port, flags=socket.AI_NUMERICHOST)
+        except (OSError, TimeoutError) as exc:
+            log.debug("page request to %s failed: %s", req.host, exc)
+            await _answer(writer, 502)
+            return True
+        opened.append(upstream)
+        self._transports.add(upstream.transport)
+        if req.target is None:
+            writer.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
+        else:
+            upstream.write(_origin_head(req))
+        await self._relay(reader, writer, up_reader, upstream)
+        return True
+
     async def _check(self, page_host: str | None, host: str, port: int) -> tuple[int, str | None]:
-        """(status, None) to refuse, or (0, address) to connect to; resolves exactly once."""
+        """(status, None) to refuse, or (0, address) to connect to; resolves exactly once.
+
+        The page's own host is exempt from the name rule. Its addresses are still checked unless
+        it is an IP literal or an internal Home Assistant name, so a public name whose DNS points
+        at loopback or an internal network cannot be used as a door.
+        """
         exempt = page_host is not None and host == page_host
+        trust_address = exempt and (_ip_literal(host) or _internal_name(host))
         if not exempt and blocked_host(host, None):
             log.info("page request blocked: %s", host)
             return 403, None
@@ -294,7 +323,7 @@ class GuardProxy:
             return 502, None
         if not addresses:
             return 502, None
-        if not exempt:
+        if not trust_address:
             for address in addresses:
                 try:
                     ip = ipaddress.ip_address(str(address).split("%", 1)[0])
@@ -308,13 +337,17 @@ class GuardProxy:
     @staticmethod
     async def _relay(reader: asyncio.StreamReader, writer: asyncio.StreamWriter,
                      up_reader: asyncio.StreamReader, upstream: asyncio.StreamWriter) -> None:
-        """Copy bytes both ways until the upstream closes or the client connection fails."""
+        """Copy bytes both ways until the upstream closes or the client side ends.
+
+        After the client side ended (closed, half closed or failed) the answer gets at most
+        CLIENT_GONE_GRACE_S more, so a silent upstream cannot keep the connection alive.
+        """
         down = asyncio.create_task(_pump(up_reader, writer))
         up = asyncio.create_task(_pump(reader, upstream))
         try:
             done, _ = await asyncio.wait({down, up}, return_when=asyncio.FIRST_COMPLETED)
             if down not in done and up.exception() is None:
-                await down  # the client only finished sending (half close); wait for the answer
+                await asyncio.wait({down}, timeout=CLIENT_GONE_GRACE_S)
         finally:
             for t in (down, up):
                 t.cancel()

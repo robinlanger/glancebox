@@ -81,6 +81,20 @@ def encode_jpeg(png: bytes) -> bytes:
     raise RenderError(f"JPEG larger than {MAX_JPEG_BYTES} bytes even at quality {QUALITY_STEPS[-1]}")
 
 
+def page_host(url: str) -> str | None:
+    """The host of a ``url`` page as Chromium sends it to the proxy (normalized, IDNA encoded)."""
+    try:
+        host = normalize_host(urlsplit(url).hostname or "")
+    except ValueError:
+        return None
+    if not host:
+        return None
+    try:
+        return host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return host
+
+
 class Renderer:
     """Async context manager holding one Chromium instance."""
 
@@ -161,11 +175,7 @@ class Renderer:
             if wait_ms:
                 await page.wait_for_timeout(wait_ms)
 
-        try:
-            page_host = normalize_host(urlsplit(url).hostname or "") or None
-        except ValueError:
-            page_host = None
-        return await self._render(load, timeout_s + wait_ms / 1000, page_host)
+        return await self._render(load, timeout_s + wait_ms / 1000, page_host(url))
 
     async def _render(self, load, budget_s: float, page_host: str | None = None) -> bytes:
         """Render in a fresh context whose traffic all goes through the guard proxy.
