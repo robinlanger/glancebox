@@ -957,14 +957,6 @@ void test_portal_form_password_repeat() {
   TEST_ASSERT_EQUAL_STRING("newpassword1", next.updatePassword);
 }
 
-void test_wifi_name_safe() {
-  TEST_ASSERT_TRUE(wifiNameSafe(""));
-  TEST_ASSERT_TRUE(wifiNameSafe("Home-WLAN 5G"));
-  TEST_ASSERT_TRUE(wifiNameSafe("a&b (guest) #2"));
-  for (const char* bad : {"Bob's phone", "x\"y", "<script>", "a>b", "back`tick"}) {
-    TEST_ASSERT_FALSE_MESSAGE(wifiNameSafe(bad), bad);
-  }
-}
 
 void test_wifi_quality() {
   TEST_ASSERT_TRUE(wifiQuality(-50) == WifiQuality::Excellent);
@@ -1562,7 +1554,6 @@ int main() {
   RUN_TEST(test_apply_new_password_needs_equal_repeat);
   RUN_TEST(test_settings_patch_password_needs_repeat);
   RUN_TEST(test_portal_form_password_repeat);
-  RUN_TEST(test_wifi_name_safe);
   RUN_TEST(test_wifi_quality);
   RUN_TEST(test_format_duration);
   RUN_TEST(test_apply_night);

@@ -90,7 +90,6 @@ enum class Msg : uint8_t {
   PwNew,
   PwRepeat,
   ErrPwMismatch,
-  ErrWifiNameChars,
   Count
 };
 

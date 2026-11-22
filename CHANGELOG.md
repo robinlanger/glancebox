@@ -25,9 +25,6 @@ All notable changes to this project are documented here. The format follows
 - The setup portal no longer writes entered passwords back into the page source (before, they
   appeared there after a failed Wi-Fi connection). WiFiManager's separate parameter pages
   `/param` and `/paramsave`, which took the same fields without the check, are blocked (#22).
-- The setup portal refuses a Wi-Fi name with `'`, `"`, `<`, `>` or a backtick. WiFiManager
-  writes the stored name unescaped into its page, so such a name could have run as script on
-  every later visit of the portal.
 
 ## [0.6.2]
 

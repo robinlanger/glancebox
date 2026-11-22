@@ -16,7 +16,7 @@ Nach dem ersten Flashen (oder nach einem Zurücksetzen) öffnet das Display ein 
 
    | Feld | Bedeutung |
    | --- | --- |
-   | WLAN-Name und Passwort | Dein Heimnetz (2,4 GHz). Ein Netzname mit `'`, `"`, `<`, `>` oder einem Backtick wird abgelehnt, weil die Portal-Bibliothek den gespeicherten Namen ungeschützt in ihre Seite schreibt. |
+   | WLAN-Name und Passwort | Dein Heimnetz (2,4 GHz). |
    | Server URL | Adresse des Glance-Box-Servers, zum Beispiel `http://homeserver:8080`. Pflichtfeld. Nur `http://` geht (kein `https://`). Ein abschließender Schrägstrich wird für dich entfernt. Das leere Feld zeigt das Beispiel `http://192.168.x.x:8090`: Ersetze `192.168.x.x` durch die IP-Adresse deines Servers und `8090` durch deinen Port. 8090 ist der Port des Home-Assistant-Add-ons; der Docker-Server nutzt 8080, solange du nichts geändert hast. |
    | Update password | Das Passwort für Updates und für spätere Änderungen der Einstellungen, mindestens 8 Zeichen. Der Benutzername ist immer `admin`. Hat das Gerät schon eins, lass dieses und das nächste Feld leer, um es zu behalten. |
    | Repeat update password | Dasselbe Passwort noch einmal. Das Portal speichert es nur, wenn beide Eingaben gleich sind. |

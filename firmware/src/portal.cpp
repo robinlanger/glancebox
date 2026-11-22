@@ -173,12 +173,6 @@ void portalRun(gb::Settings& s) {
         noticeFormError(field, err);
         return reject();
       }
-      // WiFiManager writes the stored Wi-Fi name unescaped into later portal pages
-      // (placeholder='{v}'), so a name that could break out of the markup is never stored.
-      if (!gb::wifiNameSafe(wm.server->arg(F("s")).c_str())) {
-        setNotice(Msg::ErrWifiNameChars);
-        return reject();
-      }
       clearNotice();
       submitted = form;
       showPortalScreen();

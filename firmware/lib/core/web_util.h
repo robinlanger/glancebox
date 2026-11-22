@@ -8,9 +8,6 @@ namespace gb {
 bool prefersGerman(const char* acceptLanguage);
 // Escapes & < > " ' for HTML text and attribute values.
 std::string htmlEscape(const std::string& in);
-// False when a Wi-Fi name contains ' " < > or a backtick. WiFiManager writes the stored name
-// unescaped into an attribute of its portal page, so such a name must not be stored.
-bool wifiNameSafe(const std::string& ssid);
 // CSRF guard for state-changing requests: an absent Origin (curl, old clients) is
 // allowed; otherwise it must be exactly "http://<Host>" (case-insensitive).
 bool originAllowed(const std::string& origin, const std::string& host);

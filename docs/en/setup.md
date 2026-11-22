@@ -16,7 +16,7 @@ After the first flash (or after a factory reset) the display opens a Wi-Fi setup
 
    | Field | Meaning |
    | --- | --- |
-   | Wi-Fi network and password | Your home network (2.4 GHz). A network name with `'`, `"`, `<`, `>` or a backtick is refused, because the portal library shows the stored name in its page without escaping it. |
+   | Wi-Fi network and password | Your home network (2.4 GHz). |
    | Server URL | Address of the Glance Box server, for example `http://homeserver:8080`. Required. Only `http://` works (no `https://`). A trailing slash is removed for you. The empty field shows the example `http://192.168.x.x:8090`: replace `192.168.x.x` with your server's IP address, and `8090` with your port. 8090 is the port of the Home Assistant add-on; the Docker server uses 8080 unless you changed it. |
    | Update password | The password for updates and for changing settings later, at least 8 characters. The user name is always `admin`. On a device that already has one, leave it and the next field empty to keep it. |
    | Repeat update password | The same password again. The portal stores it only when both entries match. |
