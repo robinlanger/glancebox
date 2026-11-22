@@ -35,24 +35,32 @@ bool applyServerUrl(Settings& s, const std::string& raw, std::string* error);
 // Store the update password (8..32 printable ASCII chars). On failure *error is one of
 // "too_short", "too_long", "invalid_chars" and s is unchanged.
 bool applyPassword(Settings& s, const std::string& pw, std::string* error);
+// A new update password with its repetition: "mismatch" when they differ (byte-exact, checked
+// first), otherwise the applyPassword rules and codes.
+bool applyNewPassword(Settings& s, const std::string& pw, const std::string& repeat,
+                      std::string* error);
 // Partial update from the web page: an absent field leaves the setting unchanged.
 struct SettingsPatch {
-  std::optional<std::string> serverUrl, password, brightness, nightStart, nightEnd, nightBrightness;
+  std::optional<std::string> serverUrl, password, passwordRepeat, brightness, nightStart, nightEnd,
+      nightBrightness;
 };
 // Applies all present fields to a copy; on any error s is unchanged, *field is the form name
-// ("server_url", "password", "brightness", "night_start", "night_end", "night_brightness") and
-// *error the code ("https_unsupported", "too_short", "bad_brightness", "bad_time",
-// "bad_night_brightness", ...). Brightness: digits only, 5..100.
+// ("server_url", "password", "password_repeat", "brightness", "night_start", "night_end",
+// "night_brightness") and *error the code ("https_unsupported", "too_short", "mismatch",
+// "bad_brightness", "bad_time", "bad_night_brightness", ...). Brightness: digits only, 5..100.
+// A present password needs an equal passwordRepeat (applyNewPassword; absent counts as
+// different, reported as "password_repeat"/"mismatch"); passwordRepeat alone is ignored.
 bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field, std::string* error);
 
 // Values of the setup-portal form, as submitted.
 struct PortalForm {
-  std::string serverUrl, password, brightness, currentPassword;
+  std::string serverUrl, password, passwordRepeat, brightness, currentPassword;
 };
 // Validates the form against s and writes s with the form applied to *next. Order:
-// "server_url" (applyServerUrl codes), "update_password" (applyPassword codes; required while s
-// has no valid password, empty = keep otherwise), "brightness" ("bad_brightness"; empty =
-// keep, else digits only, 5..100), "current_password" ("wrong_password"; only checked when
+// "server_url" (applyServerUrl codes), "update_password" (applyNewPassword codes; checked when
+// password or passwordRepeat is not empty or s has no valid password, so both empty = keep on
+// a configured device; "mismatch" is reported as "update_password_repeat"), "brightness"
+// ("bad_brightness"; empty = keep, else digits only, 5..100), "current_password" ("wrong_password"; only checked when
 // *next differs from s and s has a valid password). On failure *field/*error are set and
 // *next is unspecified.
 bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std::string* field,

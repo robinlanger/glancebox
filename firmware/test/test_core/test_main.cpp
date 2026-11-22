@@ -821,11 +821,13 @@ void test_settings_patch_password() {
   Settings s = patchBase();
   SettingsPatch p;
   p.password = "short";
+  p.passwordRepeat = "short";
   std::string field, err;
   TEST_ASSERT_FALSE(applySettingsPatch(s, p, &field, &err));
   TEST_ASSERT_EQUAL_STRING("password", field.c_str());
   TEST_ASSERT_EQUAL_STRING("too_short", err.c_str());
   p.password = "longenough1";
+  p.passwordRepeat = "longenough1";
   TEST_ASSERT_TRUE(applySettingsPatch(s, p, &field, &err));
   TEST_ASSERT_EQUAL_STRING("longenough1", s.updatePassword);
 }
@@ -859,20 +861,20 @@ void test_portal_form_first_setup() {
   const Settings s{};
   Settings next;
   std::string field, err;
-  TEST_ASSERT_TRUE(applyPortalForm(s, {"192.168.1.10:8090", "correct-horse", "60", ""}, &next, &field, &err));
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"192.168.1.10:8090", "correct-horse", "correct-horse", "60", ""}, &next, &field, &err));
   TEST_ASSERT_EQUAL_STRING("http://192.168.1.10:8090", next.serverUrl);
   TEST_ASSERT_EQUAL_STRING("correct-horse", next.updatePassword);
   TEST_ASSERT_EQUAL_UINT8(60, next.brightness);
-  TEST_ASSERT_TRUE(applyPortalForm(s, {"a.lan", "correct-horse", "", ""}, &next, &field, &err));
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"a.lan", "correct-horse", "correct-horse", "", ""}, &next, &field, &err));
   TEST_ASSERT_EQUAL_UINT8(kDefaultBrightness, next.brightness);  // empty = keep
 
-  TEST_ASSERT_TRUE(portalFails(s, {"", "correct-horse", "60", ""}, "server_url", "required"));
-  TEST_ASSERT_TRUE(portalFails(s, {"https://a.lan", "correct-horse", "", ""}, "server_url", "https_unsupported"));
-  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "", "", ""}, "update_password", "too_short"));
-  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "short", "", ""}, "update_password", "too_short"));
-  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "4", ""}, "brightness", "bad_brightness"));
-  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "101", ""}, "brightness", "bad_brightness"));
-  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "+50", ""}, "brightness", "bad_brightness"));
+  TEST_ASSERT_TRUE(portalFails(s, {"", "correct-horse", "correct-horse", "60", ""}, "server_url", "required"));
+  TEST_ASSERT_TRUE(portalFails(s, {"https://a.lan", "correct-horse", "correct-horse", "", ""}, "server_url", "https_unsupported"));
+  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "", "", "", ""}, "update_password", "too_short"));
+  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "short", "short", "", ""}, "update_password", "too_short"));
+  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "correct-horse", "4", ""}, "brightness", "bad_brightness"));
+  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "correct-horse", "101", ""}, "brightness", "bad_brightness"));
+  TEST_ASSERT_TRUE(portalFails(s, {"a.lan", "correct-horse", "correct-horse", "+50", ""}, "brightness", "bad_brightness"));
 }
 
 void test_portal_form_configured_device() {
@@ -880,17 +882,17 @@ void test_portal_form_configured_device() {
   Settings next;
   std::string field, err;
   // Wi-Fi-only change: stored values resubmitted, no current password needed.
-  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.2:8090", "", "80", ""}, &next, &field, &err));
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.2:8090", "", "", "80", ""}, &next, &field, &err));
   TEST_ASSERT_EQUAL_STRING("oldpassword", next.updatePassword);
   // Any change needs the current password.
-  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.3:8090", "", "", ""}, "current_password", "wrong_password"));
-  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.2:8090", "", "70", "nope-nope"}, "current_password", "wrong_password"));
-  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.3:8090", "newpassword1", "70", "oldpassword"}, &next, &field, &err));
+  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.3:8090", "", "", "", ""}, "current_password", "wrong_password"));
+  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.2:8090", "", "", "70", "nope-nope"}, "current_password", "wrong_password"));
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.3:8090", "newpassword1", "newpassword1", "70", "oldpassword"}, &next, &field, &err));
   TEST_ASSERT_EQUAL_STRING("http://10.0.0.3:8090", next.serverUrl);
   TEST_ASSERT_EQUAL_STRING("newpassword1", next.updatePassword);
   TEST_ASSERT_EQUAL_UINT8(70, next.brightness);
   // Errors in a value come before the current-password check.
-  TEST_ASSERT_TRUE(portalFails(s, {"", "", "", "oldpassword"}, "server_url", "required"));
+  TEST_ASSERT_TRUE(portalFails(s, {"", "", "", "", "oldpassword"}, "server_url", "required"));
 }
 
 void test_portal_form_keeps_stored_url_with_old_characters() {
@@ -898,8 +900,70 @@ void test_portal_form_keeps_stored_url_with_old_characters() {
   std::strcpy(s.serverUrl, "http://old'host");  // stored before the character check existed
   Settings next;
   std::string field, err;
-  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://old'host", "", "", ""}, &next, &field, &err));
-  TEST_ASSERT_TRUE(portalFails(s, {"http://new'host", "", "", "oldpassword"}, "server_url", "invalid_chars"));
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://old'host", "", "", "", ""}, &next, &field, &err));
+  TEST_ASSERT_TRUE(portalFails(s, {"http://new'host", "", "", "", "oldpassword"}, "server_url", "invalid_chars"));
+}
+
+void test_apply_new_password_needs_equal_repeat() {
+  Settings s = patchBase();
+  std::string err;
+  TEST_ASSERT_FALSE(applyNewPassword(s, "newpassword1", "newpassword2", &err));
+  TEST_ASSERT_EQUAL_STRING("mismatch", err.c_str());
+  TEST_ASSERT_FALSE(applyNewPassword(s, "newpassword1", "newpassword1 ", &err));  // nothing is trimmed
+  TEST_ASSERT_EQUAL_STRING("mismatch", err.c_str());
+  TEST_ASSERT_FALSE(applyNewPassword(s, "short", "longenough1", &err));  // mismatch comes first
+  TEST_ASSERT_EQUAL_STRING("mismatch", err.c_str());
+  TEST_ASSERT_FALSE(applyNewPassword(s, "short", "short", &err));
+  TEST_ASSERT_EQUAL_STRING("too_short", err.c_str());
+  TEST_ASSERT_EQUAL_STRING("oldpassword", s.updatePassword);
+  TEST_ASSERT_TRUE(applyNewPassword(s, "newpassword1", "newpassword1", &err));
+  TEST_ASSERT_EQUAL_STRING("newpassword1", s.updatePassword);
+}
+
+void test_settings_patch_password_needs_repeat() {
+  Settings s = patchBase();
+  std::string field, err;
+  SettingsPatch p;
+  p.password = "longenough1";  // repeat missing
+  TEST_ASSERT_FALSE(applySettingsPatch(s, p, &field, &err));
+  TEST_ASSERT_EQUAL_STRING("password_repeat", field.c_str());
+  TEST_ASSERT_EQUAL_STRING("mismatch", err.c_str());
+  p.passwordRepeat = "longenough2";
+  TEST_ASSERT_FALSE(applySettingsPatch(s, p, &field, &err));
+  TEST_ASSERT_EQUAL_STRING("mismatch", err.c_str());
+  TEST_ASSERT_EQUAL_STRING("oldpassword", s.updatePassword);
+  SettingsPatch q;
+  q.passwordRepeat = "longenough1";  // repeat alone: no password field, nothing to apply
+  TEST_ASSERT_TRUE(applySettingsPatch(s, q, &field, &err));
+  TEST_ASSERT_EQUAL_STRING("oldpassword", s.updatePassword);
+}
+
+void test_portal_form_password_repeat() {
+  const Settings fresh{};
+  TEST_ASSERT_TRUE(portalFails(fresh, {"a.lan", "correct-horse", "correct-hores", "", ""},
+                               "update_password_repeat", "mismatch"));
+  TEST_ASSERT_TRUE(portalFails(fresh, {"a.lan", "correct-horse", "", "", ""},
+                               "update_password_repeat", "mismatch"));
+  const Settings s = patchBase();
+  // Only the repeat field filled: an error, not a silent "keep".
+  TEST_ASSERT_TRUE(portalFails(s, {"http://10.0.0.2:8090", "", "newpassword1", "", "oldpassword"},
+                               "update_password_repeat", "mismatch"));
+  Settings next;
+  std::string field, err;
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.2:8090", "", "", "", ""}, &next, &field, &err));
+  TEST_ASSERT_EQUAL_STRING("oldpassword", next.updatePassword);  // both empty = keep
+  TEST_ASSERT_TRUE(applyPortalForm(s, {"http://10.0.0.2:8090", "newpassword1", "newpassword1", "", "oldpassword"},
+                                   &next, &field, &err));
+  TEST_ASSERT_EQUAL_STRING("newpassword1", next.updatePassword);
+}
+
+void test_wifi_name_safe() {
+  TEST_ASSERT_TRUE(wifiNameSafe(""));
+  TEST_ASSERT_TRUE(wifiNameSafe("Home-WLAN 5G"));
+  TEST_ASSERT_TRUE(wifiNameSafe("a&b (guest) #2"));
+  for (const char* bad : {"Bob's phone", "x\"y", "<script>", "a>b", "back`tick"}) {
+    TEST_ASSERT_FALSE_MESSAGE(wifiNameSafe(bad), bad);
+  }
 }
 
 void test_wifi_quality() {
@@ -1495,6 +1559,10 @@ int main() {
   RUN_TEST(test_portal_form_first_setup);
   RUN_TEST(test_portal_form_configured_device);
   RUN_TEST(test_portal_form_keeps_stored_url_with_old_characters);
+  RUN_TEST(test_apply_new_password_needs_equal_repeat);
+  RUN_TEST(test_settings_patch_password_needs_repeat);
+  RUN_TEST(test_portal_form_password_repeat);
+  RUN_TEST(test_wifi_name_safe);
   RUN_TEST(test_wifi_quality);
   RUN_TEST(test_format_duration);
   RUN_TEST(test_apply_night);

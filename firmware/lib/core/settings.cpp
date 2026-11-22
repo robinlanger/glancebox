@@ -231,6 +231,15 @@ bool applyPassword(Settings& s, const std::string& pw, std::string* error) {
   return true;
 }
 
+bool applyNewPassword(Settings& s, const std::string& pw, const std::string& repeat,
+                      std::string* error) {
+  if (pw != repeat) {
+    setError(error, "mismatch");
+    return false;
+  }
+  return applyPassword(s, pw, error);
+}
+
 namespace {
 bool fail(std::string* field, const char* name, std::string* error, const std::string& code) {
   if (field) *field = name;
@@ -259,8 +268,8 @@ bool applySettingsPatch(Settings& s, const SettingsPatch& p, std::string* field,
   if (p.serverUrl && !applyServerUrl(next, *p.serverUrl, &code)) {
     return fail(field, "server_url", error, code);
   }
-  if (p.password && !applyPassword(next, *p.password, &code)) {
-    return fail(field, "password", error, code);
+  if (p.password && !applyNewPassword(next, *p.password, p.passwordRepeat.value_or(""), &code)) {
+    return fail(field, code == "mismatch" ? "password_repeat" : "password", error, code);
   }
   if (p.brightness && !parseDayBrightness(*p.brightness, &next.brightness)) {
     return fail(field, "brightness", error, "bad_brightness");
@@ -286,9 +295,10 @@ bool applyPortalForm(const Settings& s, const PortalForm& f, Settings* next, std
   *next = s;
   std::string code;
   if (!applyServerUrl(*next, f.serverUrl, &code)) return fail(field, "server_url", error, code);
-  if ((!f.password.empty() || !validPassword(next->updatePassword)) &&
-      !applyPassword(*next, f.password, &code)) {
-    return fail(field, "update_password", error, code);
+  if ((!f.password.empty() || !f.passwordRepeat.empty() || !validPassword(next->updatePassword)) &&
+      !applyNewPassword(*next, f.password, f.passwordRepeat, &code)) {
+    return fail(field, code == "mismatch" ? "update_password_repeat" : "update_password", error,
+                code);
   }
   if (!f.brightness.empty() && !parseDayBrightness(f.brightness, &next->brightness)) {
     return fail(field, "brightness", error, "bad_brightness");

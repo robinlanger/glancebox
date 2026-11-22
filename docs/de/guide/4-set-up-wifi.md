@@ -18,7 +18,7 @@ Das Display öffnet ein eigenes WLAN, damit du ihm dein Netz und deinen Server n
 
 1. Tipp auf **Configure WiFi**, wähl dein 2,4-GHz-Netz und gib sein Passwort ein.
 2. **Server URL:** die Adresse aus Schritt 2, zum Beispiel `http://192.168.1.50:8080`. Nur `http://` funktioniert. Das leere Feld zeigt `http://192.168.x.x:8090` als Beispiel; nimm die IP-Adresse und den Port deines Servers (8080 beim Docker-Server, solange du nichts geändert hast, 8090 beim Home-Assistant-Add-on). Ist ein Feld ungültig, kommt das Formular sofort mit dem Fehler zurück, bevor das Display dein WLAN versucht: Wähl dein Netz noch einmal aus und gib die Passwörter neu ein.
-3. **Update password:** ein neues Passwort deiner Wahl, 8 bis 32 Zeichen, ohne Umlaute. Du brauchst es für Updates und zum Ändern der Einstellungen. Der Benutzername ist immer `admin`.
+3. **Update password:** ein neues Passwort deiner Wahl, 8 bis 32 Zeichen, ohne Umlaute. Gib es unter **Repeat update password** noch einmal ein; das Portal speichert es nur, wenn beide gleich sind. Du brauchst es für Updates und zum Ändern der Einstellungen. Der Benutzername ist immer `admin`.
 4. **Brightness:** 5 bis 100 %. Später stellst du sie bequem mit einem Regler ein.
 5. Tipp auf **Save**.
 

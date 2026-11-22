@@ -29,6 +29,10 @@ std::string htmlEscape(const std::string& in) {
   return out;
 }
 
+bool wifiNameSafe(const std::string& ssid) {
+  return ssid.find_first_of("'\"<>`") == std::string::npos;
+}
+
 bool originAllowed(const std::string& origin, const std::string& host) {
   if (origin.empty()) return true;
   if (host.empty()) return false;

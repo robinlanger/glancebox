@@ -244,12 +244,20 @@ function init() {
   if (pw) {
     pw.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const input = pw.elements.password, m = pw.querySelector(".msg");
+      const input = pw.elements.password, repeat = pw.elements.password_repeat;
+      const m = pw.querySelector(".msg");
+      // Checked here first, so a typo sends no request (and brings up no password dialog).
+      if (input.value !== repeat.value) {
+        m.className = "msg err";
+        m.textContent = T.pw_mismatch;
+        return;
+      }
       try {
-        await post("/api/settings", { password: input.value });
+        await post("/api/settings", { password: input.value, password_repeat: repeat.value });
         m.className = "msg";
         m.textContent = T.pw_changed;
         input.value = "";
+        repeat.value = "";
       } catch (err) {
         m.className = "msg err";
         m.textContent = err.message;

@@ -16,13 +16,14 @@ After the first flash (or after a factory reset) the display opens a Wi-Fi setup
 
    | Field | Meaning |
    | --- | --- |
-   | Wi-Fi network and password | Your home network (2.4 GHz). |
+   | Wi-Fi network and password | Your home network (2.4 GHz). A network name with `'`, `"`, `<`, `>` or a backtick is refused, because the portal library shows the stored name in its page without escaping it. |
    | Server URL | Address of the Glance Box server, for example `http://homeserver:8080`. Required. Only `http://` works (no `https://`). A trailing slash is removed for you. The empty field shows the example `http://192.168.x.x:8090`: replace `192.168.x.x` with your server's IP address, and `8090` with your port. 8090 is the port of the Home Assistant add-on; the Docker server uses 8080 unless you changed it. |
-   | Update password | The password for updates and for changing settings later, at least 8 characters. The user name is always `admin`. |
+   | Update password | The password for updates and for changing settings later, at least 8 characters. The user name is always `admin`. On a device that already has one, leave it and the next field empty to keep it. |
+   | Repeat update password | The same password again. The portal stores it only when both entries match. |
    | Current update password | Only on a device that already has an update password. Needed for any change to the fields below it; a new Wi-Fi alone does not need it. |
    | Brightness | 5 to 100 percent. You can change it later on the device web page. |
 
-4. Save. The portal checks the fields **before** it connects to your Wi-Fi. If something is invalid (empty server URL, short password, `https://`, missing host, wrong current password), the form comes back at once with the error in English and German. The server URL stays in its field; choose your Wi-Fi network again and enter the Wi-Fi password and the passwords again, because the portal never sends passwords back to the browser.
+4. Save. The portal checks the fields **before** it connects to your Wi-Fi. If something is invalid (empty server URL, short password, passwords that do not match, `https://`, missing host, wrong current password), the form comes back at once with the error in English and German. The server URL stays in its field; choose your Wi-Fi network again and enter the Wi-Fi password and the passwords again, because the portal never sends passwords back to the browser.
 5. The display restarts, joins your Wi-Fi and shows the first page.
 
 **Language.** The device web page and its messages follow your browser language (German or English). The text on the display itself is English.
@@ -33,11 +34,11 @@ Open `http://<display-ip>/` (the IP is shown on the display at boot and in your 
 
 - set the **brightness** and the [night mode](#night-mode) with sliders and a switch. While you drag a slider the display changes right away; the value is saved when you let go,
 - change the **server address**. It is saved when you leave the field; for a few seconds an **Undo** link brings the old address back,
-- **change the password** (its own button, so you are not locked out while typing),
+- **change the password** (its own button, so you are not locked out while typing; you enter the new password twice and it is stored only when both match),
 - upload a firmware update (see [Updating](updating.md)),
 - restart the device, or **reset settings and Wi-Fi** (back to the setup portal).
 
-There is no Save button: every change is saved on its own, a check mark confirms it, and a red message explains a value the device refused (the old value then stays). The first change asks for the update password (user `admin`). Before you have entered it, a slider changes the display only when you let go. **Details** at the bottom lists the number of images, the signal in dBm, the local time, night mode, failed boots and safe mode. Without JavaScript the page shows a plain form with a Save button instead.
+There is no Save button: every change is saved on its own, a check mark confirms it, and a red message explains a value the device refused (the old value then stays). The first change asks for the update password (user `admin`). Before you have entered it, a slider changes the display only when you let go. **Details** at the bottom lists the number of images, the signal in dBm, the local time, night mode, failed boots and safe mode. Without JavaScript the page shows a plain form with a Save button instead; a new password goes into it twice as well.
 
 `http://<display-ip>/status` returns the same facts as JSON, without a password. Handy for scripts and for Home Assistant.
 

@@ -18,11 +18,16 @@ All notable changes to this project are documented here. The format follows
   it connects to Wi-Fi. An invalid form comes back at once with the error; before, the portal
   connected first, reported success and reopened with the error afterwards. The Server URL
   field shows the example `http://192.168.x.x:8090` and is marked as required (#22).
+- A new update password is asked for twice: in the setup portal and on the device web page,
+  with and without JavaScript. It is stored only when both entries match (#21).
 
 ### Security
 - The setup portal no longer writes entered passwords back into the page source (before, they
   appeared there after a failed Wi-Fi connection). WiFiManager's separate parameter pages
   `/param` and `/paramsave`, which took the same fields without the check, are blocked (#22).
+- The setup portal refuses a Wi-Fi name with `'`, `"`, `<`, `>` or a backtick. WiFiManager
+  writes the stored name unescaped into its page, so such a name could have run as script on
+  every later visit of the portal.
 
 ## [0.6.2]
 

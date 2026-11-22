@@ -8,6 +8,7 @@
 #include "display.h"
 #include "i18n.h"
 #include "settings_store.h"
+#include "web_util.h"
 
 namespace {
 
@@ -31,9 +32,9 @@ void showPortalScreen() {
 void setNotice(Msg msg) {
   // The notice sits below the network list; the script scrolls it into view on a phone.
   String html = F("<p id='gbn' style='color:#b00'>");
-  html += tr(Lang::En, msg);
+  html += gb::htmlEscape(String(tr(Lang::En, msg)).c_str()).c_str();
   html += F("<br>");
-  html += tr(Lang::De, msg);
+  html += gb::htmlEscape(String(tr(Lang::De, msg)).c_str()).c_str();
   html += F("</p><script>document.getElementById('gbn').scrollIntoView()</script>");
   strlcpy(noticeHtml, html.c_str(), sizeof(noticeHtml));
   strlcpy(noticeScreen, String(tr(Lang::En, msg)).c_str(), sizeof(noticeScreen));
@@ -73,7 +74,7 @@ void blockUnsafeRoutes(Portal& wm) {
 
 // Shows the error of a rejected form on the page and on the display.
 void noticeFormError(const std::string& field, const std::string& error) {
-  setNotice(msgForError(error, field == "update_password"));
+  setNotice(msgForError(error, field == "update_password" || field == "update_password_repeat"));
 }
 
 // Applies the form that passed the check in /wifisave once the portal has returned: checks
@@ -116,13 +117,17 @@ void portalRun(gb::Settings& s) {
     WiFiManagerParameter pNotice(noticeHtml);
     WiFiManagerParameter pUrl("server_url", "Server URL", s.serverUrl, sizeof(s.serverUrl) - 1,
                               "placeholder='http://192.168.x.x:8090' required");
-    WiFiManagerParameter pPw(
-        "update_password",
-        complete ? "Update password, user admin (empty = keep)"
-                 : "Update password, user admin (min. 8 characters)",
-        "", sizeof(s.updatePassword) - 1,
-        complete ? "type='password' minlength='8' autocomplete='new-password'"
-                 : "type='password' minlength='8' autocomplete='new-password' required");
+    // Required until a valid password is stored (like current_password, keyed on hasPassword):
+    // a device with a password but an invalid server URL keeps the password when both are empty.
+    const char* pwAttrs = hasPassword
+                              ? "type='password' minlength='8' autocomplete='new-password'"
+                              : "type='password' minlength='8' autocomplete='new-password' required";
+    WiFiManagerParameter pPw("update_password",
+                             hasPassword ? "Update password, user admin (empty = keep)"
+                                         : "Update password, user admin (min. 8 characters)",
+                             "", sizeof(s.updatePassword) - 1, pwAttrs);
+    WiFiManagerParameter pRepeat("update_password_repeat", "Repeat update password", "",
+                                 sizeof(s.updatePassword) - 1, pwAttrs);
     // Only shown (and required for changes) once an update password exists.
     WiFiManagerParameter pCurrent("current_password",
                                   "Current update password (needed to change the values below)",
@@ -133,6 +138,7 @@ void portalRun(gb::Settings& s) {
     if (hasPassword) wm.addParameter(&pCurrent);
     wm.addParameter(&pUrl);
     wm.addParameter(&pPw);
+    wm.addParameter(&pRepeat);
     wm.addParameter(&pBright);
 
     // The form that passed the check in /wifisave; applied after the portal returns.
@@ -145,20 +151,33 @@ void portalRun(gb::Settings& s) {
       gb::PortalForm form;
       form.serverUrl = wm.server->arg(F("server_url")).c_str();
       form.password = wm.server->arg(F("update_password")).c_str();
+      form.passwordRepeat = wm.server->arg(F("update_password_repeat")).c_str();
       form.brightness = wm.server->arg(F("brightness")).c_str();
       if (hasPassword) form.currentPassword = wm.server->arg(F("current_password")).c_str();
 
-      gb::Settings next;
-      std::string field, err;
-      if (!gb::applyPortalForm(s, form, &next, &field, &err)) {
-        noticeFormError(field, err);
+      // Rejected: the form page comes back with the error. An earlier valid form is dropped, so
+      // only the latest intent counts (also when the portal times out now).
+      auto reject = [&]() {
+        submitted.reset();
         // Show the entered URL again if it is valid on its own, else the stored one.
         gb::Settings urlOnly = s;
         const bool urlOk = gb::applyServerUrl(urlOnly, form.serverUrl, nullptr);
         pUrl.setValue(urlOk ? urlOnly.serverUrl : s.serverUrl, sizeof(s.serverUrl) - 1);
         showPortalScreen();
         wm.handleWifi(true);
-        return;
+      };
+
+      gb::Settings next;
+      std::string field, err;
+      if (!gb::applyPortalForm(s, form, &next, &field, &err)) {
+        noticeFormError(field, err);
+        return reject();
+      }
+      // WiFiManager writes the stored Wi-Fi name unescaped into later portal pages
+      // (placeholder='{v}'), so a name that could break out of the markup is never stored.
+      if (!gb::wifiNameSafe(wm.server->arg(F("s")).c_str())) {
+        setNotice(Msg::ErrWifiNameChars);
+        return reject();
       }
       clearNotice();
       submitted = form;
@@ -171,6 +190,7 @@ void portalRun(gb::Settings& s) {
       pUrl.setValue(next.serverUrl, sizeof(s.serverUrl) - 1);
       pBright.setValue(b, 3);
       pPw.setValue("", sizeof(s.updatePassword) - 1);
+      pRepeat.setValue("", sizeof(s.updatePassword) - 1);
       pCurrent.setValue("", sizeof(s.updatePassword) - 1);
     };
 
