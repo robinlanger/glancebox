@@ -34,20 +34,23 @@ Auf dem echten Display: Abfahrten, Uptime Kuma, Wetter und Claude-Limits.
 
 Alle eingebauten Seiten:
 
-| `bahn`: Live-Abfahrten | `clock`: Uhr und Datum | `weather`: Vorhersage |
-| --- | --- | --- |
-| ![Seite mit Abfahrtstafel](docs/img/templates/bahn.png) | ![Seite mit Uhr](docs/img/templates/clock.png) | ![Seite mit Wetter](docs/img/templates/weather.png) |
-| Verspätungen, Gleiswechsel und Ausfälle für deutsche Bahnhöfe. | Große Uhr mit Wochentag und Datum. Ein guter Start für eigene Seiten. | Jetzt, Tageshoch und -tief und die nächsten vier Stunden, von Open-Meteo. |
-
-| `kuma`: Uptime Kuma | `ai`: Claude-Limits | `ai`: API-Kosten |
-| --- | --- | --- |
-| ![Seite mit Uptime Kuma](docs/img/templates/kuma-down.png) | ![Seite mit Claude-Limits](docs/img/templates/ai-claude.png) | ![Seite mit API-Kosten](docs/img/templates/ai-cost.png) |
-| Alles grün, oder welche Dienste seit wann ausgefallen sind. | 5-Stunden- und Wochenlimit deines Claude-Abos. | Monatskosten oder Guthaben der API von Anthropic, OpenAI oder xAI, oder deine GitHub-Copilot-Nutzung. |
-
-| `homeassistant`: Kacheln | `homeassistant`: Liste | |
-| --- | --- | --- |
-| ![Home-Assistant-Seite mit vier Kacheln](docs/img/templates/homeassistant-tiles.png) | ![Home-Assistant-Seite mit Liste](docs/img/templates/homeassistant-list.png) | |
-| Bis zu vier große Werte, zum Beispiel Solarleistung und Akku. | Bis zu sechs Zeilen: Temperaturen, Türen, Fenster, Lichter. | |
+<table>
+<tr>
+<td width="33%" valign="top"><b><code>bahn</code>: Live-Abfahrten</b><br><img src="docs/img/templates/bahn.png" alt="Seite mit Abfahrtstafel" width="240" height="240"><br>Verspätungen, Gleiswechsel und Ausfälle für deutsche Bahnhöfe.</td>
+<td width="33%" valign="top"><b><code>clock</code>: Uhr und Datum</b><br><img src="docs/img/templates/clock.png" alt="Seite mit Uhr" width="240" height="240"><br>Große Uhr mit Wochentag und Datum. Ein guter Start für eigene Seiten.</td>
+<td width="33%" valign="top"><b><code>weather</code>: Vorhersage</b><br><img src="docs/img/templates/weather.png" alt="Seite mit Wetter" width="240" height="240"><br>Jetzt, Tageshoch und -tief und die nächsten vier Stunden, von Open-Meteo.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>kuma</code>: Uptime Kuma</b><br><img src="docs/img/templates/kuma-down.png" alt="Seite mit Uptime Kuma" width="240" height="240"><br>Alles grün, oder welche Dienste seit wann ausgefallen sind.</td>
+<td width="33%" valign="top"><b><code>ai</code>: Claude-Limits</b><br><img src="docs/img/templates/ai-claude.png" alt="Seite mit Claude-Limits" width="240" height="240"><br>5-Stunden- und Wochenlimit deines Claude-Abos.</td>
+<td width="33%" valign="top"><b><code>ai</code>: API-Kosten</b><br><img src="docs/img/templates/ai-cost.png" alt="Seite mit API-Kosten" width="240" height="240"><br>Monatskosten oder Guthaben der API von Anthropic, OpenAI oder xAI, oder deine GitHub-Copilot-Nutzung.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>homeassistant</code>: Kacheln</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home-Assistant-Seite mit vier Kacheln" width="240" height="240"><br>Bis zu vier große Werte, zum Beispiel Solarleistung und Akku.</td>
+<td width="33%" valign="top"><b><code>homeassistant</code>: Liste</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home-Assistant-Seite mit Liste" width="240" height="240"><br>Bis zu sechs Zeilen: Temperaturen, Türen, Fenster, Lichter.</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 Die Bilder sind 240x240-Frames, die der Server mit Beispieldaten rendert, genau so, wie das Display sie bekommt. Alle Vorlagen mit allen Optionen stehen im [Vorlagenkatalog](docs/de/templates/README.md). Der Seitentyp `url` zeigt jede Webseite, auf die du ihn richtest. Willst du die Original-Firmware behalten, passt [geekmagic-hacs](https://github.com/adrienbrault/geekmagic-hacs) besser: eine Home-Assistant-Integration, die das Display mit seiner Original-Firmware ansteuert.
 
