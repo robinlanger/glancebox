@@ -638,8 +638,10 @@ void sendJson(int code, const String& body) {
   server.send(code, F("application/json"), body);
 }
 
+// Answered without a password challenge: the preview runs while the slider is held, and a
+// browser password dialog then would swallow the release (#20). The save asks instead.
 void handlePreview() {
-  if (!webUiAuthorize()) return;
+  if (!webUiAuthorize(false)) return;
   const String v = server.arg(F("pct"));
   char* end = nullptr;
   const long pct = strtol(v.c_str(), &end, 10);
@@ -791,10 +793,15 @@ void webUiLoop() {
 
 ESP8266WebServer& webUiServer() { return server; }
 
-bool webUiAuthorize() {
+bool webUiAuthorize(bool challenge) {
   const gb::Access a = checkAccess();
   if (a == gb::Access::Granted) return true;
-  refuse(a);
+  if (!challenge && (a == gb::Access::NeedAuth || a == gb::Access::WrongPassword)) {
+    // No WWW-Authenticate: the browser shows no password dialog for this answer.
+    server.send(401, F("text/plain"), F("password required\n"));
+  } else {
+    refuse(a);
+  }
   return false;
 }
 

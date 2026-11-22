@@ -36,7 +36,7 @@ Nach dem ersten Flashen (oder nach einem Zurücksetzen) öffnet das Display ein 
 - ein Firmware-Update hochladen (siehe [Aktualisieren](updating.md)),
 - das Gerät neu starten oder **Einstellungen und WLAN zurücksetzen** (zurück ins Einrichtungsportal).
 
-Einen Speichern-Knopf gibt es nicht: Jede Änderung wird von selbst gespeichert, ein Haken bestätigt sie, und eine rote Meldung erklärt einen Wert, den das Gerät abgelehnt hat (dann bleibt der alte Wert). Bei der ersten Änderung fragt der Browser nach dem Update-Passwort (Benutzer `admin`). **Details** ganz unten zeigt die Anzahl der Bilder, das Signal in dBm, die Uhrzeit, den Nachtmodus, Fehlstarts und den Safe Mode. Ohne JavaScript zeigt die Seite stattdessen ein einfaches Formular mit Speichern-Knopf.
+Einen Speichern-Knopf gibt es nicht: Jede Änderung wird von selbst gespeichert, ein Haken bestätigt sie, und eine rote Meldung erklärt einen Wert, den das Gerät abgelehnt hat (dann bleibt der alte Wert). Bei der ersten Änderung fragt der Browser nach dem Update-Passwort (Benutzer `admin`). Bevor du es eingegeben hast, ändert ein Regler das Display erst beim Loslassen. **Details** ganz unten zeigt die Anzahl der Bilder, das Signal in dBm, die Uhrzeit, den Nachtmodus, Fehlstarts und den Safe Mode. Ohne JavaScript zeigt die Seite stattdessen ein einfaches Formular mit Speichern-Knopf.
 
 `http://<display-ip>/status` liefert dieselben Angaben als JSON, ohne Passwort. Praktisch für Skripte und für Home Assistant.
 

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Device web page: after the browser's password prompt, a slider no longer keeps following the
+  pointer. Dragging a slider no longer brings up the prompt; it comes with the save when you let
+  go. Until the browser knows the password, the display changes only on release (#20).
+
 ## [0.6.2]
 
 Security release for server, Home Assistant add-on and firmware, after a review of the whole

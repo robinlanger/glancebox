@@ -41,8 +41,9 @@ ESP8266WebServer& webUiServer();
 // Host (DNS rebinding) and Origin (CSRF) checks, the lock after five wrong passwords,
 // then Basic auth "admin"/update password. Sends 403/429/401 itself and returns false when
 // the request must not proceed. Routes added via webUiServer() get the Host check only
-// through this call.
-bool webUiAuthorize();
+// through this call. challenge = false: a missing or wrong password gets a plain 401 without
+// WWW-Authenticate (no browser dialog); Host, Origin and the lock behave the same.
+bool webUiAuthorize(bool challenge = true);
 // Restart about 1 s from now (lets the response reach the client).
 void webUiScheduleRestart();
 bool webUiRunning();

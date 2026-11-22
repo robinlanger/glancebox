@@ -36,7 +36,7 @@ Open `http://<display-ip>/` (the IP is shown on the display at boot and in your 
 - upload a firmware update (see [Updating](updating.md)),
 - restart the device, or **reset settings and Wi-Fi** (back to the setup portal).
 
-There is no Save button: every change is saved on its own, a check mark confirms it, and a red message explains a value the device refused (the old value then stays). The first change asks for the update password (user `admin`). **Details** at the bottom lists the number of images, the signal in dBm, the local time, night mode, failed boots and safe mode. Without JavaScript the page shows a plain form with a Save button instead.
+There is no Save button: every change is saved on its own, a check mark confirms it, and a red message explains a value the device refused (the old value then stays). The first change asks for the update password (user `admin`). Before you have entered it, a slider changes the display only when you let go. **Details** at the bottom lists the number of images, the signal in dBm, the local time, night mode, failed boots and safe mode. Without JavaScript the page shows a plain form with a Save button instead.
 
 `http://<display-ip>/status` returns the same facts as JSON, without a password. Handy for scripts and for Home Assistant.
 
