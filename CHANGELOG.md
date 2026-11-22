@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.3]
+
+Firmware update for the device web page and the setup portal. The server and the Home Assistant
+add-on are unchanged apart from the version number; update the display.
+
 ### Fixed
 - Device web page: after the browser's password prompt, a slider no longer keeps following the
   pointer. Dragging a slider no longer brings up the prompt; it comes with the save when you let
