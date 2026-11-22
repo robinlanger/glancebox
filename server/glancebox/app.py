@@ -96,8 +96,18 @@ def _ago(seconds: int) -> str:
     return f"{round(seconds / 3600)} h ago"
 
 
+def _overview_csp(nonce: str, framable: bool) -> str:
+    """CSP of the overview: inline styles, previews from this origin, and only the one inline
+    script that carries ``nonce``. Home Assistant shows the add-on page in an iframe, so
+    ``framable`` leaves out ``frame-ancestors``."""
+    csp = (f"default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
+           f"script-src 'nonce-{nonce}'; base-uri 'none'; form-action 'none'")
+    return csp if framable else csp + "; frame-ancestors 'none'"
+
+
 def _add_overview(app: FastAPI, cfg: AppConfig, store: FrameStore, clock: Callable[[], float],
-                  seen: DisplaySeen | None = None, **page_vars) -> None:
+                  seen: DisplaySeen | None = None, *, framable: bool = False,
+                  **page_vars) -> None:
     """Routes ``/`` (overview) and ``/preview/{index}.jpg``. URLs in the page are relative so
     they also work under the Ingress path prefix."""
 
@@ -107,10 +117,11 @@ def _add_overview(app: FastAPI, cfg: AppConfig, store: FrameStore, clock: Callab
         if current is None:
             raise HTTPException(404, "not rendered yet")
         return Response(current.jpeg, media_type="image/jpeg",
-                        headers={"Cache-Control": "no-store"})
+                        headers={"Cache-Control": "no-store",
+                                 "X-Content-Type-Options": "nosniff"})
 
     @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
+    def index() -> HTMLResponse:
         now = clock()
         rows = []
         for p in cfg.pages:
@@ -121,10 +132,14 @@ def _add_overview(app: FastAPI, cfg: AppConfig, store: FrameStore, clock: Callab
                 "has_frame": current is not None,
             })
         seen_age = None if seen is None or seen.last is None else max(0, int(now - seen.last))
-        return _env.get_template("index.html").render(
+        nonce = secrets.token_urlsafe(16)
+        html = _env.get_template("index.html").render(
             pages=rows, version=__version__, seen_fresh=seen_age is not None
             and seen_age <= SEEN_FRESH_S, seen_ago=None if seen_age is None else _ago(seen_age),
-            **page_vars)
+            nonce=nonce, **page_vars)
+        return HTMLResponse(html, headers={
+            "Content-Security-Policy": _overview_csp(nonce, framable),
+            "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"})
 
 
 def create_ingress_app(cfg: AppConfig, store: FrameStore, clock: Callable[[], float] = time.time,
@@ -141,7 +156,7 @@ def create_ingress_app(cfg: AppConfig, store: FrameStore, clock: Callable[[], fl
             return Response("forbidden", status_code=403)
         return await call_next(request)
 
-    _add_overview(app, cfg, store, clock, seen, addon=True, connect=connect,
+    _add_overview(app, cfg, store, clock, seen, framable=True, addon=True, connect=connect,
                   config_note=config_note, starter_yaml=starter_yaml)
     return app
 

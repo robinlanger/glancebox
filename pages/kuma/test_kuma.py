@@ -202,6 +202,16 @@ def test_failure_is_logged(kuma, monkeypatch, caplog):
     assert "kuma: status page unavailable: ConnectionError: no route" in caplog.text
 
 
+def test_failure_log_redacts_urls(kuma, monkeypatch, caplog):
+    def boom(*a, **k):
+        raise requests.HTTPError("401 for url: http://u:pw@kuma.lan/api/status-page/x?k=abc")
+    monkeypatch.setattr(glancebox.http, "get_json", boom)
+    with caplog.at_level("WARNING"):
+        kuma.fetch(OPTIONS, ctx())
+    assert "http://***@kuma.lan/api/status-page/x?***" in caplog.text
+    assert "pw" not in caplog.text and "abc" not in caplog.text
+
+
 def test_parse_error_is_logged(kuma, serve, caplog):
     page, hb = build({1: ("A", UP, 1.0)})
     del page["publicGroupList"][0]["monitorList"][0]["id"]

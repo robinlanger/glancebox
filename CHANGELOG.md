@@ -6,6 +6,85 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2]
+
+Security release for server, Home Assistant add-on and firmware, after a review of the whole
+project. Update the server or add-on and the display. The firmware changes passed the unit tests
+and the build; they were not yet tested on a real device when this version was tagged.
+
+### Security
+- Chromium (which renders the pages) now starts with only a short list of harmless environment
+  variables (`PATH`, `HOME`, locale, time zone and similar). Tokens and keys are no longer
+  inherited by it.
+- Chromium first tries to start with its sandbox. Where the container does not allow it (usual
+  under Docker's default seccomp profile and in the add-on), it starts without it as before and
+  logs one warning.
+- Pages can no longer make the browser reach Home Assistant internal targets (`supervisor`,
+  `homeassistant`, `localhost`, any `*.localhost` or `*.local.hass.io` name, the Home Assistant
+  internal networks `172.30.32.0/23`, `172.30.232.0/23` and `fd0c:ac1e:2100::/48`, loopback,
+  link-local, `0.0.0.0/8`, `::`). All page traffic, including redirects and WebSockets, goes
+  through a filtering proxy inside the server that checks the name and every address it resolves
+  to and connects only to the address it checked, so a name that resolves to an internal address
+  is refused too. Addresses in your own LAN, including the LAN address of the Home Assistant host,
+  stay reachable. A `url` page may still load everything from its own host; if that host is a
+  name with a dot, it must not resolve to one of the blocked addresses. A host name without a
+  dot is not checked by address, so a `url` page may show another add-on by its host name (for
+  example `http://a0d7b954-grafana:3000/`). If the `url` page itself is refused or cannot be
+  reached, the refresh fails and the display keeps its last picture. Service workers are
+  disabled, and a proxy connection lasts at most 120 seconds.
+- Addresses in error texts and logs no longer show credentials or query strings: in every
+  `http(s)://` address, `user:password@` becomes `***@` and `?…` or `#…` becomes `?***`; the
+  `url: /path?…` form in connection errors is masked the same way. This covers the last error
+  shown on the overview page, the server log, invalid-YAML and invalid `url` messages, and the
+  logs of the `homeassistant`, `kuma` and `bahn` pages. A secret that is part of the path itself
+  (webhook-style addresses) is not masked. A failed page refresh logs one warning: the error
+  line followed by the traceback, both masked the same way.
+- The overview page sends a Content Security Policy: only its own inline script (with a fresh
+  nonce on every load) may run, images only from the server itself, no forms, no `<base>`. In
+  Docker mode no other site may embed it in a frame; the add-on page stays embeddable so Home
+  Assistant can show it in the sidebar. The page and the previews also send
+  `X-Content-Type-Options: nosniff`, the page `Referrer-Policy: no-referrer`.
+- The server ignores `X-Forwarded-For` and similar proxy headers, so a client cannot claim a
+  different address, and sends no `Server` header.
+- The supplied `docker-compose.yml` drops all Linux capabilities (`cap_drop: [ALL]`) and sets
+  `no-new-privileges`. CI runs the browser tests in the image with the same restrictions. If you
+  keep your own compose file, you can add the same two settings.
+- Supply chain: the image installs the server's Python dependencies from a lock file with a hash
+  for every package, and no longer contains the test tools (`pytest`, `ruff`, `httpx`). Not every
+  download is hashed: installing the server package itself fetches its build tool (`setuptools`)
+  without a hash, and CI pins its tools `uv` and `pip-audit` by version only. The base image and
+  all GitHub Actions are pinned by digest or commit. CI checks the dependencies for known
+  vulnerabilities (`pip-audit`), and Dependabot proposes updates weekly. Release images and
+  firmware files carry a signed build provenance attestation; `SECURITY.md` shows how to check it
+  with `gh attestation verify`.
+- Firmware: on a device that is already set up, the setup Wi-Fi `GlanceBox-XXXX` is now protected
+  with WPA2; its Wi-Fi password is the update password. Before, anyone in range could join it while
+  the saved network was gone and store new Wi-Fi credentials without the password. The first setup
+  still uses an open Wi-Fi. The setup portal also no longer offers WiFiManager's restart, exit,
+  close and info pages.
+- Firmware: a server URL typed in the setup portal or on the device web page may no longer contain
+  quotes, `<`, `>`, a backtick, inner spaces, control characters or non-ASCII characters. A URL
+  already stored on the device keeps working, and other settings can still be saved with it.
+- Firmware: the display no longer shows a user name and password that are part of the server URL
+  (`http://user:password@host`); the boot and offline screens show the URL without them.
+- Firmware: the reply header of the frame request must now be complete within 8 seconds of
+  starting the request, and it may be at most 1024 bytes long. Before, a wrong or
+  impersonated server could send header lines slowly without end; the display then hung and its
+  web page (settings, updates) no longer answered, even after a restart. The offline screen now
+  shows "server too slow", "reply too large" or "bad reply" in these cases.
+- Firmware: after five wrong passwords in a row the device web page refuses every password for
+  30 seconds (HTTP 429, the page says how long to wait). The lock applies to all clients at once.
+  The page also answers only when it is opened by the device's IP address or its own device name;
+  any other name gets "open this page by the device's IP address". This blocks websites that try to
+  reach the device through DNS rebinding. Open the page by its IP address, as before.
+
+### Changed
+- Home Assistant add-on: the secrets from the Configuration tab are available only as `${NAME}`
+  in `config.yaml`, no longer as environment variables. Your own `page.py` that reads one with
+  `os.environ` must get it through a `${NAME}` option instead. `SUPERVISOR_TOKEN` is removed from
+  the environment at start; the `homeassistant` page still gets it automatically, and
+  `${SUPERVISOR_TOKEN}` in `config.yaml` still works.
+
 ## [0.6.1]
 
 Server and add-on update; the firmware is unchanged (no need to update the display).

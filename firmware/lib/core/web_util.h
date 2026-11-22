@@ -11,6 +11,9 @@ std::string htmlEscape(const std::string& in);
 // CSRF guard for state-changing requests: an absent Origin (curl, old clients) is
 // allowed; otherwise it must be exactly "http://<Host>" (case-insensitive).
 bool originAllowed(const std::string& origin, const std::string& host);
+// Host header check against DNS rebinding: true for an IPv4 literal, for ownHostname and for
+// ownHostname + ".local" (case-insensitive), each with an optional ":port". False if empty.
+bool hostAllowed(const std::string& hostHeader, const std::string& ownHostname);
 
 // Wi-Fi signal in words: >= -60 dBm excellent, >= -70 good, >= -80 fair, else weak.
 enum class WifiQuality : unsigned char { Excellent, Good, Fair, Weak };

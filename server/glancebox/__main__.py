@@ -25,6 +25,15 @@ def _load(path: str):
     return validate_config(cfg, types), types
 
 
+def uvicorn_config(app, host: str, port: int):
+    """Server settings for both apps. No proxy's headers are trusted, so ``X-Forwarded-For``
+    cannot change the client address: the Ingress check needs the real peer address. No
+    ``Server`` header either."""
+    import uvicorn
+
+    return uvicorn.Config(app, host=host, port=port, proxy_headers=False, server_header=False)
+
+
 def _serve_addon(args) -> int:
     import uvicorn
 
@@ -34,7 +43,7 @@ def _serve_addon(args) -> int:
 
     setup = addon.addon_setup(os.environ, Path(args.config),
                               Path("/tmp/glancebox"))
-    cfg = load_config(setup.config_path, defaults=setup.defaults)
+    cfg = load_config(setup.config_path, defaults=setup.defaults, environ=setup.environ)
     types = load_page_types(cfg.pages_dirs)
     cfg = validate_config(cfg, types)
     store = FrameStore(len(cfg.pages))
@@ -46,9 +55,8 @@ def _serve_addon(args) -> int:
                                  seen=seen)
 
     async def run_both() -> None:
-        servers = [uvicorn.Server(uvicorn.Config(lan, host=args.host, port=args.port)),
-                   uvicorn.Server(uvicorn.Config(ingress, host=args.host,
-                                                 port=args.ingress_port))]
+        servers = [uvicorn.Server(uvicorn_config(lan, args.host, args.port)),
+                   uvicorn.Server(uvicorn_config(ingress, args.host, args.ingress_port))]
         await asyncio.gather(*(s.serve() for s in servers))
 
     asyncio.run(run_both())
@@ -66,7 +74,10 @@ def _serve(args) -> int:
         return _serve_addon(args)
     cfg, types = _load(args.config)
     app = create_app(cfg, FrameStore(len(cfg.pages)), types=types)
-    uvicorn.run(app, host=args.host, port=args.port)
+    try:
+        uvicorn.Server(uvicorn_config(app, args.host, args.port)).run()
+    except KeyboardInterrupt:  # Ctrl+C: uvicorn already shut down, no traceback
+        pass
     return 0
 
 

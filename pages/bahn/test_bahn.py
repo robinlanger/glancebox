@@ -147,6 +147,19 @@ def test_fetch_dbf_error_gives_message(bahn, monkeypatch):
     assert data["rows"] == [] and data["title"] == "Mein Bahnhof"
 
 
+def test_fetch_error_log_redacts_urls(bahn, monkeypatch, caplog):
+    ptype, module, _ = bahn
+
+    def boom(*a, **kw):
+        raise RuntimeError("cannot reach https://u:pw@dbf.example.org/X.json?token=abc")
+
+    monkeypatch.setattr(module.departures, "fetch", boom)
+    with caplog.at_level("WARNING"):
+        ptype.fetch({"station": "X"}, _ctx())
+    assert "https://***@dbf.example.org/X.json?***" in caplog.text
+    assert "pw" not in caplog.text and "abc" not in caplog.text
+
+
 def test_fetch_empty_list(bahn, monkeypatch):
     ptype, module, _ = bahn
     monkeypatch.setattr(module.departures, "fetch", lambda *a, **kw: [])

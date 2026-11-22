@@ -66,3 +66,14 @@ Restart the add-on after changing them.
 - **Display port (8090) has no login.** It serves only the pictures for the display and accepts
   pushed data with the push key. Keep it in your LAN; do not forward it to the internet.
 - The overview with previews is only in the add-on's web UI, behind your Home Assistant login.
+- **Chromium** (which renders the pages) does not get the Home Assistant access token or your
+  secrets in its environment. It tries to run with its sandbox; where the add-on container does
+  not allow that (usually the case), it runs without it and the log says so once. This does not
+  make untrusted web pages safe: only add `url` pages you trust.
+- **What pages can reach:** pages cannot reach the Supervisor or other Home Assistant internals.
+  A `url` page may load everything from its own host, so it may show another add-on by its host
+  name (for example `url: http://a0d7b954-grafana:3000/`).
+- The limits of these protections are listed in
+  [SECURITY.md](https://github.com/robinlanger/glancebox/blob/main/SECURITY.md), including that
+  without the sandbox the server's start environment stays readable to other processes of the
+  same user.

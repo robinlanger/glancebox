@@ -4,17 +4,31 @@ import asyncio
 import base64
 import contextlib
 import io
+import logging
+import os
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from typing import Self
+from urllib.parse import urlsplit
 
 from PIL import Image
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
+from .http import redact_urls
+from .netguard import GUARD_HEADER, GuardProxy, normalize_host
+
 MAX_JPEG_BYTES = 24576  # must equal kMaxFrameBytes in firmware/lib/core/poll_timing.h
 QUALITY_STEPS = (85, 75, 65, 55, 45, 40)
 SIZE = 240
+
+log = logging.getLogger(__name__)
+
+# Chromium gets only these variables (plus the prefixes below), never tokens or keys.
+BROWSER_ENV_NAMES = frozenset(
+    {"PATH", "HOME", "USER", "LOGNAME", "LANG", "LANGUAGE", "TZ", "TMPDIR"})
+BROWSER_ENV_PREFIXES = ("LC_", "XDG_", "FONTCONFIG_")
 
 FONTS_DIR = Path(__file__).parent / "fonts"
 _FONTS = (
@@ -27,6 +41,12 @@ _FONTS = (
 
 class RenderError(Exception):
     """Rendering failed (browser error, timeout, or image too large)."""
+
+
+def browser_env(environ: Mapping[str, str]) -> dict[str, str]:
+    """The part of ``environ`` Chromium may see (allowlist, so secrets never reach it)."""
+    return {k: v for k, v in environ.items()
+            if k in BROWSER_ENV_NAMES or k.startswith(BROWSER_ENV_PREFIXES)}
 
 
 @cache
@@ -62,32 +82,70 @@ def encode_jpeg(png: bytes) -> bytes:
     raise RenderError(f"JPEG larger than {MAX_JPEG_BYTES} bytes even at quality {QUALITY_STEPS[-1]}")
 
 
+def page_host(url: str) -> str | None:
+    """The host of a ``url`` page as Chromium sends it to the proxy (normalized, IDNA encoded)."""
+    try:
+        host = normalize_host(urlsplit(url).hostname or "")
+    except ValueError:
+        return None
+    if not host:
+        return None
+    try:
+        return host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return host
+
+
 class Renderer:
     """Async context manager holding one Chromium instance."""
 
     def __init__(self) -> None:
         self._pw = None
         self._browser = None
+        self._guard: GuardProxy | None = None  # all page traffic goes through it
         self._lock = asyncio.Lock()
+        self.sandboxed: bool | None = None  # None until Chromium first started
 
     async def __aenter__(self) -> Self:
         try:
+            self._guard = GuardProxy()
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch()
+            await self._launch()
         except Exception as exc:
             await self.__aexit__(None, None, None)
-            raise RenderError(f"cannot start Chromium: {exc}") from exc
+            raise RenderError(redact_urls(f"cannot start Chromium: {exc}")) from exc
         return self
 
     async def __aexit__(self, *exc) -> None:
-        browser, pw = self._browser, self._pw
-        self._browser = self._pw = None
+        browser, pw, guard = self._browser, self._pw, self._guard
+        self._browser = self._pw = self._guard = None
         try:
             if browser:
                 await browser.close()
         finally:
-            if pw:
-                await pw.stop()
+            try:
+                if pw:
+                    await pw.stop()
+            finally:
+                if guard:
+                    await guard.close()
+
+    async def _launch(self) -> None:
+        """Start Chromium with a clean environment; try the sandbox once, remember the outcome."""
+        env = browser_env(os.environ)
+        if self.sandboxed is None:
+            try:
+                self._browser = await self._pw.chromium.launch(env=env, chromium_sandbox=True)
+            except PlaywrightError as exc:
+                cause = next(iter(str(exc).strip().splitlines()), "")
+                log.warning("Chromium sandbox not available in this container; running without "
+                            "it (%s)", redact_urls(cause))
+                self.sandboxed = False
+            else:
+                log.info("Chromium sandbox enabled")
+                self.sandboxed = True
+                return
+        self._browser = await self._pw.chromium.launch(env=env, chromium_sandbox=self.sandboxed)
 
     def healthy(self) -> bool:
         """True while the shared Chromium is running and connected."""
@@ -100,9 +158,9 @@ class Renderer:
             with contextlib.suppress(Exception):
                 await old.close()
         try:
-            self._browser = await self._pw.chromium.launch()
+            await self._launch()
         except Exception as exc:
-            raise RenderError(f"cannot restart Chromium: {exc}") from exc
+            raise RenderError(redact_urls(f"cannot restart Chromium: {exc}")) from exc
 
     async def render_html(self, html: str, timeout_s: float = 10) -> bytes:
         async def load(page):
@@ -114,15 +172,27 @@ class Renderer:
         self, url: str, wait_ms: int, wait_for: str | None, timeout_s: float
     ) -> bytes:
         async def load(page):
-            await page.goto(url, wait_until="load", timeout=timeout_s * 1000)
+            response = await page.goto(url, wait_until="load", timeout=timeout_s * 1000)
+            # A plain-HTTP page the proxy refused or could not reach arrives as the proxy's own
+            # error answer; never show that as the page.
+            guard = response and response.headers.get(GUARD_HEADER.lower())
+            if guard == "blocked":
+                raise RenderError("page blocked by the request guard")
+            if guard:
+                raise RenderError("page server unreachable")
             if wait_for:
                 await page.wait_for_selector(wait_for, timeout=timeout_s * 1000)
             if wait_ms:
                 await page.wait_for_timeout(wait_ms)
 
-        return await self._render(load, timeout_s + wait_ms / 1000)
+        return await self._render(load, timeout_s + wait_ms / 1000, page_host(url))
 
-    async def _render(self, load, budget_s: float) -> bytes:
+    async def _render(self, load, budget_s: float, page_host: str | None = None) -> bytes:
+        """Render in a fresh context whose traffic all goes through the guard proxy.
+
+        Pages may not reach Home Assistant internals; ``page_host`` (the url page's own host) is
+        exempt. ``<-loopback>`` makes Chromium proxy loopback targets too instead of going direct.
+        """
         if self._pw is None:
             raise RenderError("renderer not started")
         async with self._lock:
@@ -132,7 +202,10 @@ class Renderer:
             try:
                 async with asyncio.timeout(budget_s + 2):
                     context = await self._browser.new_context(
-                        viewport={"width": SIZE, "height": SIZE}, device_scale_factor=1
+                        viewport={"width": SIZE, "height": SIZE}, device_scale_factor=1,
+                        service_workers="block",
+                        proxy={"server": await self._guard.url_for(page_host),
+                               "bypass": "<-loopback>"},
                     )
                     page = await context.new_page()
                     await load(page)
@@ -140,7 +213,7 @@ class Renderer:
                         type="png", clip={"x": 0, "y": 0, "width": SIZE, "height": SIZE}
                     )
             except (PlaywrightError, TimeoutError) as exc:
-                raise RenderError(f"render failed: {exc}") from exc
+                raise RenderError(redact_urls(f"render failed: {exc}")) from exc
             finally:
                 for obj in (page, context):
                     if obj is not None:

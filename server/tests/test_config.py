@@ -44,6 +44,12 @@ def test_yaml_syntax_error_is_config_error(tmp_path):
         load_config(write(tmp_path, "pages: [unclosed\n  - : :\n"))
 
 
+def test_yaml_syntax_error_redacts_urls(tmp_path):
+    with pytest.raises(ConfigError) as err:
+        load_config(write(tmp_path, 'pages:\n  - url: "http://h/x?token=abc\n'))
+    assert "http://h/x?***" in str(err.value) and "abc" not in str(err.value)
+
+
 def test_missing_file_is_config_error(tmp_path):
     with pytest.raises(ConfigError, match="nope.yaml"):
         load_config(tmp_path / "nope.yaml")
@@ -124,6 +130,14 @@ def test_push_key_from_env(tmp_path, monkeypatch):
     monkeypatch.setenv("GLANCEBOX_PUSH_KEY", "k" * 32)
     cfg = load_config(write(tmp_path, "push_key: ${GLANCEBOX_PUSH_KEY}\npages:\n  - type: clock\n"))
     assert cfg.push_key == "k" * 32
+
+
+def test_load_config_uses_given_environ(tmp_path, monkeypatch):
+    monkeypatch.delenv("MY_KEY", raising=False)
+    p = tmp_path / "config.yaml"
+    p.write_text("push_key: ${MY_KEY}\npages:\n  - type: clock\n")
+    cfg = load_config(p, environ={"MY_KEY": "k" * 16})
+    assert cfg.push_key == "k" * 16
 
 
 def test_push_key_too_short(tmp_path):

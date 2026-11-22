@@ -1,9 +1,11 @@
 """Home Assistant add-on mode.
 
 Active only when the Supervisor runs us: /data/options.json exists and SUPERVISOR_TOKEN is set.
-Turns the add-on form into environment variables, writes a starter playlist, and fills in
-values Home Assistant already knows (time zone, language, home location, its own API) wherever
-the YAML leaves them out. YAML values always win. Secret values are never logged.
+Reads the add-on form's secrets into a private mapping for ``${NAME}`` in the playlist (never
+into the process environment, and SUPERVISOR_TOKEN is removed from it), writes a starter
+playlist, and fills in values Home Assistant already knows (time zone, language, home location,
+its own API) wherever the YAML leaves them out. YAML values always win. Secret values are never
+logged.
 """
 
 from __future__ import annotations
@@ -231,20 +233,30 @@ class AddonSetup:
     defaults: Callable[[dict], dict]
     connect: str | None
     config_note: str | None
+    # Copy of the environment plus the form's secrets and SUPERVISOR_TOKEN; only for ${NAME} in
+    # the playlist, never handed to a process.
+    environ: dict[str, str]
 
 
 def addon_setup(environ: MutableMapping[str, str], config_path: Path,
                 fallback_dir: Path, get: Callable[..., Any] = requests.get,
                 sleep: Callable[[float], None] = time.sleep) -> AddonSetup:
-    """Everything add-on mode needs before ``load_config``. Updates ``environ`` with the form's
-    secrets so ``${NAME}`` in the playlist resolves."""
+    """Everything add-on mode needs before ``load_config``.
+
+    Removes ``SUPERVISOR_TOKEN`` from ``environ`` so Chromium and page code never inherit it.
+    The token and the form's secrets go into ``AddonSetup.environ`` (pass it to
+    ``load_config``, so ``${SUPERVISOR_TOKEN}`` keeps working), never into ``environ``.
+    """
     # /data/options.json is root-only (0600) and we run as pwuser: ask the Supervisor instead.
-    token = environ["SUPERVISOR_TOKEN"]
+    token = environ.pop("SUPERVISOR_TOKEN")
     options = fetch_options(token, get=get, sleep=sleep)
-    environ.update(secrets_env(options, environ))
+    # The token name stays reserved, so an extra secret cannot shadow it.
+    merged = {**environ, **secrets_env(options, {**environ, "SUPERVISOR_TOKEN": token}),
+              "SUPERVISOR_TOKEN": token}
     info = fetch_ha_info(token, get=get, sleep=sleep)
     path, own = ensure_config(config_path, fallback_dir)
     note = None if own else (
         f"The starter playlist could not be saved to {config_path}, so it runs from a temporary "
         "copy. Create config.yaml in the add-on's config folder (File editor) to keep your pages.")
-    return AddonSetup(path, ha_defaults(info, environ), connect_url(token, get=get), note)
+    defaults = ha_defaults(info, merged)
+    return AddonSetup(path, defaults, connect_url(token, get=get), note, environ=merged)

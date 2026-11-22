@@ -1,4 +1,5 @@
 import io
+import logging
 from pathlib import Path
 
 from PIL import Image
@@ -159,3 +160,63 @@ async def test_build_error_frame_failure_keeps_fallback():
     before = store.error_frame
     await store.build_error_frame(r)
     assert store.error_frame is before
+
+
+async def test_refresh_error_redacts_urls(tmp_path, caplog):
+    from glancebox.render import RenderError
+
+    class LeakyRenderer(FakeRenderer):
+        async def render_url(self, url, wait_ms, wait_for, timeout_s):
+            raise RenderError(f"render failed: net::ERR at {url}")
+
+    cfg = make_cfg(page(0, "url", url="http://h/x?token=abc"))
+    store = FrameStore(1)
+    caplog.set_level(logging.WARNING)
+    await refresh_once(cfg, {"url": PageType("url", "url")}, LeakyRenderer(), store, 0)
+    assert "http://h/x?***" in store.last_error(0)
+    assert "abc" not in store.last_error(0)
+    assert "refresh failed" in caplog.text
+    assert "abc" not in caplog.text
+
+
+async def test_refresh_error_redacts_schemeless_request_url(tmp_path, caplog):
+    import socket
+
+    from glancebox import http
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    def fetch(o, c):  # the value comes from options, so the traceback's source lines lack it
+        http.get_json(f"http://127.0.0.1:{port}/api/x", params={"lat": o["lat"]}, timeout=2)
+
+    t = script_type(tmp_path, "a", fetch)
+    store = FrameStore(1)
+    caplog.set_level(logging.WARNING)
+    await refresh_once(make_cfg(page(0, "a", lat="48.1234")), {"a": t}, FakeRenderer(), store, 0)
+    assert "ConnectionError" in store.last_error(0)
+    assert "48.1234" not in store.last_error(0)
+    assert "refresh failed" in caplog.text and "48.1234" not in caplog.text
+
+
+def _load_remote(url):
+    raise ValueError(f"cannot load {url}")
+
+
+async def test_refresh_failure_logs_redacted_traceback_at_warning(tmp_path, caplog):
+    t = script_type(tmp_path, "a", lambda o, c: _load_remote(o["src"]))
+    store = FrameStore(1)
+    caplog.set_level(logging.INFO)
+    cfg = make_cfg(page(0, "a", src="http://h/x?token=abc"))
+    await refresh_once(cfg, {"a": t}, FakeRenderer(), store, 0)
+    records = [r for r in caplog.records if r.name == "glancebox.frames"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    text = records[0].getMessage()
+    first, _, trace = text.partition("\n")
+    assert first == "pages[0] (a): refresh failed: ValueError: cannot load http://h/x?***"
+    assert "Traceback (most recent call last)" in trace
+    assert "_load_remote" in trace and "test_frames.py" in trace
+    assert "http://h/x?***" in trace
+    assert "abc" not in caplog.text

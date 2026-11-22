@@ -132,7 +132,8 @@ def fetch(options: dict, ctx) -> dict:
                  "since": ("≥ " if lb else "") + _duration((now_utc - since).total_seconds())}
                 for since, name, lb in down]
     except Exception as exc:  # noqa: BLE001 - any failure must show the notice, never a stale "all OK"
-        log.warning("kuma: status page unavailable: %s: %s", type(exc).__name__, exc)
+        log.warning("kuma: status page unavailable: %s: %s", type(exc).__name__,
+                    http.redact_urls(str(exc)))
         return result("error", message=texts["error"], sub=f"{texts['asof']} {clock}")
 
     if not monitors:

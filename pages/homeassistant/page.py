@@ -251,9 +251,10 @@ def _log_failure(url: str, exc: Exception) -> None:
     (e.g. requests' InvalidHeader, which quotes the header value) logs just its type.
     """
     if isinstance(exc, (requests.HTTPError, requests.ConnectionError, requests.Timeout)):
-        log.warning("homeassistant: %s: %s: %s", url, type(exc).__name__, exc)
+        log.warning("homeassistant: %s: %s: %s", http.redact_urls(url), type(exc).__name__,
+                    http.redact_urls(str(exc)))
     else:
-        log.warning("homeassistant: %s: %s", url, type(exc).__name__)
+        log.warning("homeassistant: %s: %s", http.redact_urls(url), type(exc).__name__)
 
 
 def fetch(options: dict, ctx) -> dict:

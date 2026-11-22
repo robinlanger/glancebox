@@ -14,6 +14,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 from .config import AppConfig, ConfigError
+from .http import redact_urls
 from .push import CHANNEL_RE, Pushed
 
 PACKAGE = "glancebox_pages"
@@ -57,8 +58,11 @@ def _validate_url_options(options: dict) -> None:
     if not isinstance(url, str) or not url:
         raise ValueError("url is required")
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError(f"url must be an http or https URL, got {url!r}")
+    if parsed.scheme not in ("http", "https"):
+        # Echo only the scheme: redact_urls cannot clean a non-http(s) address.
+        raise ValueError(f"url must be an http or https URL, got scheme {parsed.scheme!r}")
+    if not parsed.netloc:
+        raise ValueError(f"url must be an http or https URL, got {redact_urls(url)!r}")
     wait_ms = options.get("wait_ms", 0)
     if isinstance(wait_ms, bool) or not isinstance(wait_ms, int) or wait_ms < 0:
         raise ValueError("wait_ms must be an integer >= 0")

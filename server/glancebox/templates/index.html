@@ -104,7 +104,7 @@ footer{color:var(--muted);font-size:13px;margin:22px 6px 0}
     <pre id="starter">{{ starter_yaml }}</pre>{% endif %}
   </div>
 </section>
-{% if connect %}<script>
+{% if connect %}<script nonce="{{ nonce }}">
 document.getElementById("copy").addEventListener("click", function () {
   var addr = document.getElementById("addr"), button = this, label = button.querySelector("span");
   if (navigator.clipboard && window.isSecureContext) {

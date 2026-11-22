@@ -15,8 +15,9 @@ file. A release is a `vX.Y.Z` tag; the `release` workflow does the rest.
    filesystem layout (LittleFS offset, size, block size) must stay as they are: an OTA update
    keeps the data already on the flash, and a device whose settings no longer mount loses its
    settings (server address, update password). A layout change is only possible with serial flashing.
-3. **CI is green** on the commit you are about to tag (`ci.yml`, jobs `server`, `server-image`, `firmware`, `docs`:
-   server tests, firmware build, native tests, size check, Docker build, docs check).
+3. **CI is green** on the commit you are about to tag (`ci.yml`, jobs `server`, `server-image`, `audit`, `firmware`, `docs`:
+   server tests, firmware build, native tests, size check, Docker build, known vulnerabilities in
+   the runtime dependencies, docs check).
 4. **Smoketest on real hardware** with the release candidate and the previous release bin:
 
    ```sh
@@ -39,6 +40,12 @@ file. A release is a `vX.Y.Z` tag; the `release` workflow does the rest.
    `Smoketest: PASS on GeekMagic SmallTV Ultra, previous = vPREV, 24 h soak OK (YYYY-MM-DD)`.
 8. Optionally, run the smoketest once more with the **published** `.bin` (check it against the
    `.md5`/`.sha256` files first).
+9. **Check the build attestations** of the published image and firmware:
+
+   ```sh
+   gh attestation verify oci://ghcr.io/robinlanger/glancebox:X.Y.Z --repo robinlanger/glancebox
+   gh attestation verify glancebox-ultra-X.Y.Z.bin --repo robinlanger/glancebox
+   ```
 
 ### First release (no previous release exists)
 
@@ -66,14 +73,25 @@ reboot into the new image from no reboot, and it refuses to run.
    `glancebox-ultra-<ver>.bin`, `.bin.md5` and `.bin.sha256`.
 3. Builds the Docker image for `linux/amd64` and `linux/arm64` and pushes
    `ghcr.io/robinlanger/glancebox:<ver>` and `:latest`.
-4. Runs `gh release create` with the three firmware files and the `CHANGELOG.md` section.
+4. Creates signed build provenance attestations (`actions/attest-build-provenance`) for the
+   pushed image (stored in GHCR next to it) and for `glancebox-ultra-<ver>.bin`.
+5. Runs `gh release create` with the three firmware files and the `CHANGELOG.md` section.
 
 Before building, the workflow also fails if a GitHub release for the tag already exists, so a
 duplicate tag pushes nothing.
 
 **Dry run.** Actions, "release", "Run workflow" (any branch) builds everything but never logs in
-to GHCR, pushes, or creates a release. The firmware files are kept as the workflow artifact
+to GHCR, pushes, attests, or creates a release. The firmware files are kept as the workflow artifact
 `firmware-<ver>`. Publishing is only possible by pushing a `v*` tag.
+
+## Dependency updates
+
+Dependabot opens weekly pull requests for the Python dependencies, the Docker base image and the
+GitHub Actions. A Dependabot PR that changes `server/requirements.in` or
+`server/requirements-dev.in` needs the lock files regenerated with the commands in their headers
+(run in `server/`, first `requirements.lock`, then `requirements-dev.lock`), and the CI job
+`server` fails until then. The lock check can also turn red without any change in the repo, when a
+pinned version gains a new wheel on PyPI; regenerating the lock files fixes it.
 
 ## The smoketest
 
