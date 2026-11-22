@@ -85,7 +85,7 @@ def test_redact_urls_brackets_and_schemeless(text, expected):
                                   "http://user:p#ss@h/x"])
 def test_redact_urls_odd_userinfo(text):
     out = http.redact_urls(text)
-    assert "ss" not in out and out.startswith("http://***@h")
+    assert "ss" not in out and out.startswith("http://***")
 
 
 def _closed_port() -> int:
@@ -102,3 +102,16 @@ def test_redact_urls_real_requests_connection_error():
     assert "SECRET" in str(err.value)  # precondition: requests quotes the query
     out = http.redact_urls(str(err.value))
     assert "SECRET" not in out and "url: /api/x?***" in out
+
+
+@pytest.mark.parametrize("text,expected,leaks", [
+    ("http://h/x?email=me@mail.example.org&k=SECRET", "http://***",
+     ("SECRET", "mail.example.org", "email")),
+    ("http://h/x?token=abc@def", "http://***", ("abc", "def")),
+    ("http://h/x#frag@tail", "http://***", ("frag", "tail")),
+    ("see http://h/x?e=a@b&k=SECRET.", "see http://***.", ("SECRET", "a@b", "&k")),
+])
+def test_redact_urls_at_in_query_or_fragment(text, expected, leaks):
+    out = http.redact_urls(text)
+    assert out == expected
+    assert not any(leak in out for leak in leaks)
