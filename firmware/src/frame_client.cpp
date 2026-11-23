@@ -78,7 +78,8 @@ int readHead(WiFiClient& client, uint32_t startMs, size_t* len) {
     } else if (!client.connected()) {
       return kErrLost;
     }
-    yield();  // watchdog and Wi-Fi stack
+    displayAnimTick();  // only draws; the deadline above stays as it is
+    yield();            // watchdog and Wi-Fi stack
   }
   *len = n;
   return 0;
@@ -105,6 +106,7 @@ int exchange(WiFiClient& client, const gb::ServerTarget& t, const char* etag, Fr
   if (!gb::parseHttpHead(gBuf, headLen, &head)) return gb::kErrHeadMalformed;
   r->nextIn = head.nextIn;
   r->localSec = head.localSec;
+  if (head.status == 304) r->refetch = !displayAnimNotModified(head.anim);
   if (head.status != 200) return head.status;
 
   // -1 without a usable Content-Length (e.g. chunked): rejected.
@@ -112,7 +114,7 @@ int exchange(WiFiClient& client, const gb::ServerTarget& t, const char* etag, Fr
     return gb::kErrFrameLength;
   }
   r->len = static_cast<size_t>(head.contentLength);
-  switch (displayJpegStream(client, r->len, kTimeoutMs)) {
+  switch (displayJpegStream(client, r->len, kTimeoutMs, head.anim)) {
     case JpegStreamResult::Ok:
       gb::storeEtag(r->etag, head.etag);  // only after a full decode
       return 200;
@@ -127,7 +129,7 @@ int exchange(WiFiClient& client, const gb::ServerTarget& t, const char* etag, Fr
 }  // namespace
 
 FrameResult fetchFrame(const char* serverUrl, const char* etag) {
-  FrameResult r{gb::kErrBadUrl, 0, "", -1, -1};
+  FrameResult r{gb::kErrBadUrl, 0, "", -1, -1, false};
   static gb::ServerTarget target;  // ~322 bytes: static, off the 4 kB stack
   if (!gb::parseServerTarget(serverUrl, &target)) return r;  // no connection opened
 

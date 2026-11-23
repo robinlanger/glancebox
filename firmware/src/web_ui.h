@@ -7,6 +7,7 @@
 // (md5 may also be given as query parameter: /update?md5=<hex>).
 #include <ESP8266WebServer.h>
 
+#include "anim.h"
 #include "settings.h"
 
 // Dynamic status fields owned by the main loop. Any pointer may be null (field then
@@ -18,6 +19,14 @@ struct StatusProvider {
   uint8_t (*bootFailed)() = nullptr;
   int32_t (*localMinute)() = nullptr;  // < 0 or unset: time unknown (reported as null)
   bool (*night)() = nullptr;           // unset: false (safe mode)
+  // /status "frame_errors": failed frame polls since boot (network, HTTP or decode error,
+  // no Wi-Fi; a 304 is no error).
+  uint32_t (*frameErrors)() = nullptr;
+  // Moving arrows, /status "anim_tracks": tracks running now; "anim_gaps_100" /
+  // "anim_gaps_250": gaps > 100 / > 250 ms between two drawn arrow frames since boot;
+  // "anim_run_s": seconds since boot with running tracks and the backlight on. The gaps
+  // count on the same basis, so gaps per minute = anim_gaps_250 / (anim_run_s / 60).
+  gb::AnimStats (*anim)() = nullptr;
   // Normal mode hooks for the live controls (POST /api/...):
   void (*previewBrightness)(uint8_t pct) = nullptr;  // show pct now, do not save
   void (*settingsChanged)() = nullptr;               // settings were saved: re-apply backlight

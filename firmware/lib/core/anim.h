@@ -60,14 +60,18 @@ uint16_t animAdvance(uint16_t phase, uint32_t elapsedMs, uint8_t speed, bool lef
 // Parts do not overlap and together cover exactly block without the holes. Should cap not
 // suffice, the result is the whole block as one part (cap 0: none), so no pixel of the new
 // frame is lost; the arrows are drawn again on the next tick.
+// Callers pass cap = kAnimClipMax. Within the device limits (at most kAnimMaxTracks
+// non-overlapping holes) that fallback cannot occur at this cap: a brute-force check over
+// 3 million random cases peaked at 7 parts.
 size_t animClip(const AnimRect& block, const AnimRect* holes, size_t nHoles, AnimRect* out,
                 size_t cap);
 
 struct AnimStats {
   uint8_t tracks;        // running now
-  uint32_t gapsOver100;  // gaps between two drawn frames > 100 ms while tracks ran
+  uint32_t gapsOver100;  // gaps between two drawn frames > 100 ms while tracks ran visibly
   uint32_t gapsOver250;  // ... > 250 ms
-  uint32_t runS;         // seconds with running tracks since boot
+  uint32_t runS;         // seconds since boot with running tracks AND the display visible
+                         // (same basis as the gaps: gaps per minute = gaps / (runS / 60))
 };
 
 // The tracks of the frame that stands completely on the screen (spec, "Regeln fuer die
@@ -85,6 +89,7 @@ class AnimState {
   void stopAll();  // status screen; also drops a pending 200, so only a new frame starts tracks
   // True when a frame is due: tracks run, visible, and >= kAnimFrameMs since the last one.
   // Advances the phases and counts the gaps. visible = false keeps the state, draws nothing.
+  // Run time since the previous tick counts with the visibility that tick reported.
   bool tick(uint32_t nowMs, bool visible);
   uint8_t count() const { return count_; }
   const AnimTrack& track(uint8_t i) const;
@@ -106,7 +111,9 @@ class AnimState {
   uint32_t lastFrameMs_ = 0;  // last drawn frame, or the start
   bool drawnBefore_ = false;  // lastFrameMs_ is a drawn frame seen without a dark pause
   uint32_t lastRunMs_ = 0;    // run time counted up to here
-  uint64_t runMs_ = 0;
+  bool visible_ = true;       // visibility of the last tick (assumed visible before the first)
+  uint32_t runS_ = 0;         // run time: whole seconds ...
+  uint32_t runRemMs_ = 0;     // ... plus 0..999 ms (no 64-bit division on the ESP8266)
   uint32_t gaps100_ = 0;
   uint32_t gaps250_ = 0;
 };

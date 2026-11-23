@@ -1701,6 +1701,37 @@ void test_anim_gap_counters() {
   TEST_ASSERT_EQUAL_UINT32(6, st.stats(13000).runS);
 }
 
+void test_anim_run_time_counts_only_while_visible() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  for (uint32_t t = 40; t <= 2000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(2000).runS);
+  TEST_ASSERT_FALSE(st.tick(2040, false));  // 2000..2040 still visible: 2040 ms
+  TEST_ASSERT_FALSE(st.tick(10000, false));
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(10000).runS);
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(20000).runS);  // dark, even between ticks
+  TEST_ASSERT_FALSE(st.tick(20000, false));
+  TEST_ASSERT_TRUE(st.tick(20040, true));  // 20000..20040 was dark
+  for (uint32_t t = 20080; t <= 21000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  gb::AnimStats s = st.stats(21000);
+  TEST_ASSERT_EQUAL_UINT32(3, s.runS);  // 2040 + 960 ms
+  TEST_ASSERT_EQUAL_UINT32(0, s.gapsOver100);
+  TEST_ASSERT_EQUAL_UINT32(3, st.stats(21959).runS);
+  TEST_ASSERT_EQUAL_UINT32(3, st.stats(21960).runS);
+  TEST_ASSERT_EQUAL_UINT32(4, st.stats(22000).runS);
+}
+
+void test_anim_run_time_survives_millis_wraparound() {
+  gb::AnimState st;
+  start(&st, spec1(), 0xFFFFF000u);  // 4096 ms before the overflow
+  uint32_t t = 0xFFFFF000u;
+  for (int i = 0; i < 250; ++i) {  // 10 s in 40 ms steps
+    t += 40;
+    TEST_ASSERT_TRUE(st.tick(t, true));
+  }
+  TEST_ASSERT_EQUAL_UINT32(10, st.stats(t).runS);
+}
+
 void test_anim_track_index_out_of_range_is_safe() {
   gb::AnimState st;
   start(&st, spec1(), 0);
@@ -2197,6 +2228,8 @@ int main() {
   RUN_TEST(test_anim_speed_change_does_not_jump);
   RUN_TEST(test_anim_invisible_keeps_state_and_draws_nothing);
   RUN_TEST(test_anim_gap_counters);
+  RUN_TEST(test_anim_run_time_counts_only_while_visible);
+  RUN_TEST(test_anim_run_time_survives_millis_wraparound);
   RUN_TEST(test_anim_track_index_out_of_range_is_safe);
   RUN_TEST(test_anim_same_geometry_garbage_count);
   RUN_TEST(test_http_head_carries_x_anim);

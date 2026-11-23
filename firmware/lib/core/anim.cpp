@@ -281,14 +281,28 @@ void AnimState::stopAll() {
   count_ = 0;
 }
 
+namespace {
+
+void addMs(uint32_t* s, uint32_t* remMs, uint32_t ms) {
+  *s += ms / 1000u;
+  *remMs += ms % 1000u;
+  if (*remMs >= 1000u) {
+    *remMs -= 1000u;
+    ++*s;
+  }
+}
+
+}  // namespace
+
 void AnimState::addRunTime(uint32_t nowMs) {
-  runMs_ += static_cast<uint32_t>(nowMs - lastRunMs_);
+  if (visible_) addMs(&runS_, &runRemMs_, nowMs - lastRunMs_);
   lastRunMs_ = nowMs;
 }
 
 bool AnimState::tick(uint32_t nowMs, bool visible) {
   if (count_ == 0) return false;
   addRunTime(nowMs);
+  visible_ = visible;
   if (!visible) {
     drawnBefore_ = false;  // the dark time is no gap
     return false;
@@ -316,13 +330,14 @@ uint8_t AnimState::offsetPx(uint8_t i) const {
 }
 
 AnimStats AnimState::stats(uint32_t nowMs) const {
-  uint64_t ms = runMs_;
-  if (count_ > 0) ms += static_cast<uint32_t>(nowMs - lastRunMs_);
+  uint32_t runS = runS_;
+  uint32_t remMs = runRemMs_;
+  if (count_ > 0 && visible_) addMs(&runS, &remMs, nowMs - lastRunMs_);
   AnimStats s;
   s.tracks = count_;
   s.gapsOver100 = gaps100_;
   s.gapsOver250 = gaps250_;
-  s.runS = static_cast<uint32_t>(ms / 1000u);
+  s.runS = runS;
   return s;
 }
 

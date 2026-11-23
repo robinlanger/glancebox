@@ -28,6 +28,7 @@ char etag[gb::kEtagCap] = "";
 char lastError[gb::kErrorTextCap] = "";
 char shownUrl[sizeof(gb::Settings::serverUrl)];  // server URL without credentials, for the screen
 uint32_t framesOk = 0;
+uint32_t frameErrors = 0;  // failed polls since boot (any status other than 200 and 304)
 uint32_t lastSuccessMs = 0;
 bool anySuccess = false;
 uint32_t nextPollMs = 0;
@@ -69,6 +70,8 @@ void pollFrame() {
     if (status == 200) {  // already drawn (stream decode)
       memcpy(etag, r.etag, sizeof(etag));
       ++framesOk;
+    } else if (status == 304 && r.refetch) {
+      etag[0] = '\0';  // the running arrows do not fit this frame: fetch it again
     }
   }
   const uint32_t now = millis();  // after the request, which may take seconds
@@ -78,6 +81,7 @@ void pollFrame() {
     lastSuccessMs = now;
     anySuccess = true;
   } else {
+    ++frameErrors;
     gb::frameErrorText(status, lastError, sizeof(lastError));
     Serial.printf("frame poll failed: %s (%d)\n", lastError, status);
     o = poller.onFailure(status, now);
@@ -126,6 +130,8 @@ void setup() {
   portalRun(settings);
   StatusProvider st;
   st.framesOk = []() { return framesOk; };
+  st.frameErrors = []() { return frameErrors; };
+  st.anim = []() { return displayAnimStats(); };
   st.lastFrameAgeS = []() -> int32_t {
     return anySuccess ? static_cast<int32_t>((millis() - lastSuccessMs) / 1000) : -1;
   };
@@ -153,6 +159,7 @@ void setup() {
 
 void loop() {
   webUiLoop();
+  displayAnimTick();
 
   const uint32_t now = millis();
   if (health.shouldMark(now, WiFi.status() == WL_CONNECTED, webUiRunning())) {
