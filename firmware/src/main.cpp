@@ -62,6 +62,7 @@ void showOfflineScreen() {
 void pollFrame() {
   int status = gb::kErrNoWifi;
   int nextIn = -1;
+  bool refetch = false;
   if (WiFi.status() == WL_CONNECTED) {
     const FrameResult r = fetchFrame(settings.serverUrl, etag);
     status = r.status;
@@ -72,6 +73,7 @@ void pollFrame() {
       ++framesOk;
     } else if (status == 304 && r.refetch) {
       etag[0] = '\0';  // the running arrows do not fit this frame: fetch it again
+      refetch = true;
     }
   }
   const uint32_t now = millis();  // after the request, which may take seconds
@@ -89,6 +91,10 @@ void pollFrame() {
   if (o.clearEtag) etag[0] = '\0';
   if (o.drawOffline) showOfflineScreen();
   nextPollMs = now + o.delayMs;
+  // Fetch again at once. This cannot loop: r.refetch is only set by a 304 that does not match
+  // RUNNING tracks, and that 304 has already stopped them (a 304 never starts tracks, so a
+  // second 304 cannot set it again). The refetch also sends no ETag, so the server answers 200.
+  if (refetch) nextPollMs = now;
 }
 
 // Night mode: apply the effective backlight at most once per second, only on change.
