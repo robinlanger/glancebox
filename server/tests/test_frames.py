@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from glancebox.anim import Anim, Track
 from glancebox.config import AppConfig, PageConfig
 from glancebox.frames import FrameStore, refresh_once
 from glancebox.pages import PageType
@@ -31,12 +32,14 @@ def make_cfg(*pages: PageConfig) -> AppConfig:
     return AppConfig(30, "Europe/Berlin", "de", tuple(pages), ())
 
 
-def script_type(tmp_path: Path, name: str, fetch, template="<p>{{ v }}</p>") -> PageType:
+def script_type(tmp_path: Path, name: str, fetch, template="<p>{{ v }}</p>",
+                skip_unchanged=False) -> PageType:
     d = tmp_path / name
     d.mkdir(exist_ok=True)
     if template is not None:
         (d / "template.html").write_text(template)
-    return PageType(name, "script", fetch=fetch, template_path=d / "template.html")
+    return PageType(name, "script", fetch=fetch, template_path=d / "template.html",
+                    skip_unchanged=skip_unchanged)
 
 
 def page(index, type_, refresh=60, **options) -> PageConfig:
@@ -220,3 +223,54 @@ async def test_refresh_failure_logs_redacted_traceback_at_warning(tmp_path, capl
     assert "_load_remote" in trace and "test_frames.py" in trace
     assert "http://h/x?***" in trace
     assert "abc" not in caplog.text
+
+
+ANIM = Anim("0b0d12", "232a38", (Track(64, 67, 85, 15, "r", "ffb020", 48),))
+HEADER = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48"
+
+
+async def test_anim_from_fetch_reaches_the_frame_not_the_template(tmp_path):
+    t = script_type(tmp_path, "a", lambda o, c: {"v": "x", "_anim": ANIM},
+                    template="<p>{{ v }}{{ _anim is defined }}</p>")
+    r, store = FakeRenderer(), FrameStore(1)
+    await refresh_once(make_cfg(page(0, "a", 5)), {"a": t}, r, store, 0)
+    assert store.get(0, 0).anim == HEADER
+    assert r.html_calls == ["<p>xFalse</p>"]
+
+
+async def test_invalid_anim_is_dropped_and_logged(tmp_path, caplog):
+    bad = Anim("0b0d12", "232a38", (Track(64, 67, 85, 15, "r", "ffb020", 0),))
+    t = script_type(tmp_path, "a", lambda o, c: {"v": "x", "_anim": bad})
+    store = FrameStore(1)
+    with caplog.at_level(logging.WARNING):
+        await refresh_once(make_cfg(page(0, "a", 5)), {"a": t}, FakeRenderer(), store, 0)
+    assert store.get(0, 0).anim is None and store.last_error(0) is None
+    assert "X-Anim" in caplog.text and "speed" in caplog.text
+
+
+async def test_unchanged_data_keeps_image_and_updates_anim(tmp_path):
+    speeds = iter([48, 51, 51])
+    values = iter(["x", "x", "y"])
+
+    def fetch(o, c):
+        tr = Track(64, 67, 85, 15, "r", "ffb020", next(speeds))
+        return {"v": next(values), "_anim": Anim("0b0d12", "232a38", (tr,))}
+
+    t = script_type(tmp_path, "a", fetch, skip_unchanged=True)
+    cfg, r, store = make_cfg(page(0, "a", 5)), FakeRenderer(), FrameStore(1)
+    await refresh_once(cfg, {"a": t}, r, store, 0)
+    first = store.get(0, 0)
+    await refresh_once(cfg, {"a": t}, r, store, 5)
+    second = store.get(0, 5)
+    assert len(r.html_calls) == 1 and second.etag == first.etag
+    assert second.anim.endswith(",51") and second.rendered_at == 5   # stays fresh
+    await refresh_once(cfg, {"a": t}, r, store, 10)
+    assert len(r.html_calls) == 2 and store.get(0, 10).etag != first.etag
+
+
+async def test_unchanged_data_still_renders_without_the_hook(tmp_path):
+    t = script_type(tmp_path, "a", lambda o, c: {"v": "x"})
+    cfg, r, store = make_cfg(page(0, "a", 5)), FakeRenderer(), FrameStore(1)
+    await refresh_once(cfg, {"a": t}, r, store, 0)
+    await refresh_once(cfg, {"a": t}, r, store, 5)
+    assert len(r.html_calls) == 2

@@ -200,6 +200,8 @@ def create_app(cfg: AppConfig, store: FrameStore, clock: Callable[[], float] = t
                    "Cache-Control": "no-store",
                    # Device clock for night mode: local wall time in the configured zone.
                    "X-Local-Time": datetime.fromtimestamp(clock(), tz).strftime("%H:%M:%S")}
+        if frame.anim is not None:
+            headers["X-Anim"] = frame.anim
         if _etag_matches(request.headers.get("if-none-match"), frame.etag):
             return Response(status_code=304, headers=headers)
         return Response(frame.jpeg, media_type="image/jpeg", headers=headers)
