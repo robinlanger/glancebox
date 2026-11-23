@@ -215,7 +215,8 @@ def size_class(value: str, unit: str | None) -> str:
 
 def _base(options: dict, lang: str, clock: str, state: str, **extra) -> dict:
     data = {"title": options.get("title") or DEFAULT_TITLE[lang], "clock": clock, "lang": lang,
-            "state": state, "message": None, "sub": None, "bg": BG, "track": TRACK, "rows": []}
+            "state": state, "message": None, "sub": None, "bg": BG, "track": TRACK, "value_left": VALUE_LEFT,
+            "value_right": VALUE_RIGHT, "rows": []}
     data.update(extra)
     return data
 

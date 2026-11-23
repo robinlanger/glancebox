@@ -1,1 +1,48 @@
 {% extends "base.html" %}
+{% import "ui.html" as ui %}
+{#- All positions come from page.py (geometry(), VALUE_LEFT/RIGHT, SIZES). The status line
+    spans from the track's x to the value's right edge, starting 3 px below the track rectangle. The device draws its
+    arrows into each track rectangle; there this page shows only bg and the 3 px track line, so
+    nothing else (no shadow, rounding, gradient or text) may reach x .. x + w, y .. y + h. -#}
+{% macro icon(kind, color) -%}
+<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="{{ color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+{%- if kind == "grid" %}<path d="M7 22 12 3 17 22M5.5 8h13M6.5 13h11M9 18l6-5M15 18l-6-5"/>
+{%- elif kind == "pv" %}<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>
+{%- elif kind == "battery" %}<rect x="7" y="5" width="10" height="16" rx="1.5"/><path d="M10 3h4M10 13h4"/>
+{%- elif kind == "gas" %}<path d="M12 2.5c1 3.5 5.5 6 5.5 11a5.5 5.5 0 0 1-11 0c0-3 1.8-4.7 3-6.5.3 2 1.2 3 2.5 3.5-.5-3 0-5.5 0-8z"/>
+{%- elif kind == "water" %}<path d="M12 3s-6.5 7.5-6.5 12a6.5 6.5 0 0 0 13 0C18.5 10.5 12 3 12 3z"/>
+{%- elif kind == "wallbox" %}<path d="M9 2.5V7M15 2.5V7M6.5 7h11v4a5.5 5.5 0 0 1-11 0zM12 16.5v5"/>
+{%- endif %}</svg>
+{%- endmacro %}
+{% block head %}
+<style>
+html,body{background:{{ bg }}}
+.hd{position:absolute;left:8px;top:0;width:224px;height:28px;display:flex;align-items:center;font-size:13px;}
+.hd .t{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:10px;}
+.hd .c{color:var(--muted);}
+.ring{position:absolute;left:12px;width:44px;height:44px;box-sizing:border-box;border:2px solid;border-radius:50%;}
+.ic{position:absolute;left:23px;width:22px;height:22px;}
+.line{position:absolute;height:3px;}
+.val{position:absolute;height:28px;line-height:28px;text-align:right;font-weight:700;color:#ebeef2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.val.l{font-size:24px}.val.m{font-size:19px}.val.s{font-size:15px}
+.unit{font-weight:700;color:var(--muted);}
+.val.l .unit{font-size:13px;margin-left:3px}.val.m .unit{font-size:12px;margin-left:3px}.val.s .unit{font-size:11px;margin-left:2px}
+.st{position:absolute;height:14px;line-height:14px;font-size:11px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+</style>
+{% endblock %}
+{% block body %}
+<div class="hd"><span class="t">{{ title }}</span><span class="c">{{ clock }}</span></div>
+{% if state == "ok" %}
+{%- for r in rows %}
+<div class="ring" style="top:{{ r.cy - 22 }}px;border-color:{{ r.color }}"></div>
+<div style="position:absolute;left:0;top:{{ r.cy - 11 }}px">{{ icon(r.kind, r.color) }}</div>
+<div class="line" style="left:{{ r.x }}px;top:{{ r.line_y }}px;width:{{ r.w }}px;background:{{ track }}"></div>
+<div class="val {{ r.size }}" style="left:{{ value_left }}px;width:{{ value_right - value_left }}px;top:{{ r.cy - 21 }}px{% if not r.active %};color:{{ r.color }}{% endif %}">{{ r.value }}{% if r.unit %}<span class="unit">{{ r.unit }}</span>{% endif %}</div>
+{%- if r.status %}
+<div class="st" style="left:{{ r.x }}px;width:{{ value_right - r.x }}px;top:{{ r.y + r.h + 3 }}px;color:{{ r.color }}">{{ r.status }}</div>
+{%- endif %}
+{%- endfor %}
+{% else %}
+{{ ui.notice(message, sub, "warn") }}
+{% endif %}
+{% endblock %}

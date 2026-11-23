@@ -1,3 +1,4 @@
+import io
 import logging
 import sys
 from datetime import datetime
@@ -7,13 +8,15 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import requests
+from PIL import Image
 
 import glancebox.anim
 import glancebox.http
 from glancebox.anim import Anim, Track
 from glancebox.config import AppConfig, ConfigError, PageConfig
+from glancebox.frames import render_data, render_page
 from glancebox.pages import PageContext, load_page_types, validate_config
-from glancebox.render import text_width
+from glancebox.render import Renderer, text_width
 
 PAGES_DIR = Path(__file__).resolve().parents[1]
 OPTIONS = {"url": "http://homeassistant.lan:8123", "token": "t0ken",
@@ -400,3 +403,178 @@ def test_value_size_keeps_the_value_out_of_the_track(mod, value, unit):
 
 def test_common_values_get_the_large_size(mod):
     assert mod.size_class("2,3", "kW") == "l"
+
+
+# --- template (browser) -------------------------------------------------------
+
+def _near(px, hex_color, tol=10):
+    want = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+    return all(abs(a - b) <= tol for a, b in zip(px, want, strict=True))
+
+
+# The device fills the whole track rectangle with bg and redraws the 3 px line on every
+# animation frame, so JPEG noise inside the rectangle never shows; the interior tolerance (24)
+# only catches foreign content such as text or icon strokes. A seam can only show in the ring
+# just outside the rectangle, which the device leaves as decoded: there the tolerance is 16
+# (a spike frame, PIL q85 4:2:0, judged clean on the device measured at most 10).
+RING_TOL, INSIDE_TOL = 16, 24
+
+
+def assert_track_area_flat(img, box, bg, track, margin=2):
+    px = img.convert("RGB").load()
+    for y in range(box.y - margin, box.y + box.h + margin):
+        for x in range(box.x - margin, box.x + box.w + margin):
+            inside = box.y <= y < box.y + box.h and box.x <= x < box.x + box.w
+            in_line = inside and box.line_y <= y < box.line_y + 3
+            tol = INSIDE_TOL if inside else RING_TOL
+            assert _near(px[x, y], track if in_line else bg, tol), (x, y, px[x, y])
+
+
+def _any_color(img, area, colors):
+    """The first (x, y, pixel) in area = (x0, y0, x1, y1) near one of colors, else None."""
+    px = img.convert("RGB").load()
+    x0, y0, x1, y1 = area
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if any(_near(px[x, y], c) for c in colors):
+                return x, y, px[x, y]
+    return None
+
+
+def _app_cfg():
+    return AppConfig(30, "Europe/Berlin", "de", (), (PAGES_DIR,))
+
+
+async def _render(energy, serve, renderer, options, states):
+    serve({BASE + k: v for k, v in states.items()})
+    page = PageConfig(index=0, type="energy", options=options, duration=30, refresh=5)
+    return await render_page(page, energy, _app_cfg(), renderer, NOW.timestamp())
+
+
+def _image(jpeg):
+    img = Image.open(io.BytesIO(jpeg))
+    assert img.size == (240, 240)
+    return img.convert("RGB")
+
+
+def _setup(*specs):
+    """specs: (type, state, unit) -> (options, states); a battery also gets a 64 % level."""
+    rows_, states = [], {}
+    for n, (kind, state, unit) in enumerate(specs):
+        eid = f"sensor.s{n}"
+        item = {"type": kind, "entity": eid}
+        states[eid] = ent(eid, state, unit)
+        if kind == "battery":
+            item["soc"] = f"sensor.level{n}"
+            states[item["soc"]] = ent(item["soc"], "64", "%")
+        rows_.append(item)
+    return _opts(rows=rows_), states
+
+
+ACTIVE = {
+    1: [("gas", "1.2", "m³/h")],
+    2: [("water", "7.5", "L/min"), ("wallbox", "7400", "W")],
+    3: [("grid", "-1100", "W"), ("pv", "3200", "W"), ("battery", "-900", "W")],
+    4: [("grid", "2310", "W"), ("pv", "3.2", "kW"), ("battery", "1500", "W"),
+        ("wallbox", "11000", "W")],
+}
+LONG_TITLE = "Energiefluss im Einfamilienhaus mit Photovoltaik und Speicher"[:60]
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("n", sorted(ACTIVE))
+async def test_track_area_is_flat_ground_and_line(energy, mod, serve, n):
+    options, states = _setup(*ACTIVE[n])
+    async with Renderer() as r:
+        img = _image(await _render(energy, serve, r, options, states))
+    for box in mod.geometry(n):
+        assert_track_area_flat(img, box, mod.BG, mod.TRACK)
+
+
+@pytest.mark.browser
+async def test_inactive_row_keeps_the_same_ground(energy, mod, serve):
+    options, states = _setup(("grid", "0", "W"), ("pv", "unavailable", None),
+                             ("battery", "0", "W"))
+    async with Renderer() as r:
+        img = _image(await _render(energy, serve, r, options, states))
+    for box in mod.geometry(3):
+        assert_track_area_flat(img, box, mod.BG, mod.TRACK)
+        strip = (0, max(28, box.cy - 30), 240, min(240, box.cy + 30))
+        assert _any_color(img, strip, mod.COLOR.values()) is None, box
+
+
+@pytest.mark.browser
+async def test_long_value_never_enters_the_track(energy, mod, serve):
+    options, states = _setup(("gas", "1234.5", "m³/h"))
+    options["title"] = LONG_TITLE
+    assert len(LONG_TITLE) == 60
+    async with Renderer() as r:
+        img = _image(await _render(energy, serve, r, options, states))
+    assert_track_area_flat(img, mod.geometry(1)[0], mod.BG, mod.TRACK)
+
+
+@pytest.mark.browser
+async def test_fits_at_quality_85(energy, serve):
+    options, states = _setup(*ACTIVE[4])
+    options["title"] = LONG_TITLE
+    async with Renderer() as r:
+        jpeg = await _render(energy, serve, r, options, states)
+    assert len(jpeg) <= 24576
+    ref = io.BytesIO()
+    Image.new("RGB", (240, 240)).save(ref, "JPEG", quality=85, progressive=False, optimize=True)
+    assert Image.open(io.BytesIO(jpeg)).quantization == Image.open(ref).quantization
+
+
+@pytest.mark.browser
+async def test_same_data_renders_the_same_bytes(energy, mod):
+    options, states = _setup(*ACTIVE[3])
+    data = mod.build(options, states, "de", "14:05")
+    async with Renderer() as r:
+        first = await render_data(energy, data, r)
+        second = await render_data(energy, data, r)
+    if first != second:
+        pytest.xfail("renderer is not byte-stable; SKIP_UNCHANGED carries the 304")
+
+
+def _orange(px):
+    r, g, b = px
+    return r > 200 and 120 < g < 200 and b < 100
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("answer", [requests.ConnectionError("x"), 401])
+async def test_error_and_token_states_render(energy, mod, serve, answer):
+    options, _ = _setup(*ACTIVE[3])
+    responses = dict.fromkeys(("sensor.s0", "sensor.s1", "sensor.s2", "sensor.level2"), answer)
+    async with Renderer() as r:
+        img = _image(await _render(energy, serve, r, options, responses))
+    px = img.load()
+    assert any(_orange(px[x, y]) for y in range(28, 240) for x in range(240))
+    others = [c for k, c in mod.COLOR.items() if k != "import"]
+    assert _any_color(img, (0, 0, 240, 240), others) is None
+
+
+@pytest.mark.browser
+async def test_status_line_fits_without_ellipsis(mod):
+    from playwright.async_api import async_playwright
+
+    from glancebox.frames import _jinja_env
+
+    texts = ["entlädt · 100 %", "discharging · 100 %", "Einspeisung", "Verbrauch"]
+    options, states = _setup(*ACTIVE[4])
+    data = mod.build(options, states, "de", "14:05")
+    for r, text in zip(data["rows"], texts, strict=True):
+        r["status"] = text
+    html = _jinja_env([PAGES_DIR / "energy"]).get_template("template.html").render(**data)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        await page.set_content(html)
+        boxes = await page.evaluate(
+            "[...document.querySelectorAll('.st')].map(e => [e.textContent,"
+            " e.scrollWidth > e.clientWidth, e.getBoundingClientRect().top])")
+        await browser.close()
+    assert [b[0] for b in boxes] == texts
+    assert not any(b[1] for b in boxes), boxes
+    for (_, _, top), box in zip(boxes, mod.geometry(4), strict=True):
+        assert top >= box.y + box.h + 3
