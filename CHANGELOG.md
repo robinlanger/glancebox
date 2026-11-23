@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0-beta.1]
+
+**Beta (pre-release).** Try it if you like to test new things; the stable version stays 0.6.3.
+Docker: use the image `ghcr.io/robinlanger/glancebox:0.7.0-beta.1` (`:latest` stays on 0.6.3).
+Display: upload `glancebox-ultra-0.7.0-beta.1.bin` on the device page. The Home Assistant add-on
+store does not offer betas.
+
+Checked so far on one GeekMagic SmallTV Ultra (2026-11-23), against a Home Assistant with
+simulated sensors: how the arrows look and move on both energy pages, no visible edge around
+the tracks, about 18 minutes of animation without a pause over 100 ms, the device page and an OTA
+update while the arrows run, and the offline screen when the server goes away. Not checked yet:
+a 24 h run, night mode with brightness 0, the Home Assistant add-on with this version, and the
+arm64 image on a Raspberry Pi.
+
 New page type `energy` with moving arrows drawn by the display. Update the server and the
 firmware together: the arrows need the new firmware. With older firmware the page works as a
 still picture.
