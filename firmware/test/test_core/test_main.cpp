@@ -2,7 +2,9 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
+#include "anim.h"
 #include "auth_throttle.h"
 #include "boot_guard.h"
 #include "frame_poll.h"
@@ -1165,6 +1167,157 @@ void test_http_head_etag_and_values_follow_existing_rules() {
   TEST_ASSERT_EQUAL(-1, head.localSec);
 }
 
+bool anim(const char* v, gb::AnimSpec* a) { return gb::parseAnim(v, strlen(v), a); }
+
+void test_anim_parses_the_example() {
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34D399,22", &a));
+  TEST_ASSERT_EQUAL_UINT8(2, a.count);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x0b, 0x0d, 0x12), a.background);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x23, 0x2a, 0x38), a.trackColor);
+  TEST_ASSERT_EQUAL_INT16(64, a.tracks[0].rect.x);
+  TEST_ASSERT_EQUAL_INT16(67, a.tracks[0].rect.y);
+  TEST_ASSERT_EQUAL_INT16(85, a.tracks[0].rect.w);
+  TEST_ASSERT_EQUAL_INT16(15, a.tracks[0].rect.h);
+  TEST_ASSERT_FALSE(a.tracks[0].left);
+  TEST_ASSERT_EQUAL_UINT8(48, a.tracks[0].speed);
+  TEST_ASSERT_TRUE(a.tracks[1].left);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x34, 0xd3, 0x99), a.tracks[1].color);
+}
+
+void test_anim_rejects_every_broken_limit() {
+  const char* bad[] = {
+      "",                                                    // empty
+      "2;0b0d12;232a38;64,67,85,15,r,ffb020,48",             // other version
+      "1;0b0d12;232a38",                                     // no track
+      "1;0b0d12;232a38;64,10,85,15,r,ffb020,48;64,50,85,15,r,ffb020,48;64,90,85,15,r,ffb020,48;"
+      "64,130,85,15,r,ffb020,48;64,170,85,15,r,ffb020,48",   // five tracks
+      "1;0b0d1;232a38;64,67,85,15,r,ffb020,48",              // 5 hex digits
+      "1;0b0d12;232a38;64,67,85,15,r,ffb02g,48",             // not hex
+      "1;0b0d12;232a38;200,67,85,15,r,ffb020,48",            // right edge beyond 240
+      "1;0b0d12;232a38;64,230,85,15,r,ffb020,48",            // bottom edge beyond 240
+      "1;0b0d12;232a38;64,67,15,15,r,ffb020,48",             // too narrow
+      "1;0b0d12;232a38;64,67,85,7,r,ffb020,48",              // too low
+      "1;0b0d12;232a38;64,67,85,33,r,ffb020,48",             // too high
+      "1;0b0d12;232a38;64,67,85,15,x,ffb020,48",             // direction
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,0",              // speed 0
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,201",            // speed too high
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,75,85,15,r,ffb020,48",  // overlap
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;",            // trailing separator
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020",                // field missing
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48,1",           // field too many
+      "1;0b0d12;232a38; 64,67,85,15,r,ffb020,48",            // blank inside
+      "1;0b0d12;232a38;-4,67,85,15,r,ffb020,48",             // sign
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,4800000000",     // digits overflow
+      "1;0b0d12;232a38;064,67,85,15,r,ffb020,48",            // leading zero
+  };
+  for (const char* v : bad) {
+    gb::AnimSpec a;
+    a.count = 3;
+    TEST_ASSERT_FALSE_MESSAGE(anim(v, &a), v);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, a.count, v);
+  }
+}
+
+void test_anim_touching_tracks_are_allowed() {
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,10,85,15,r,ffb020,48;64,25,85,15,l,ffb020,48", &a));
+  TEST_ASSERT_EQUAL_UINT8(2, a.count);
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;0,0,240,8,r,ffb020,1;0,232,16,8,l,ffb020,200", &a));
+}
+
+void test_anim_never_reads_beyond_len() {
+  // A buffer without NUL: bytes after len would extend the value into something else valid.
+  const char full[] = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48";
+  const size_t n = strlen(full);
+  std::vector<char> exact(full, full + n);  // heap block of exactly n bytes
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(gb::parseAnim(exact.data(), n, &a));
+  for (size_t cut = 0; cut < n; ++cut) {  // every truncation stays inside its len
+    std::vector<char> part(full, full + cut);
+    if (cut == 0) part.reserve(1);
+    gb::parseAnim(part.empty() ? "" : part.data(), cut, &a);
+  }
+  // "48" cut to "4" is still valid: proves the digits after len are not read.
+  TEST_ASSERT_TRUE(gb::parseAnim(full, n - 1, &a));
+  TEST_ASSERT_EQUAL_UINT8(4, a.tracks[0].speed);
+}
+
+void test_anim_value_length_limit() {
+  std::string v = "1;0b0d12;232a38";
+  const int ys[] = {10, 50, 90, 130};
+  for (int y : ys) v += ";100," + std::to_string(y) + ",140,32,l,ffffff,200";
+  TEST_ASSERT_TRUE(v.size() <= gb::kAnimMaxValueLen);
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim(v.c_str(), &a));
+  TEST_ASSERT_EQUAL_UINT8(4, a.count);
+  v += ";100,170,140,32,l,ffffff,200;100,210,140,32,l,ffffff,200";
+  TEST_ASSERT_TRUE(v.size() > gb::kAnimMaxValueLen);
+  a.count = 3;
+  TEST_ASSERT_FALSE(anim(v.c_str(), &a));
+  TEST_ASSERT_EQUAL_UINT8(0, a.count);
+  // exactly kAnimMaxValueLen + 1 characters of otherwise valid text up to the limit
+  std::string pad(gb::kAnimMaxValueLen + 1, '1');
+  TEST_ASSERT_FALSE(anim(pad.c_str(), &a));
+}
+
+void test_anim_same_geometry() {
+  gb::AnimSpec a, b;
+  const char* base = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22";
+  TEST_ASSERT_TRUE(anim(base, &a));
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,l,010203,99;64,133,85,15,r,040506,5", &b));
+  TEST_ASSERT_TRUE(gb::animSameGeometry(a, b));
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,68,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other y
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,r,ffb020,48", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other track count
+  TEST_ASSERT_TRUE(anim("1;0b0d22;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other background
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a48;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other track color
+}
+
+void test_http_head_carries_x_anim() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 304 Not Modified\r\nETag: \"a\"\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(1, head.anim.count);
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);   // absent: reset, nothing left over
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nX-Anim: 9;x\r\nContent-Length: 5\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);   // invalid: the frame itself still counts
+  TEST_ASSERT_EQUAL(5, head.contentLength);
+}
+
+void test_http_head_duplicate_x_anim_is_invalid() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+  // an invalid first one followed by a valid one stays invalid
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nX-Anim: 9\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+}
+
+void test_http_head_x_anim_name_case_blanks_and_length() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nx-anim:  1;0b0d12;232a38;64,67,85,15,r,ffb020,48  \r\n\r\n",
+                             &head));
+  TEST_ASSERT_EQUAL_UINT8(1, head.anim.count);
+  std::string v = "1;0b0d12;232a38";
+  const int ys[] = {10, 50, 90, 130};
+  for (int y : ys) v += ";100," + std::to_string(y) + ",140,32,l,ffffff,200";
+  const std::string ok = "HTTP/1.1 200 OK\r\nX-Anim: " + v + "\r\n\r\n";
+  TEST_ASSERT_TRUE(parseHead(ok.c_str(), &head));
+  TEST_ASSERT_EQUAL_UINT8(4, head.anim.count);
+  v += ";100,170,140,32,l,ffffff,200;100,210,140,32,l,ffffff,200";
+  const std::string longer = "HTTP/1.1 200 OK\r\nX-Anim: " + v + "\r\n\r\n";
+  TEST_ASSERT_TRUE(parseHead(longer.c_str(), &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+}
+
 void test_server_target() {
   gb::ServerTarget t;
   TEST_ASSERT_TRUE(gb::parseServerTarget("http://192.168.1.10:8090", &t));
@@ -1570,6 +1723,15 @@ int main() {
   RUN_TEST(test_http_head_rejects_garbage);
   RUN_TEST(test_http_head_bad_length_is_minus_one);
   RUN_TEST(test_http_head_etag_and_values_follow_existing_rules);
+  RUN_TEST(test_anim_parses_the_example);
+  RUN_TEST(test_anim_rejects_every_broken_limit);
+  RUN_TEST(test_anim_touching_tracks_are_allowed);
+  RUN_TEST(test_anim_never_reads_beyond_len);
+  RUN_TEST(test_anim_value_length_limit);
+  RUN_TEST(test_anim_same_geometry);
+  RUN_TEST(test_http_head_carries_x_anim);
+  RUN_TEST(test_http_head_duplicate_x_anim_is_invalid);
+  RUN_TEST(test_http_head_x_anim_name_case_blanks_and_length);
   RUN_TEST(test_server_target);
   RUN_TEST(test_server_target_userinfo);
   RUN_TEST(test_deadline_wraparound);

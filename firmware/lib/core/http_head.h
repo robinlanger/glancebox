@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "anim.h"
 #include "frame_poll.h"
 
 namespace gb {
@@ -17,6 +18,7 @@ struct HttpHead {
   char etag[kEtagCap];     // "" if absent or too long (storeEtag rules)
   int nextIn;              // parseNextIn of X-Next-In, -1 if absent
   int32_t localSec;        // parseLocalTime of X-Local-Time, -1 if absent
+  AnimSpec anim;           // parseAnim of X-Anim; count 0 if absent, invalid or sent twice
 };
 
 // data: the response head up to and including the blank line (CRLF CRLF), nothing after it.
