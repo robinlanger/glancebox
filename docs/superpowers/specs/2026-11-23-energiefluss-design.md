@@ -180,7 +180,7 @@ nach rechts und „hin“ nach links.
 | | entlädt | weg | Speicherfarbe | entlädt · 64 % / discharging · 64 % |
 | `gas` | Verbrauch | weg | Gasfarbe | Verbrauch / Usage |
 | `water` (Wasser) | Verbrauch | weg | Wasserfarbe | Verbrauch / Usage |
-| `wallbox` | lädt | hin | offen | lädt / charging |
+| `wallbox` | lädt | hin | Violett `#a78bfa` | lädt / charging |
 | jeder | Wert 0 | keine | grau | leer; beim Speicher nur der Ladestand |
 
 Die Wortlaute der Statuszeile sind ein Vorschlag (**Fable**); der Umsetzer darf sie anpassen,
@@ -217,7 +217,7 @@ Vorzeichen vor `invert` und Standard für `full` (**Entscheidung (Fable)**, alle
 | --- | --- | --- | --- |
 | `grid` | Bezug | 5000 W | |
 | `pv` | Erzeugung | 5000 W | |
-| `battery` | lädt | 3000 W | Konvention beim Bau gegen die HA-Doku prüfen und angleichen |
+| `battery` | **entlädt** | 3000 W | beim Bau geprüft (2026-11-23): HA-Energie-Dashboard sagt „positive values indicate discharging“ (Frontend-Text); negativ = lädt |
 | `wallbox` | lädt | 11000 W | |
 | `gas` | Verbrauch | 2 (in der Einheit des Sensors) | geraten für m³/h |
 | `water` | Verbrauch | 15 (in der Einheit des Sensors) | geraten für L/min |
@@ -590,7 +590,7 @@ Vor der Abnahme sagen Doku, CHANGELOG und Posts nichts über „getestet“.
 5. Rechenlast des Servers bei `refresh: 5` auf kleiner Hardware (Raspberry Pi mit HA OS;
    dort ist das Add-on bisher nicht erprobt).
 6. Ursache von `nerr=2`.
-7. Vorzeichen-Konvention für Speicherleistung in der HA-Doku.
+7. ~~Vorzeichen-Konvention für Speicherleistung in der HA-Doku.~~ Geklärt beim Bau: positiv = entlädt (siehe Tabelle „Wert, Tempo, Vorzeichen“).
 
 ## Beobachtungen außerhalb des Auftrags
 
