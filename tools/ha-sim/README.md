@@ -71,6 +71,26 @@ so editing them here and running `docker compose restart` picks up changes.
 
 Lights and the switch only follow their time pattern; turning them on or off does nothing.
 
+## Controllable energy sensors
+
+`config/packages/energy.yaml` adds fake energy sensors that you set by hand, for testing the
+energy-flow page (arrow direction and speed). Each sensor mirrors an `input_number` slider.
+Moving the slider (Settings -> Devices & services -> Helpers, entities named `Sim ...`) changes
+the sensor at once, no restart needed.
+
+| Sensor | Slider | Range | Unit |
+| --- | --- | --- | --- |
+| `sensor.grid_power` | `input_number.sim_grid_power` | -10000 to 10000, step 10 | W (positive = import, negative = export) |
+| `sensor.pv_power` | `input_number.sim_pv_power` | 0 to 10000, step 10 | W |
+| `sensor.battery_power` | `input_number.sim_battery_power` | -5000 to 5000, step 10 | W (positive = discharging, negative = charging) |
+| `sensor.wallbox_power` | `input_number.sim_wallbox_power` | -500 to 22000, step 10 | W |
+| `sensor.battery_level` | `input_number.sim_battery_level` | 0 to 100 | % |
+| `sensor.gas_flow` | `input_number.sim_gas_flow` | 0 to 5, step 0.1 | m³/h |
+| `sensor.water_flow` | `input_number.sim_water_flow` | 0 to 30, step 0.5 | L/min |
+
+The file also works in any other Home Assistant whose configuration includes `packages`
+(`homeassistant: packages: !include_dir_named packages`).
+
 ## Cleanup
 
 ```bash
