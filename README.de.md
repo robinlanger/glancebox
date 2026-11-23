@@ -48,7 +48,7 @@ Alle eingebauten Seiten:
 <tr>
 <td width="33%" valign="top"><b><code>homeassistant</code>: Kacheln</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home-Assistant-Seite mit vier Kacheln" width="240" height="240"><br>Bis zu vier große Werte, zum Beispiel Solarleistung und Akku.</td>
 <td width="33%" valign="top"><b><code>homeassistant</code>: Liste</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home-Assistant-Seite mit Liste" width="240" height="240"><br>Bis zu sechs Zeilen: Temperaturen, Türen, Fenster, Lichter.</td>
-<td width="33%"></td>
+<td width="33%" valign="top"><b><code>energy</code>: Energiefluss</b><br><img src="docs/img/templates/energy.png" alt="Energiefluss-Seite mit Netz, PV und Speicher" width="240" height="240"><br>Netz, PV, Speicher, Gas, Wasser oder Wallbox, mit Pfeilen, die das Display in Richtung des Flusses bewegt (ab Firmware 0.7.0; hier eine feste Stellung).</td>
 </tr>
 </table>
 

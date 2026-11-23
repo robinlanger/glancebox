@@ -41,7 +41,7 @@ Format wie die [Konfiguration](configuration.md) des Docker-Setups, mit zwei Unt
 
 - `timezone`, `lang` und der Ort einer `weather`-Seite sind optional; ohne sie gelten die Werte
   aus Home Assistant. Was du selbst einträgst, hat immer Vorrang.
-- Eine `homeassistant`-Seite braucht weder `url` noch `token`; sie liest aus diesem Home Assistant.
+- Eine `homeassistant`- oder `energy`-Seite braucht weder `url` noch `token`; sie liest aus diesem Home Assistant.
 
 Ist der Ordner leer (das Add-on konnte die Startdatei dort nicht speichern), zeigt die Benutzeroberfläche
 des Add-ons den Startinhalt: Lege damit im File editor die `config.yaml` an.

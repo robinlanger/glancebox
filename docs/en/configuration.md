@@ -53,9 +53,9 @@ pages:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `type` | required | Page type: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `ai` or one of your own. The ready-made ones are described in the [template catalog](templates/README.md). |
+| `type` | required | Page type: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `ai` or one of your own. The ready-made ones are described in the [template catalog](templates/README.md). |
 | `duration` | `interval` | How many seconds the page stays on the display. |
-| `refresh` | `duration` | A page is rendered again at most every `refresh` seconds. Use a larger value for data that changes slowly or for services that limit requests. |
+| `refresh` | `duration` | A page is rendered again at most every `refresh` seconds. Use a larger value for data that changes slowly or for services that limit requests. A page type can have its own default and minimum, for example `energy`: default 5, at least 2. |
 
 All other keys belong to the page type and are described below. Ready-made pages with preview pictures are in the [template catalog](templates/README.md).
 
@@ -155,6 +155,25 @@ Live values of up to six [Home Assistant](https://www.home-assistant.io/) entiti
     - sensor.pv_power
     - entity: sensor.grid_power
       label: Grid
+```
+
+## Page type: energy
+
+Energy flow from Home Assistant in 1 to 4 rows (`grid`, `pv`, `battery`, `gas`, `water`, `wallbox`), each with a power or flow sensor. On firmware 0.7.0 or newer the display draws moving arrows in the direction of the flow; older firmware shows a still picture. Without `refresh` the page uses 5 seconds. Address and token as for `homeassistant`. Full description, signs and options: [energy](templates/energy.md).
+
+```yaml
+- type: energy
+  url: ${HA_URL}
+  token: ${HA_TOKEN}
+  title: Power
+  rows:
+    - type: grid
+      entity: sensor.grid_power
+    - type: pv
+      entity: sensor.pv_power
+    - type: battery
+      entity: sensor.battery_power
+      soc: sensor.battery_level
 ```
 
 ## Page type: ai

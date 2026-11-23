@@ -28,8 +28,8 @@ could not save the starter file there), the web UI shows the starter content: cr
 `config.yaml` with it in the File editor. Restart the add-on after editing.
 All page types and options are described at <https://robinlanger.github.io/glancebox/templates/>.
 
-Home Assistant entities need no token here: a `homeassistant` page without `url` and `token` reads
-directly from this Home Assistant.
+Home Assistant entities need no token here: a `homeassistant` or `energy` page without `url` and
+`token` reads directly from this Home Assistant.
 
 ```yaml
 pages:
@@ -60,7 +60,7 @@ Restart the add-on after changing them.
 ## Security
 
 - **Admin access to Home Assistant:** the add-on uses Home Assistant's API so the
-  `homeassistant` page works without a token. Home Assistant grants add-ons this access only as
+  `homeassistant` and `energy` pages work without a token. Home Assistant grants add-ons this access only as
   an administrator. The add-on only reads entity states and the home settings. The access token
   belongs to this add-on and is revoked when you uninstall it.
 - **Display port (8090) has no login.** It serves only the pictures for the display and accepts

@@ -3,7 +3,9 @@
 
 Each entry of SAMPLES maps a preview name to (page type, options, data). `data` is the dict the
 page's fetch() would return; it goes straight into the page's template.html, so no network is
-needed. Later template pages add their entries here.
+needed. Later template pages add their entries here. For `energy`, `data` holds the Home
+Assistant states instead; the page's own build() turns them into the template data, and
+paint_arrows() draws one still position of the arrows the device would animate.
 
 Run it locally (uses the server's virtualenv, which has Chromium):
 
@@ -19,12 +21,14 @@ import io
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "server"))
 
-from glancebox.frames import _jinja_env
+from glancebox import anim as anim_format
+from glancebox.anim import Anim
+from glancebox.frames import ANIM_KEY, _jinja_env
 from glancebox.pages import load_page_types
 from glancebox.render import Renderer
 
@@ -100,7 +104,49 @@ SAMPLES: dict[str, tuple[str, dict, dict]] = {
              "delay_class": "major", "platform": "Gl. 4", "platform_changed": False,
              "cancelled": False},
         ]}),
+    "energy": ("energy", {"url": "http://homeassistant.lan:8123", "token": "${HA_TOKEN}",
+                          "lang": "en", "title": "Power",
+                          "rows": [{"type": "grid", "entity": "sensor.grid_power"},
+                                   {"type": "pv", "entity": "sensor.pv_power"},
+                                   {"type": "battery", "entity": "sensor.battery_power",
+                                    "soc": "sensor.battery_level"}]}, {
+        # Home Assistant states given to the page's build(); battery negative = charging.
+        "sensor.grid_power": {"state": "-1100", "attributes": {"unit_of_measurement": "W"}},
+        "sensor.pv_power": {"state": "3200", "attributes": {"unit_of_measurement": "W"}},
+        "sensor.battery_power": {"state": "-900", "attributes": {"unit_of_measurement": "W"}},
+        "sensor.battery_level": {"state": "64", "attributes": {"unit_of_measurement": "%"}}}),
 }
+ENERGY_CLOCK = "14:32"
+
+
+def paint_arrows(img: Image.Image, anim: Anim) -> None:
+    """Draw fixed chevrons into each track like the firmware does (tips at x + 9 + k * 18).
+
+    Same shape as drawChevron() in firmware/src/display.cpp: tip on the track's middle row,
+    ARROW_HALF_HEIGHT px up and down, ARROW_STROKE px wide towards the open side, clipped to the
+    track rectangle.
+    """
+    half, spacing = anim_format.ARROW_HALF_HEIGHT, anim_format.ARROW_SPACING
+    for tr in anim.tracks:
+        mask = Image.new("L", (tr.w, tr.h), 0)
+        draw = ImageDraw.Draw(mask)
+        left = tr.direction == "l"
+        d, step = (half, 1) if left else (-half, -1)
+        cy = tr.h // 2
+        for tx in range(spacing // 2, tr.w + spacing, spacing):
+            for s in range(anim_format.ARROW_STROKE):
+                x = tx + s * step
+                draw.line([(x + d, cy - half), (x, cy)], fill=255)
+                draw.line([(x + d, cy + half), (x, cy)], fill=255)
+        img.paste("#" + tr.color, (tr.x, tr.y), mask)
+
+
+def _energy_data(options: dict, states: dict) -> tuple[dict, Anim | None]:
+    """Template data and animation from the energy page's own build()."""
+    load_page_types([PAGES])
+    build = sys.modules["glancebox_pages.energy"].build
+    data = build(options, states, options["lang"], ENERGY_CLOCK)
+    return data, data.pop(ANIM_KEY, None)
 
 
 def _homeassistant_sizes(data: dict) -> None:
@@ -116,14 +162,20 @@ async def render_all(names: list[str]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     async with Renderer() as renderer:
         for name in names:
-            ptype, _options, data = SAMPLES[name]
+            ptype, options, data = SAMPLES[name]
+            anim = None
             if ptype == "homeassistant":
                 _homeassistant_sizes(data)
+            elif ptype == "energy":
+                data, anim = _energy_data(options, data)
             page_dir = PAGES / ptype
             html = _jinja_env([page_dir]).get_template("template.html").render(**data)
             jpeg = await renderer.render_html(html)
+            img = Image.open(io.BytesIO(jpeg)).convert("RGB")
+            if anim is not None:
+                paint_arrows(img, anim)
             buf = io.BytesIO()
-            Image.open(io.BytesIO(jpeg)).convert("RGB").quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(buf, "PNG", optimize=True)
+            img.quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(buf, "PNG", optimize=True)
             (OUT / f"{name}.png").write_bytes(buf.getvalue())
             print(f"{name}.png  {buf.tell()} bytes")
 

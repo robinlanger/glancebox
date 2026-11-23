@@ -48,7 +48,7 @@ All built-in pages:
 <tr>
 <td width="33%" valign="top"><b><code>homeassistant</code>: tiles</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home Assistant page with four tiles" width="240" height="240"><br>Up to four large values, for example solar power and battery.</td>
 <td width="33%" valign="top"><b><code>homeassistant</code>: list</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home Assistant page with a list" width="240" height="240"><br>Up to six rows: temperatures, doors, windows, lights.</td>
-<td width="33%"></td>
+<td width="33%" valign="top"><b><code>energy</code>: energy flow</b><br><img src="docs/img/templates/energy.png" alt="Energy page with grid, PV and battery" width="240" height="240"><br>Grid, PV, battery, gas, water or wallbox, with arrows the display moves in the direction of the flow (firmware 0.7.0 or newer; here one still position).</td>
 </tr>
 </table>
 

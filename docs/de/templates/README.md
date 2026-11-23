@@ -30,6 +30,12 @@ Zustand einer Uptime-Kuma-Statusseite: alles grün, oder welche Dienste seit wan
 
 Live-Werte von bis zu sechs Home-Assistant-Entitäten als große Kacheln oder Liste: Solarleistung, Temperaturen, offene Fenster, Lichter. Braucht einen langlebigen Zugangstoken. [Details](homeassistant.md)
 
+### energy
+
+![Vorschau der Seite energy](../../img/templates/energy.png)
+
+Energiefluss aus Home Assistant in bis zu vier Zeilen (Netz, PV, Speicher, Gas, Wasser, Wallbox), mit Pfeilen, die auf dem Display in Richtung des Flusses laufen (Firmware 0.7.0 oder neuer). [Details](energy.md)
+
 ## KI & Entwicklung
 
 ### ai

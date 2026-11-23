@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+New page type `energy` with moving arrows drawn by the display. Update the server and the
+firmware together: the arrows need the new firmware. With older firmware the page works as a
+still picture.
+
+### Added
+- Page type `energy`: energy flow from Home Assistant in 1 to 4 rows of the types `grid`, `pv`,
+  `battery`, `gas`, `water` and `wallbox`, each with an icon, a track, the value and a status
+  line (direction, battery level). Options: `title`, `animate`, `url`, `token` (not needed in
+  the add-on), `lang`, `refresh` (default 5, at least 2) and per row `type`, `entity`, `soc`
+  (battery level, battery only), `invert`, `full` (value for full arrow speed) and `min`
+  (smaller values count as 0). Signs follow the Home Assistant energy dashboard: grid positive
+  = import, battery positive = discharging.
+- Firmware: draws moving arrows on the tracks described by the new `X-Anim` response header of
+  the frame, also while the next frame is fetched and decoded. Frames without the header are
+  shown as before.
+- Firmware: `/status` has the new fields `frame_errors` (failed frame requests since boot),
+  `anim_tracks` (tracks animated now), `anim_gaps_100` and `anim_gaps_250` (pauses of the
+  animation longer than 100 or 250 ms) and `anim_run_s` (seconds of animation since boot).
+- Own pages: `DEFAULT_REFRESH` in `page.py` sets the page's default `refresh` when the page
+  entry has none.
+
 ## [0.6.3]
 
 Firmware update for the device web page and the setup portal. The server and the Home Assistant

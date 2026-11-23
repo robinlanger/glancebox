@@ -122,6 +122,7 @@ nav:
       - weather: templates/weather.md
       - kuma: templates/kuma.md
       - homeassistant: templates/homeassistant.md
+      - energy: templates/energy.md
       - ai: templates/ai.md
   - Your own pages: writing-pages.md
   - Help:
