@@ -1,7 +1,7 @@
 """Description of the device-side animation, sent in the ``X-Anim`` response header.
 
-The limits below must equal those in ``firmware/lib/core/anim.h`` (a parity test
-follows in a later task).
+The limits below must equal those in ``firmware/lib/core/anim.h``
+(checked by ``tests/test_anim_parity.py``).
 """
 
 import re
