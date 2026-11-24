@@ -39,6 +39,8 @@ case "$input" in
         -H "Authorization: Bearer $GLANCEBOX_PUSH_KEY" \
         -H "Content-Type: application/json" \
         --data-binary @- "${GLANCEBOX_URL%/}/api/v1/push/claude" >/dev/null 2>&1 &
+      # The usage hook (glancebox-usage.sh) skips its fetch for a minute after this.
+      { date +%s > "${env_file%/*}/usage.stamp"; } 2>/dev/null
     fi
     ;;
 esac

@@ -4,9 +4,7 @@ import json
 import shutil
 import socket
 import subprocess
-import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -18,29 +16,6 @@ STDIN = json.dumps({"model": {"display_name": "Opus"}, "rate_limits": {
 
 pytestmark = pytest.mark.skipif(not (shutil.which("sh") and shutil.which("curl")),
                                 reason="needs sh and curl")
-
-
-@pytest.fixture
-def server():
-    received: list[dict] = []
-
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
-            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-            received.append({"path": self.path, "auth": self.headers.get("Authorization"),
-                             "type": self.headers.get("Content-Type"), "body": body})
-            self.send_response(204)
-            self.end_headers()
-
-        def log_message(self, *args):
-            pass
-
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}", received
-    httpd.shutdown()
-    httpd.server_close()
 
 
 def write_env(tmp_path: Path, url: str, key: str = KEY) -> Path:
@@ -121,3 +96,15 @@ def test_silent_without_config(tmp_path):
     xdg.mkdir()
     r = run(xdg)
     assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
+
+
+def test_writes_usage_stamp(tmp_path, server):
+    """A send stamps usage.stamp, so the usage hook does not fetch the same values again."""
+    url, received = server
+    xdg = write_env(tmp_path, url)
+    stamp = xdg / "glancebox" / "usage.stamp"
+    run(xdg, stdin='{"model": {"display_name": "Opus"}}')
+    assert not stamp.exists()
+    run(xdg)
+    wait_for(received)
+    assert abs(int(stamp.read_text()) - time.time()) < 5
