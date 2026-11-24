@@ -48,7 +48,8 @@ case "$input" in
             --data-binary @"$body" "${GLANCEBOX_URL%/}/api/v1/push/claude"
         rm -f "$body"
       ) < /dev/null > /dev/null 2>&1 &
-      # The usage hook (glancebox-usage.sh) skips its fetch for a minute after this.
+      # The usage hook (glancebox-usage.sh) fetches no sooner than a minute after this, and
+      # drops a fetch it has waiting when this stamp changes.
       { date +%s > "${env_file%/*}/usage.stamp"; } 2>/dev/null
     fi
     ;;

@@ -233,6 +233,7 @@ def test_claude_report_unhashable_kind_is_skipped(ai):
     data = ai.fetch(OPTIONS, ctx(report(session=None, extra=extra)))
     assert [r["label"] for r in data["rows"]] == ["Woche"]
 
+
 def test_claude_report_through_the_inbox(ai):
     inbox = PushInbox()
     inbox.put("claude", report(weekly=(95.0, THURSDAY_9)), RECEIVED)

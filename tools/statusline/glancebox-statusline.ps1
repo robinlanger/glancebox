@@ -52,7 +52,8 @@ if ($url -and $key -and $inputText.Contains('"rate_limits"')) {
         Start-Process -FilePath $shell -WindowStyle Hidden `
             -ArgumentList '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
     } catch {}
-    # The usage hook (glancebox-usage.ps1) skips its fetch for a minute after this.
+    # The usage hook (glancebox-usage.ps1) fetches no sooner than a minute after this, and
+    # drops a fetch it has waiting when this stamp changes.
     try {
         [IO.File]::WriteAllText((Join-Path $env:APPDATA 'glancebox\usage.stamp'),
             "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())`n")

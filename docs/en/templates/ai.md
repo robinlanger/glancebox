@@ -168,11 +168,11 @@ If you already have a status line, pass its command to the script as arguments. 
 
 The status line only exists when you use Claude Code in the terminal. If you use it through T3 Code, the Claude desktop app, an IDE extension or another app that runs Claude Code without its terminal view, there is no status line, and the display stops at the last values. For that case there is a second script.
 
-After an answer of Claude Code, the script asks Claude Code in the background for its usage report (the same as `/usage`) and sends it to the server. It does this at most once a minute, takes about 3 seconds and costs no tokens.
+After an answer of Claude Code, the script asks Claude Code in the background for its usage report (the same as `/usage`) and sends it to the server. Each fetch takes about 3 seconds and costs no tokens. The script fetches at most once a minute, so the display follows an answer within about a minute. If several answers come within one minute, it sends once right away and once more when the minute is over, so the last answer is covered too.
 
-You need a current Claude Code (checked with version 2.1.330, see `claude --version`) and a Claude plan (Pro or Max). Steps 1 to 3 under [Claude](#claude) stay the same; you need `push_key`, the page and `push.env` as described there.
+The `claude` command must be installed on this computer and work in a terminal there. The desktop app alone may not give you this command. Then check that Claude Code is current (checked with version 2.1.330, see `claude --version`). You also need a Claude plan (Pro or Max). Steps 1 to 3 under [Claude](#claude) stay the same; you need `push_key`, the page and `push.env` as described there.
 
-1. **The script.** Copy `tools/statusline/glancebox-usage.sh` to a place of your choice, for example `~/.claude/glancebox-usage.sh`, and make it executable:
+1. **The script.** On Windows, follow [Windows](#windows) instead. Copy `tools/statusline/glancebox-usage.sh` to a place of your choice, for example `~/.claude/glancebox-usage.sh`, and make it executable:
 
    ```sh
    chmod +x ~/.claude/glancebox-usage.sh
@@ -197,11 +197,19 @@ You need a current Claude Code (checked with version 2.1.330, see `claude --vers
 
 3. **New session.** Claude Code reads hooks when a session starts. Open a new session or thread in your app; one that was already open does not run the script.
 
-4. **Check.** Ask Claude Code something in the app. After the answer, open `http://<server>:8080/` and wait for the next refresh of the page (up to 30 seconds): `As of` shows the time of the answer.
+4. **Check.** Ask Claude Code something in the app. After the answer, open `http://<server>:8080/` and wait for the next refresh of the page (up to 30 seconds): `As of` shows the time of the answer, or at most about a minute later.
 
-**Use both:** if you also work in the terminal, keep the status line. Both send the same limits. Right after the status line has sent, the hook script stays quiet for a minute, so it does not fetch twice.
+**Use both:** if you also work in the terminal, keep the status line. Both send the same limits. For a minute after the status line has sent, the hook script does not fetch. If the status line sends again in that minute, the hook script skips its fetch; otherwise it fetches once when the minute is over.
 
-**Experimental:** Anthropic marks this usage report as experimental. A Claude Code update can change or remove it. Then the script sends nothing and the page keeps showing the last values with their `As of` time. With an API key instead of a Claude plan, or with an older Claude Code, there is no usage report either.
+**Your other hooks:** each fetch is a very short Claude Code session of its own, so your other hooks run for it too, for example one that plays a sound when Claude stops. Such a hook can skip these runs: the environment variable `GLANCEBOX_USAGE` is `1` there. In a sh hook, put this line at the top:
+
+```sh
+[ "$GLANCEBOX_USAGE" = 1 ] && exit 0
+```
+
+**What was tested:** this project tried Claude Code without its terminal view on macOS: a headless session (`claude -p`) ran the hooks, and the script sent the usage report to a local test receiver. Not tried yet are live sessions in T3 Code, the desktop app and IDE extensions, and Windows and Linux.
+
+**Experimental:** Anthropic marks this usage report as experimental. A Claude Code update can change or remove it. Then the script may send nothing, or the page may show `No limit data`, until this project is updated. When nothing is sent, the page keeps showing the last values with their `As of` time. With an API key instead of a Claude plan, or with an older Claude Code, there is no usage report either.
 
 **Without Claude Code:** the hook only runs when you use Claude Code. If you want the display to follow your use of claude.ai in the browser or on your phone too, you can run the script from a timer of your system (cron, launchd or the Windows Task Scheduler), for example every 5 minutes. The script needs `push.env` and must find `claude` there as well. This project does not set this up and has not tested it.
 
@@ -222,7 +230,7 @@ You need a current Claude Code (checked with version 2.1.330, see `claude --vers
 
    Write the path with forward slashes `/`: Claude Code may run the command through Git Bash, which swallows backslashes. An existing status line goes at the end of the command, as above. With Git Bash installed you can also use the `.sh` script as on macOS.
 
-For [Claude Code in other apps](#claude-code-in-other-apps), copy `tools\statusline\glancebox-usage.ps1` as well and add to the same `settings.json`:
+For [Claude Code in other apps](#claude-code-in-other-apps) you need step 1 above; steps 2 and 3 are for the status line only. Copy `tools\statusline\glancebox-usage.ps1`, for example to `%USERPROFILE%\.claude\`, and add to `%USERPROFILE%\.claude\settings.json`:
 
 ```json
 {
@@ -339,7 +347,7 @@ The page uses GitHub's [billing usage API](https://docs.github.com/en/rest/billi
 
 ## Privacy & security
 
-- **Only `rate_limits` or `usage_report` is stored.** The status-line JSON also contains things like the working folder and the session ID. The server drops everything except `rate_limits` straight away, writes nothing to disk and does not log the content.
+- **Only `rate_limits` or `usage_report` is stored.** The status-line JSON also contains things like the working folder and the session ID. The server drops everything except `rate_limits` and `usage_report` straight away, writes nothing to disk and does not log the content.
 - **The hook script** sends one JSON line of Claude Code's usage report. The server keeps only `usage_report` from it (your limits and the cost counters of the fetch) and drops the rest, in RAM only as above.
 - **No Anthropic token leaves your computer.** The status-line script only sends the text Claude Code gives the status line, with the Glance Box key. The hook script does not read your Claude login either: it runs `claude` the way you would and sends the line it gets back. The server never logs in to Anthropic.
 - **The push key** only lets someone send values to your display. Keep it in `.env` on the server and in `push.env` (`chmod 600`) on your computer, never in `config.yaml`.
@@ -352,7 +360,7 @@ The page uses GitHub's [billing usage API](https://docs.github.com/en/rest/billi
 - **`No limit data`:** a push arrived but without usable limit windows, for example the `curl` test above with `{"rate_limits":{}}`. The next answer of Claude Code replaces it with the real values.
 - **The status line is empty:** that is normal without your own status line. To show one, pass its command as arguments.
 - **The display only updates when I use the terminal:** the status line only runs in Claude Code's terminal view. For T3 Code, the desktop app or an IDE extension, set up the hook script as in [Claude Code in other apps](#claude-code-in-other-apps).
-- **Nothing arrives from the hook:** first run the script by hand in a terminal with `~/.claude/glancebox-usage.sh`. It prints nothing; after about 5 seconds and the next refresh of the page, `As of` should show the current time. The script fetches at most once a minute, so wait a minute after the last send before you try. If `As of` does not change, test whether Claude Code gives a usage report at all: `claude -p "/usage" --output-format stream-json --verbose --no-session-persistence | grep -c usage_report` should print `1`. `0` means an older Claude Code, a login with an API key instead of a Claude plan, or an error; then also check `push.env` with the `curl` test above. If the script works by hand but not from the app: open a new session or thread (hooks are read at the start), and check that the app finds `claude`. An app started from the Dock or start menu may not know the folder your terminal finds it in. `command -v claude` in a terminal shows that folder; put it in front of the hook command, for example `PATH=$HOME/.local/bin:$PATH ~/.claude/glancebox-usage.sh`.
+- **Nothing arrives from the hook:** first run the script by hand in a terminal with `~/.claude/glancebox-usage.sh`. It prints nothing; after about 5 seconds and the next refresh of the page, `As of` should show the current time. The script fetches at most once a minute: if it sent less than a minute ago, it waits until the minute is over, so `As of` can take up to a minute longer. If `As of` does not change, test whether Claude Code gives a usage report at all: `claude -p "/usage" --output-format stream-json --verbose --no-session-persistence | grep -c usage_report` should print `1`. `0` means an older Claude Code, a login with an API key instead of a Claude plan, or an error; then also check `push.env` with the `curl` test above. `1` alone is not enough: run the command again without `| grep -c usage_report`. If the output contains `"limits":[]` or `"rate_limits":null`, Claude Code has no plan limits for this login, and the script sends nothing. If the script works by hand but not from the app: open a new session or thread (hooks are read at the start), and check that the app finds `claude`. An app started from the Dock or start menu may not know the folder your terminal finds it in. `command -v claude` in a terminal shows the path of `claude`; take the part before `/claude` and put it in front of the hook command, for example `PATH=$HOME/.local/bin:$PATH ~/.claude/glancebox-usage.sh`.
 - **`No data` with a red header (API providers):** the provider could not be reached or refused the request. The server log has a line like `ai openai-api: no data: HTTPError (HTTP 401)`. `401` or `403` means the key is wrong, expired or lacks the permission; check `.env` and run `docker compose up -d` after changing it. For `xai-api` a `404` usually means a wrong `team_id`. For `copilot` a `403` means the token lacks the permission `Plan` or GitHub does not accept a fine-grained token for your account; then try a classic token as described in [GitHub Copilot](#github-copilot). A `404` means a wrong `username`. The page tries again on its next refresh.
 - **The Anthropic amount looks low:** Anthropic updates the cost data about every 4 hours; `As of` shows the time of the data.
 - **The server refuses to start and names `key`, `team_id` or `budget`:** `key` (and `team_id` for `xai-api`) must be set and not empty, for example because the variable is missing in `.env`; `budget` must be a positive number and only works with `anthropic-api` and `openai-api`.

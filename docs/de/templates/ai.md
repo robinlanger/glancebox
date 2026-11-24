@@ -168,11 +168,11 @@ Hast du schon eine Statuszeile, gib ihren Befehl dem Skript als Argumente mit. D
 
 Die Statuszeile gibt es nur, wenn du Claude Code im Terminal nutzt. Arbeitest du über T3 Code, die Desktop-App von Claude, eine IDE-Erweiterung oder eine andere App, die Claude Code ohne seine Terminal-Ansicht ausführt, gibt es keine Statuszeile, und das Display bleibt bei den letzten Werten stehen. Für diesen Fall gibt es ein zweites Skript.
 
-Nach einer Antwort von Claude Code fragt das Skript Claude Code im Hintergrund nach seinem Nutzungsbericht (dasselbe wie `/usage`) und schickt ihn an den Server. Das passiert höchstens einmal pro Minute, dauert etwa 3 Sekunden und kostet keine Tokens.
+Nach einer Antwort von Claude Code fragt das Skript Claude Code im Hintergrund nach seinem Nutzungsbericht (dasselbe wie `/usage`) und schickt ihn an den Server. Jeder Abruf dauert etwa 3 Sekunden und kostet keine Tokens. Das Skript fragt höchstens einmal pro Minute ab, das Display folgt einer Antwort also innerhalb von etwa einer Minute. Kommen in einer Minute mehrere Antworten, schickt es einmal sofort und noch einmal, wenn die Minute um ist. So kommt auch die letzte Antwort an.
 
-Du brauchst ein aktuelles Claude Code (geprüft mit Version 2.1.330, siehe `claude --version`) und ein Claude-Abo (Pro oder Max). Die Schritte 1 bis 3 unter [Claude](#claude) bleiben gleich; `push_key`, die Seite und `push.env` brauchst du wie dort beschrieben.
+Der Befehl `claude` muss auf diesem Rechner installiert sein und dort im Terminal funktionieren. Die Desktop-App allein bringt diesen Befehl unter Umständen nicht mit. Prüfe dann, ob Claude Code aktuell ist (geprüft mit Version 2.1.330, siehe `claude --version`). Außerdem brauchst du ein Claude-Abo (Pro oder Max). Die Schritte 1 bis 3 unter [Claude](#claude) bleiben gleich; `push_key`, die Seite und `push.env` brauchst du wie dort beschrieben.
 
-1. **Das Skript.** Kopiere `tools/statusline/glancebox-usage.sh` an einen Ort deiner Wahl, zum Beispiel `~/.claude/glancebox-usage.sh`, und mache es ausführbar:
+1. **Das Skript.** Unter Windows folge stattdessen [Windows](#windows). Kopiere `tools/statusline/glancebox-usage.sh` an einen Ort deiner Wahl, zum Beispiel `~/.claude/glancebox-usage.sh`, und mache es ausführbar:
 
    ```sh
    chmod +x ~/.claude/glancebox-usage.sh
@@ -197,11 +197,19 @@ Du brauchst ein aktuelles Claude Code (geprüft mit Version 2.1.330, siehe `clau
 
 3. **Neue Sitzung.** Claude Code liest Hooks beim Start einer Sitzung. Öffne in deiner App eine neue Sitzung oder einen neuen Thread; eine schon offene führt das Skript nicht aus.
 
-4. **Prüfen.** Frag Claude Code in der App etwas. Öffne nach der Antwort `http://<server>:8080/` und warte auf das nächste Neuladen der Seite (bis zu 30 Sekunden): `Stand` zeigt die Zeit der Antwort.
+4. **Prüfen.** Frag Claude Code in der App etwas. Öffne nach der Antwort `http://<server>:8080/` und warte auf das nächste Neuladen der Seite (bis zu 30 Sekunden): `Stand` zeigt die Zeit der Antwort oder höchstens etwa eine Minute später.
 
-**Beides nutzen:** Arbeitest du auch im Terminal, behalte die Statuszeile. Beide schicken dieselben Limits. Direkt nachdem die Statuszeile gesendet hat, hält das Hook-Skript eine Minute still, es fragt also nicht doppelt ab.
+**Beides nutzen:** Arbeitest du auch im Terminal, behalte die Statuszeile. Beide schicken dieselben Limits. In der Minute, nachdem die Statuszeile gesendet hat, fragt das Hook-Skript nicht ab. Sendet die Statuszeile in dieser Minute erneut, lässt das Hook-Skript seinen Abruf weg; sonst fragt es einmal ab, wenn die Minute um ist.
 
-**Experimentell:** Anthropic kennzeichnet diesen Nutzungsbericht als experimentell. Ein Update von Claude Code kann ihn ändern oder entfernen. Dann schickt das Skript nichts, und die Seite zeigt weiter die letzten Werte mit ihrer Uhrzeit (`Stand`). Mit einem API-Key statt eines Claude-Abos oder mit einem älteren Claude Code gibt es ebenfalls keinen Nutzungsbericht.
+**Deine anderen Hooks:** Jeder Abruf ist eine eigene, sehr kurze Sitzung von Claude Code. Deine anderen Hooks laufen deshalb auch dafür, zum Beispiel einer, der einen Ton spielt, wenn Claude fertig ist. Solch ein Hook kann diese Läufe überspringen: Die Umgebungsvariable `GLANCEBOX_USAGE` ist dort `1`. In einem sh-Hook setz diese Zeile an den Anfang:
+
+```sh
+[ "$GLANCEBOX_USAGE" = 1 ] && exit 0
+```
+
+**Was getestet ist:** Dieses Projekt hat Claude Code ohne Terminal-Ansicht unter macOS ausprobiert: Eine Sitzung ohne Oberfläche (`claude -p`) hat die Hooks ausgeführt, und das Skript hat den Nutzungsbericht an einen lokalen Testempfänger geschickt. Noch nicht ausprobiert sind laufende Sitzungen in T3 Code, der Desktop-App und IDE-Erweiterungen sowie Windows und Linux.
+
+**Experimentell:** Anthropic kennzeichnet diesen Nutzungsbericht als experimentell. Ein Update von Claude Code kann ihn ändern oder entfernen. Dann schickt das Skript unter Umständen nichts, oder die Seite zeigt `Keine Limitdaten`, bis dieses Projekt angepasst ist. Kommt nichts an, zeigt die Seite weiter die letzten Werte mit ihrer Uhrzeit (`Stand`). Mit einem API-Key statt eines Claude-Abos oder mit einem älteren Claude Code gibt es ebenfalls keinen Nutzungsbericht.
 
 **Ohne Claude Code:** Der Hook läuft nur, wenn du Claude Code nutzt. Soll das Display auch deiner Nutzung von claude.ai im Browser oder am Handy folgen, kannst du das Skript über einen Zeitplaner deines Systems starten (cron, launchd oder die Windows-Aufgabenplanung), zum Beispiel alle 5 Minuten. Auch dort braucht das Skript `push.env` und muss `claude` finden. Dieses Projekt richtet das nicht ein und hat es nicht getestet.
 
@@ -222,7 +230,7 @@ Du brauchst ein aktuelles Claude Code (geprüft mit Version 2.1.330, siehe `clau
 
    Schreib den Pfad mit Schrägstrichen `/`: Claude Code führt den Befehl unter Umständen über Git Bash aus, und Git Bash verschluckt Backslashes. Eine vorhandene Statuszeile kommt wie oben ans Ende des Befehls. Mit installiertem Git Bash kannst du auch das `.sh`-Skript wie unter macOS nehmen.
 
-Für [Claude Code in anderen Apps](#claude-code-in-anderen-apps) kopiere zusätzlich `tools\statusline\glancebox-usage.ps1` und ergänze in derselben `settings.json`:
+Für [Claude Code in anderen Apps](#claude-code-in-anderen-apps) brauchst du Schritt 1 oben; die Schritte 2 und 3 gelten nur für die Statuszeile. Kopiere `tools\statusline\glancebox-usage.ps1`, zum Beispiel nach `%USERPROFILE%\.claude\`, und ergänze in `%USERPROFILE%\.claude\settings.json`:
 
 ```json
 {
@@ -339,7 +347,7 @@ Die Seite nutzt die [Billing-Usage-API](https://docs.github.com/en/rest/billing/
 
 ## Datenschutz & Sicherheit
 
-- **Nur `rate_limits` oder `usage_report` wird gespeichert.** Das JSON der Statuszeile enthält auch Dinge wie den Arbeitsordner und die Sitzungs-ID. Der Server verwirft sofort alles außer `rate_limits`, schreibt nichts auf die Platte und protokolliert den Inhalt nicht.
+- **Nur `rate_limits` oder `usage_report` wird gespeichert.** Das JSON der Statuszeile enthält auch Dinge wie den Arbeitsordner und die Sitzungs-ID. Der Server verwirft sofort alles außer `rate_limits` und `usage_report`, schreibt nichts auf die Platte und protokolliert den Inhalt nicht.
 - **Das Hook-Skript** schickt eine JSON-Zeile aus dem Nutzungsbericht von Claude Code. Der Server behält davon nur `usage_report` (deine Limits und die Kostenzähler des Abrufs) und verwirft den Rest, wie oben nur im Arbeitsspeicher.
 - **Kein Anthropic-Token verlässt deinen Rechner.** Das Statuszeilen-Skript schickt nur den Text, den Claude Code der Statuszeile gibt, zusammen mit dem Glance-Box-Schlüssel. Auch das Hook-Skript liest dein Claude-Login nicht: Es startet `claude` so, wie du es tun würdest, und schickt die Zeile, die zurückkommt. Der Server meldet sich nie bei Anthropic an.
 - **Der Push-Schlüssel** erlaubt nur, Werte an dein Display zu schicken. Bewahre ihn in `.env` auf dem Server und in `push.env` (`chmod 600`) auf deinem Rechner auf, nie in `config.yaml`.
@@ -352,7 +360,7 @@ Die Seite nutzt die [Billing-Usage-API](https://docs.github.com/en/rest/billing/
 - **`Keine Limitdaten`:** ein Push kam an, aber ohne brauchbare Limitfenster, zum Beispiel der `curl`-Test oben mit `{"rate_limits":{}}`. Die nächste Antwort von Claude Code ersetzt ihn durch die echten Werte.
 - **Die Statuszeile ist leer:** das ist ohne eigene Statuszeile normal. Um eine zu zeigen, gib ihren Befehl als Argumente mit.
 - **Das Display aktualisiert sich nur, wenn ich im Terminal arbeite:** die Statuszeile läuft nur in der Terminal-Ansicht von Claude Code. Für T3 Code, die Desktop-App oder eine IDE-Erweiterung richte das Hook-Skript ein, wie unter [Claude Code in anderen Apps](#claude-code-in-anderen-apps) beschrieben.
-- **Vom Hook kommt nichts an:** starte das Skript zuerst von Hand in einem Terminal mit `~/.claude/glancebox-usage.sh`. Es gibt nichts aus; nach etwa 5 Sekunden und dem nächsten Neuladen der Seite sollte `Stand` die aktuelle Uhrzeit zeigen. Das Skript fragt höchstens einmal pro Minute ab, warte also eine Minute nach dem letzten Senden, bevor du es probierst. Ändert sich `Stand` nicht, teste, ob Claude Code überhaupt einen Nutzungsbericht liefert: `claude -p "/usage" --output-format stream-json --verbose --no-session-persistence | grep -c usage_report` sollte `1` ausgeben. `0` heißt: ein älteres Claude Code, eine Anmeldung mit API-Key statt Claude-Abo oder ein Fehler; prüfe dann auch `push.env` mit dem `curl`-Test oben. Klappt es von Hand, aber nicht aus der App: Öffne eine neue Sitzung oder einen neuen Thread (Hooks werden beim Start gelesen) und prüfe, ob die App `claude` findet. Eine App, die du über das Dock oder das Startmenü startest, kennt den Ordner, in dem dein Terminal `claude` findet, unter Umständen nicht. `command -v claude` im Terminal zeigt diesen Ordner; setz ihn vor den Hook-Befehl, zum Beispiel `PATH=$HOME/.local/bin:$PATH ~/.claude/glancebox-usage.sh`.
+- **Vom Hook kommt nichts an:** starte das Skript zuerst von Hand in einem Terminal mit `~/.claude/glancebox-usage.sh`. Es gibt nichts aus; nach etwa 5 Sekunden und dem nächsten Neuladen der Seite sollte `Stand` die aktuelle Uhrzeit zeigen. Das Skript fragt höchstens einmal pro Minute ab: Hat es vor weniger als einer Minute gesendet, wartet es, bis die Minute um ist, und `Stand` ändert sich bis zu eine Minute später. Ändert sich `Stand` nicht, teste, ob Claude Code überhaupt einen Nutzungsbericht liefert: `claude -p "/usage" --output-format stream-json --verbose --no-session-persistence | grep -c usage_report` sollte `1` ausgeben. `0` heißt: ein älteres Claude Code, eine Anmeldung mit API-Key statt Claude-Abo oder ein Fehler; prüfe dann auch `push.env` mit dem `curl`-Test oben. `1` allein reicht nicht: Führ den Befehl noch einmal ohne `| grep -c usage_report` aus. Steht in der Ausgabe `"limits":[]` oder `"rate_limits":null`, hat Claude Code für diese Anmeldung keine Abo-Limits, und das Skript schickt nichts. Klappt es von Hand, aber nicht aus der App: Öffne eine neue Sitzung oder einen neuen Thread (Hooks werden beim Start gelesen) und prüfe, ob die App `claude` findet. Eine App, die du über das Dock oder das Startmenü startest, kennt den Ordner, in dem dein Terminal `claude` findet, unter Umständen nicht. `command -v claude` im Terminal zeigt den Pfad von `claude`; nimm den Teil vor `/claude` und setz ihn vor den Hook-Befehl, zum Beispiel `PATH=$HOME/.local/bin:$PATH ~/.claude/glancebox-usage.sh`.
 - **`Keine Daten` mit roter Kopfzeile (API-Anbieter):** der Anbieter war nicht erreichbar oder hat die Anfrage abgelehnt. Im Log des Servers steht eine Zeile wie `ai openai-api: no data: HTTPError (HTTP 401)`. `401` oder `403` heißt, der Key ist falsch, abgelaufen oder hat nicht das nötige Recht; prüfe `.env` und führe nach einer Änderung `docker compose up -d` aus. Bei `xai-api` heißt `404` meist, dass `team_id` nicht stimmt. Bei `copilot` heißt `403`, dass dem Token das Recht `Plan` fehlt oder GitHub für dein Konto kein Fine-grained Token annimmt; dann probier ein klassisches Token wie unter [GitHub Copilot](#github-copilot) beschrieben. `404` heißt, dass `username` nicht stimmt. Die Seite versucht es beim nächsten Neuladen wieder.
 - **Der Anthropic-Betrag wirkt zu niedrig:** Anthropic aktualisiert die Kostendaten etwa alle 4 Stunden; `Stand` zeigt die Zeit der Daten.
 - **Der Server startet nicht und nennt `key`, `team_id` oder `budget`:** `key` (und bei `xai-api` `team_id`) muss gesetzt und nicht leer sein, etwa weil die Variable in `.env` fehlt; `budget` muss eine positive Zahl sein und geht nur mit `anthropic-api` und `openai-api`.

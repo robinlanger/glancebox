@@ -70,7 +70,10 @@ laufen auch in T3 Code (ein `SessionStart`-Hook hat dort gefeuert).
    sie für den eigenen `claude`-Aufruf, damit dessen Hooks keine Schleife auslösen.
 3. Drosselung: höchstens ein Abruf pro 60 Sekunden, über eine Zeitstempel-Datei neben
    `push.env`. Die Statuszeilen-Skripte aktualisieren denselben Zeitstempel, wenn sie senden;
-   im Terminal ruft der Hook deshalb in der Regel nicht zusätzlich ab.
+   im Terminal ruft der Hook deshalb in der Regel nicht zusätzlich ab. Ein Hook innerhalb der
+   Minute lässt genau einen Abruf für das Ende der Minute warten (Marker `usage.pending`), damit
+   auch die letzte Antwort einer Serie ankommt; hat sich der Zeitstempel bis dahin geändert,
+   entfällt er.
 4. Ruft den Befehl oben auf, nimmt die Zeile mit `"usage_report"` und schickt sie wie bisher
    an `/api/v1/push/claude`. Ohne diese Zeile (altes Claude Code, API-Schlüssel, Fehler)
    sendet es nichts, die letzten Werte bleiben stehen.

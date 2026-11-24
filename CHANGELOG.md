@@ -14,18 +14,22 @@ If you use the status-line script, replace your copy of `glancebox-statusline.sh
 Checked on macOS with Claude Code 2.1.330 (2026-11-24): a headless session (`claude -p`) fires
 the hooks `Stop` and `PostToolUse`; the real script, started by a real `Stop` hook, delivered a
 real usage report to a local test listener; the provider turned a real report into the two rows.
-Not checked: the PowerShell script (never run, no Windows available), Linux, a live session in
-T3 Code or the desktop app, the display itself, and the Home Assistant add-on.
+Not checked: the PowerShell scripts (the new hook and the stamp line added to the status-line
+script; never run, no Windows available), the changed status-line script in a live terminal
+session, Linux, a live session in T3 Code or the desktop app, the display itself, and the Home
+Assistant add-on.
 
 ### Added
 - Hook scripts `tools/statusline/glancebox-usage.sh` (macOS, Linux) and `glancebox-usage.ps1`
   (Windows) for the Claude Code hooks `Stop` and `PostToolUse`. They return at once and print
   nothing; in the background they run `claude -p "/usage"` (about 3 seconds, no tokens, no saved
   session) and post the line with the usage report to `/api/v1/push/claude` with the same
-  `push.env`. At most one fetch per minute (`usage.stamp` beside `push.env`); the status-line
-  scripts write the same stamp when they send. The usage report is marked experimental by
-  Anthropic; without one (older Claude Code, API key, error) nothing is sent and the page keeps
-  its last values. Docs: "Claude Code in other apps" on the `ai` page.
+  `push.env`. At most one fetch per minute (`usage.stamp` beside `push.env`); a hook inside
+  that minute leaves one fetch waiting for its end, so the last answer of a burst is sent too.
+  The status-line scripts write the same stamp when they send, and a waiting fetch is dropped
+  when the stamp changes. The usage report is marked experimental by Anthropic; without one
+  (older Claude Code, API key, error) nothing is sent and the page keeps its last values. Docs:
+  "Claude Code in other apps" on the `ai` page.
 - Second push format for `provider: claude`: the server now also keeps the key `usage_report`
   of a push and shows its 5-hour window (`session`) and week (`weekly_all`). The weekly limit
   per model is not shown. Pushes with `rate_limits` from the status line work as before.

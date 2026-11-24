@@ -116,16 +116,106 @@ def test_loop_guard(tmp_path, server, fake_claude):
     assert calls(log) == [] and received == []
 
 
-def test_throttled_within_60_s(tmp_path, server, fake_claude):
+THROTTLE = "3"  # seconds, instead of 60, through the test knob GLANCEBOX_USAGE_THROTTLE
+
+
+def marker(xdg: Path, name: str) -> Path:
+    return xdg / "glancebox" / name
+
+
+def settle(xdg: Path) -> None:
+    """Waits until no trailing fetch is pending and the lock is free, then a moment for a
+    fetch that just started; afterwards neither marker may exist."""
+    pending, lock = marker(xdg, "usage.pending"), marker(xdg, "usage.lock")
+    wait_until(lambda: not pending.exists() and not lock.exists(), int(THROTTLE) + 3)
+    time.sleep(0.5)
+    assert not pending.exists() and not lock.exists()
+
+
+def hook(tmp_path: Path, xdg: Path) -> None:
+    """One throttled hook run: it returns in under a second, prints nothing, exits 0."""
+    start = time.monotonic()
+    r = run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
+    assert time.monotonic() - start < 1
+    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
+
+
+def test_throttled_hook_fetches_once_after_the_window(tmp_path, server, fake_claude):
+    # The last answer of a burst must reach the display: a throttled hook leaves one fetch
+    # waiting for the end of the window instead of dropping it.
     url, received = server
     log = fake_claude(printing(LINE))
     xdg = write_env(tmp_path, url)
-    run(tmp_path, xdg)
+    run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
     wait_for(received)
-    r = run(tmp_path, xdg)
-    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
-    time.sleep(1)
+    hook(tmp_path, xdg)
+    time.sleep(0.5)
+    assert len(calls(log)) == 1 and len(received) == 1  # not at once: still in the window
+    wait_until(lambda: len(received) >= 2, int(THROTTLE) + 3)
+    settle(xdg)
+    assert calls(log) == [f"{ARGS}|1"] * 2 and len(received) == 2
+    assert received[1]["body"] == LINE.encode()
+
+
+def test_five_hooks_in_the_window_fetch_twice(tmp_path, server, fake_claude):
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
+    wait_for(received)
+    for _ in range(5):
+        hook(tmp_path, xdg)
+    wait_until(lambda: len(received) >= 2, int(THROTTLE) + 3)
+    settle(xdg)
+    assert len(calls(log)) == 2 and len(received) == 2
+
+
+def test_new_stamp_cancels_the_trailing_fetch(tmp_path, server, fake_claude):
+    # Newer data (from the status-line script or another fetch) makes the waiting fetch moot.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
+    wait_for(received)
+    seen = int(marker(xdg, "usage.stamp").read_text())
+    hook(tmp_path, xdg)
+    assert marker(xdg, "usage.pending").is_dir()
+    wait_until(lambda: int(time.time()) > seen)
+    write_stamp(xdg, f"{int(time.time())}\n")
+    settle(xdg)
     assert len(calls(log)) == 1 and len(received) == 1
+
+
+def test_stale_pending_marker_does_not_block(tmp_path, server, fake_claude):
+    # A marker left by a killed run must not stop trailing fetches for good.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
+    wait_for(received)
+    pending = marker(xdg, "usage.pending")
+    pending.mkdir()
+    old = time.time() - 180
+    os.utime(pending, (old, old))
+    hook(tmp_path, xdg)
+    wait_until(lambda: len(received) >= 2, int(THROTTLE) + 3)
+    settle(xdg)
+    assert len(calls(log)) == 2 and len(received) == 2
+
+
+def test_fresh_pending_marker_blocks(tmp_path, server, fake_claude):
+    # One fetch is already waiting (its marker is fresh): the hook adds no second one.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    run(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE)
+    wait_for(received)
+    pending = marker(xdg, "usage.pending")
+    pending.mkdir()
+    hook(tmp_path, xdg)
+    time.sleep(int(THROTTLE) + 1)
+    assert len(calls(log)) == 1 and len(received) == 1
+    pending.rmdir()
 
 
 def test_two_hooks_at_once_fetch_once(tmp_path, server, fake_claude):
@@ -133,13 +223,15 @@ def test_two_hooks_at_once_fetch_once(tmp_path, server, fake_claude):
     log = fake_claude(printing(LINE))
     xdg = write_env(tmp_path, url)
     procs = [subprocess.Popen([str(SCRIPT)], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, env=env_for(tmp_path, xdg))
+                              stderr=subprocess.PIPE,
+                              env=env_for(tmp_path, xdg, GLANCEBOX_USAGE_THROTTLE=THROTTLE))
              for _ in range(2)]
     assert [p.communicate(timeout=10) for p in procs] == [(b"", b"")] * 2
     assert [p.returncode for p in procs] == [0, 0]
     wait_for(received)
     time.sleep(1)
     assert len(calls(log)) == 1 and len(received) == 1
+    settle(xdg)  # the second may have left a trailing fetch for the end of the window
 
 
 def write_stamp(xdg: Path, text: str) -> None:
@@ -170,18 +262,45 @@ def test_bad_or_future_stamp_fetches(tmp_path, server, fake_claude, stamp):
     assert len(calls(log)) == 1 and len(received) == 1
 
 
-def test_status_line_stamp_throttles(tmp_path, server, fake_claude):
-    url, received = server
-    log = fake_claude(printing(LINE))
-    xdg = write_env(tmp_path, url)
+def status_line(tmp_path: Path, xdg: Path) -> None:
     status = json.dumps({"rate_limits": {"five_hour": {"used_percentage": 1}}})
     subprocess.run([str(STATUSLINE)], input=status, capture_output=True, text=True,
                    env=env_for(tmp_path, xdg), timeout=10, check=True)
+
+
+def test_status_line_stamp_throttles(tmp_path, server, fake_claude):
+    # The status line sent just now: the hook does not fetch at once. When the status line
+    # sends again during the window, the waiting fetch is dropped as well.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    status_line(tmp_path, xdg)
     wait_for(received)
-    r = run(tmp_path, xdg)
-    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
-    time.sleep(1)
+    seen = int(marker(xdg, "usage.stamp").read_text())
+    hook(tmp_path, xdg)
+    time.sleep(0.5)
     assert calls(log) == [] and len(received) == 1
+    wait_until(lambda: int(time.time()) > seen)
+    status_line(tmp_path, xdg)
+    wait_until(lambda: len(received) >= 2)
+    settle(xdg)
+    assert calls(log) == [] and len(received) == 2
+
+
+def test_status_line_once_then_trailing_fetch(tmp_path, server, fake_claude):
+    # One status-line send, then silence: the hook cannot know whether the status line saw
+    # the last answer, so it fetches once after the window.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    status_line(tmp_path, xdg)
+    wait_for(received)
+    hook(tmp_path, xdg)
+    time.sleep(0.5)
+    assert calls(log) == []
+    wait_until(lambda: len(received) >= 2, int(THROTTLE) + 3)
+    settle(xdg)
+    assert len(calls(log)) == 1 and len(received) == 2
 
 
 @pytest.mark.parametrize("out", ['{"type":"result"}', '{"usage_report":{"rate_limits":null}}',
