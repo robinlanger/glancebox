@@ -6,23 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.7.0-beta.1]
-
-**Beta (pre-release).** Try it if you like to test new things; the stable version stays 0.6.3.
-Docker: use the image `ghcr.io/robinlanger/glancebox:0.7.0-beta.1` (`:latest` stays on 0.6.3).
-Display: upload `glancebox-ultra-0.7.0-beta.1.bin` on the device page. The Home Assistant add-on
-store does not offer betas.
-
-Checked so far on one GeekMagic SmallTV Ultra (2026-11-23), against a Home Assistant with
-simulated sensors: how the arrows look and move on both energy pages, no visible edge around
-the tracks, about 18 minutes of animation without a pause over 100 ms, the device page and an OTA
-update while the arrows run, and the offline screen when the server goes away. Not checked yet:
-a 24 h run, night mode with brightness 0, the Home Assistant add-on with this version, and the
-arm64 image on a Raspberry Pi.
+## [0.7.0]
 
 New page type `energy` with moving arrows drawn by the display. Update the server and the
 firmware together: the arrows need the new firmware. With older firmware the page works as a
 still picture.
+
+Checked on one GeekMagic SmallTV Ultra against a Home Assistant with simulated sensors
+(2026-11-23 to 2026-11-24): how the arrows look and move on both energy pages, no visible edge
+around the tracks, the device page and an OTA update while the arrows run, the offline screen
+when the server goes away, and a run of 20 hours (ended early, after the beta had run with no
+problems): no restart, free memory stable, in 5.6 hours of animation 3 pauses over 100 ms and
+none over 250 ms. A network outage of the server during the run did not need a restart. Not
+checked: night mode with brightness 0 while the arrows run, the Home Assistant add-on with this
+version, and the arm64 image on a Raspberry Pi.
 
 ### Added
 - Page type `energy`: energy flow from Home Assistant in 1 to 4 rows of the types `grid`, `pv`,
@@ -40,6 +37,15 @@ still picture.
   animation longer than 100 or 250 ms) and `anim_run_s` (seconds of animation since boot).
 - Own pages: `DEFAULT_REFRESH` in `page.py` sets the page's default `refresh` when the page
   entry has none.
+
+## [0.7.0-beta.1]
+
+**Beta (pre-release).** Try it if you like to test new things; the stable version stays 0.6.3.
+Docker: use the image `ghcr.io/robinlanger/glancebox:0.7.0-beta.1` (`:latest` stays on 0.6.3).
+Display: upload `glancebox-ultra-0.7.0-beta.1.bin` on the device page. The Home Assistant add-on
+store does not offer betas.
+
+First beta of 0.7.0. The changes are listed under 0.7.0.
 
 ## [0.6.3]
 
