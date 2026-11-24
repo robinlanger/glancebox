@@ -72,10 +72,12 @@ reboot into the new image from no reboot, and it refuses to run.
    check, verifies that `GBVER:<version>` is in the image exactly once, and writes
    `glancebox-ultra-<ver>.bin`, `.bin.md5` and `.bin.sha256`.
 3. Builds the Docker image for `linux/amd64` and `linux/arm64` and pushes
-   `ghcr.io/robinlanger/glancebox:<ver>` and `:latest`.
+   `ghcr.io/robinlanger/glancebox:<ver>` and `:latest`. A version with a suffix such as
+   `0.7.0-beta.1` is a pre-release: it gets only `:<ver>`, never `:latest`.
 4. Creates signed build provenance attestations (`actions/attest-build-provenance`) for the
    pushed image (stored in GHCR next to it) and for `glancebox-ultra-<ver>.bin`.
-5. Runs `gh release create` with the three firmware files and the `CHANGELOG.md` section.
+5. Runs `gh release create` with the three firmware files and the `CHANGELOG.md` section
+   (with `--prerelease` for a suffixed version, so it is never shown as the latest release).
 
 Before building, the workflow also fails if a GitHub release for the tag already exists, so a
 duplicate tag pushes nothing.

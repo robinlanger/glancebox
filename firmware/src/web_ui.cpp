@@ -237,19 +237,25 @@ String statusJson() {
     snprintf(timeBuf, sizeof(timeBuf), "\"%s\"", gb::formatHhMm(static_cast<uint16_t>(minute)).c_str());
   }
   const bool night = status.night ? status.night() : false;
-  char buf[440];
+  gb::AnimStats anim{0, 0, 0, 0};
+  if (status.anim) anim = status.anim();
+  char buf[540];
   snprintf_P(buf, sizeof(buf),
              PSTR("{\"version\":\"%s\",\"uptime_s\":%lu,\"heap_free\":%u,\"rssi\":%s,"
                   "\"boot_failed\":%u,\"safe_mode\":%s,\"frames_ok\":%lu,"
                   "\"last_frame_age_s\":%s,\"flash_size\":%u,\"reset_reason\":\"%s\","
-                  "\"local_time\":%s,\"night\":%s}"),
+                  "\"local_time\":%s,\"night\":%s,\"frame_errors\":%lu,\"anim_tracks\":%u,"
+                  "\"anim_gaps_100\":%lu,\"anim_gaps_250\":%lu,\"anim_run_s\":%lu}"),
              gbVersion(), static_cast<unsigned long>(uptimeS()),
              static_cast<unsigned>(ESP.getFreeHeap()), rssi,
              static_cast<unsigned>(status.bootFailed ? status.bootFailed() : 0),
              (status.safeMode ? status.safeMode() : safeModeUi) ? "true" : "false",
              static_cast<unsigned long>(status.framesOk ? status.framesOk() : 0), ageBuf,
              static_cast<unsigned>(ESP.getFlashChipRealSize()), reset.c_str(), timeBuf,
-             night ? "true" : "false");
+             night ? "true" : "false",
+             static_cast<unsigned long>(status.frameErrors ? status.frameErrors() : 0),
+             static_cast<unsigned>(anim.tracks), static_cast<unsigned long>(anim.gapsOver100),
+             static_cast<unsigned long>(anim.gapsOver250), static_cast<unsigned long>(anim.runS));
   return String(buf);
 }
 

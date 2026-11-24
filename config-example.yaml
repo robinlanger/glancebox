@@ -29,6 +29,18 @@ pages:
   #     - sensor.pv_power
   #     - entity: sensor.grid_power
   #       label: Grid
+  # - type: energy                    # energy flow; arrows need firmware 0.7.0 or newer
+  #   url: ${HA_URL}                  # same .env values as homeassistant
+  #   token: ${HA_TOKEN}
+  #   title: Power                    # refresh defaults to 5 here (minimum 2)
+  #   rows:                           # 1-4 of grid, pv, battery, gas, water, wallbox
+  #     - type: grid
+  #       entity: sensor.grid_power   # positive = import, negative = export
+  #     - type: pv
+  #       entity: sensor.pv_power
+  #     - type: battery
+  #       entity: sensor.battery_power  # positive = discharging, negative = charging
+  #       soc: sensor.battery_level     # optional
   # - type: ai
   #   provider: claude      # values from Claude Code's status line, needs push_key above
   #   refresh: 30

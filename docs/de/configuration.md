@@ -53,9 +53,9 @@ pages:
 
 | Schlüssel | Standard | Bedeutung |
 | --- | --- | --- |
-| `type` | Pflicht | Seitentyp: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `ai` oder ein eigener. Die fertigen Seiten stehen im [Vorlagen-Katalog](templates/README.md). |
+| `type` | Pflicht | Seitentyp: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `ai` oder ein eigener. Die fertigen Seiten stehen im [Vorlagen-Katalog](templates/README.md). |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
-| `refresh` | `duration` | Eine Seite wird höchstens alle `refresh` Sekunden neu gerendert. Nimm einen größeren Wert für Daten, die sich langsam ändern, oder für Dienste, die Anfragen begrenzen. |
+| `refresh` | `duration` | Eine Seite wird höchstens alle `refresh` Sekunden neu gerendert. Nimm einen größeren Wert für Daten, die sich langsam ändern, oder für Dienste, die Anfragen begrenzen. Ein Seitentyp kann einen eigenen Standard und ein eigenes Minimum haben, zum Beispiel `energy`: Standard 5, mindestens 2. |
 
 Alle anderen Schlüssel gehören zum Seitentyp und stehen unten. Fertige Seiten mit Vorschaubildern findest du im [Vorlagen-Katalog](templates/README.md).
 
@@ -155,6 +155,25 @@ Live-Werte von bis zu sechs Entitäten aus [Home Assistant](https://www.home-ass
     - sensor.pv_power
     - entity: sensor.grid_power
       label: Netz
+```
+
+## Seitentyp: energy
+
+Energiefluss aus Home Assistant in 1 bis 4 Zeilen (`grid`, `pv`, `battery`, `gas`, `water`, `wallbox`), jede mit einem Leistungs- oder Durchflusssensor. Ab Firmware 0.7.0 zeichnet das Display laufende Pfeile in Richtung des Flusses; ältere Firmware zeigt ein Standbild. Ohne `refresh` gelten für diese Seite 5 Sekunden. Adresse und Token wie bei `homeassistant`. Ausführlich, mit Vorzeichen und Optionen: [energy](templates/energy.md).
+
+```yaml
+- type: energy
+  url: ${HA_URL}
+  token: ${HA_TOKEN}
+  title: Strom
+  rows:
+    - type: grid
+      entity: sensor.grid_power
+    - type: pv
+      entity: sensor.pv_power
+    - type: battery
+      entity: sensor.battery_power
+      soc: sensor.battery_level
 ```
 
 ## Seitentyp: ai

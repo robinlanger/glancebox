@@ -81,12 +81,14 @@ bool parseHttpHead(const char* data, size_t len, HttpHead* out) {
   out->etag[0] = '\0';
   out->nextIn = -1;
   out->localSec = -1;
+  out->anim.count = 0;
   if (data == nullptr || !wellFormed(data, len)) return false;
 
   long length = -1;
   bool lengthSeen = false;
   bool lengthBad = false;
   bool transferEncoding = false;
+  bool animSeen = false;
   bool statusLine = true;
   size_t pos = 0;
   while (pos < len) {
@@ -131,6 +133,14 @@ bool parseHttpHead(const char* data, size_t len, HttpHead* out) {
     } else if (spanIs(line, nameLen, "x-local-time")) {
       char buf[16];
       out->localSec = copySpan(v, vn, buf, sizeof(buf)) ? parseLocalTime(buf) : -1;
+    } else if (spanIs(line, nameLen, "x-anim")) {
+      // An invalid or repeated X-Anim only drops the animation, never the head.
+      if (animSeen) {
+        out->anim.count = 0;
+      } else {
+        parseAnim(v, vn, &out->anim);
+      }
+      animSeen = true;
     }
   }
   if (lengthSeen && !lengthBad && !transferEncoding) out->contentLength = length;

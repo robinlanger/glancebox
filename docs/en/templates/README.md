@@ -30,6 +30,12 @@ State of an Uptime Kuma status page: all green, or which services are down and s
 
 Live values of up to six Home Assistant entities as large tiles or a list: solar power, temperatures, open windows, lights. Needs a long-lived access token. [Details](homeassistant.md)
 
+### energy
+
+![Preview of the energy page](../../img/templates/energy.png)
+
+Energy flow from Home Assistant in up to four rows (grid, PV, battery, gas, water, wallbox), with arrows that move on the display in the direction of the flow (firmware 0.7.0 or newer). [Details](energy.md)
+
 ## AI & development
 
 ### ai

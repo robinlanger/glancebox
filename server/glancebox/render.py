@@ -7,12 +7,12 @@ import io
 import logging
 import os
 from collections.abc import Mapping
-from functools import cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Self
 from urllib.parse import urlsplit
 
-from PIL import Image
+from PIL import Image, ImageFont
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
@@ -37,6 +37,22 @@ _FONTS = (
     ("DejaVuSansCondensed.ttf", "normal", "condensed"),
     ("DejaVuSansCondensed-Bold.ttf", "bold", "condensed"),
 )
+_FONT_FILE = FONTS_DIR / "DejaVuSans-Bold.ttf"
+_FONT_UNITS = 1000  # measure at a large size and scale: no hinting, matches Chromium to ~0.5 px
+
+
+@lru_cache(maxsize=1)
+def _font() -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(_FONT_FILE), _FONT_UNITS)
+
+
+def text_width(value: str, unit: str | None, sizes: tuple[int, int, int]) -> float:
+    """Estimated rendered width in px of value + unit in bold DejaVu Sans (the page font)."""
+    value_px, unit_px, margin = sizes
+    width = _font().getlength(value) * value_px / _FONT_UNITS
+    if unit:
+        width += margin + _font().getlength(unit) * unit_px / _FONT_UNITS
+    return width
 
 
 class RenderError(Exception):

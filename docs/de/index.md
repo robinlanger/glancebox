@@ -8,10 +8,10 @@ hide:
 kicker: Open Source · ohne Löten
 title_line1: Dein Display.
 title_line2: Deine Seiten.
-lead: Glance Box macht aus dem SmallTV Ultra für etwa 15 € ein WLAN-Display für alles, was sich als HTML schreiben lässt. Abfahrten, Wetter, dein Homeserver, deine KI-Limits.
+lead: Glance Box macht aus dem SmallTV Ultra für etwa 15 € ein WLAN-Display für alles, was sich als HTML schreiben lässt. Abfahrten, Wetter, dein Energiefluss, dein Homeserver, deine KI-Limits.
 cta_primary: Jetzt loslegen
 cta_secondary: Auf GitHub ansehen
-hero_alt: Glance Box auf dem GeekMagic SmallTV Ultra mit Live-Abfahrten, daneben ein Kopfhörer-Etui zum Größenvergleich
+hero_alt: Glance Box auf dem GeekMagic SmallTV Ultra mit der Energiefluss-Seite, daneben ein Kopfhörer-Etui zum Größenvergleich
 steps_title: Vom Karton zum ersten Bild.
 steps_sub: Kein Löten, kein Seriell-Adapter, keine Cloud. Etwa eine halbe Stunde.
 steps:
@@ -45,9 +45,9 @@ gallery:
   - img: img/templates/homeassistant-tiles.png
     caption: Home Assistant
     href: templates/homeassistant/
-  - img: img/templates/clock.png
-    caption: Uhr
-    href: templates/clock/
+  - img: img/templates/energy.png
+    caption: Energiefluss
+    href: templates/energy/
 photo_alt: Vier Fotos des Displays mit Abfahrten, Uptime Kuma, Wetter und Claude-Limits
 photo_caption: Auf dem echten Display.
 features:

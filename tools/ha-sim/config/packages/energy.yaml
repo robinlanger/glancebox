@@ -1,0 +1,112 @@
+# Controllable fake energy sensors for the energy-flow page.
+# Each sensor mirrors an input_number slider, so moving the slider in the HA UI
+# (Settings -> Devices & services -> Helpers) changes the sensor at once, with no
+# restart or template reload. Use it to try every arrow direction and speed on the
+# Glance Box energy page without a real installation.
+#
+# Sign conventions (as in the HA energy dashboard):
+#   sim_grid_power     positive = import from the grid, negative = export (feed-in)
+#   sim_battery_power  positive = DISCHARGING, negative = CHARGING
+#   sim_wallbox_power  positive = charging the car
+# Entity IDs derive from `name`, e.g. "Grid power" -> sensor.grid_power.
+# Drop this file into a Home Assistant config's packages/ directory
+# (homeassistant: packages: !include_dir_named packages).
+input_number:
+  sim_grid_power:
+    name: Sim grid power
+    min: -10000
+    max: 10000
+    step: 10
+    mode: slider
+    unit_of_measurement: "W"
+  sim_pv_power:
+    name: Sim PV power
+    min: 0
+    max: 10000
+    step: 10
+    mode: slider
+    unit_of_measurement: "W"
+  sim_battery_power:
+    name: Sim battery power
+    min: -5000
+    max: 5000
+    step: 10
+    mode: slider
+    unit_of_measurement: "W"
+  sim_wallbox_power:
+    name: Sim wallbox power
+    min: -500
+    max: 22000
+    step: 10
+    mode: slider
+    unit_of_measurement: "W"
+  sim_battery_level:
+    name: Sim battery level
+    min: 0
+    max: 100
+    step: 1
+    mode: slider
+    unit_of_measurement: "%"
+  sim_gas_flow:
+    name: Sim gas flow
+    min: 0
+    max: 5
+    step: 0.1
+    mode: slider
+    unit_of_measurement: "m³/h"
+  sim_water_flow:
+    name: Sim water flow
+    min: 0
+    max: 30
+    step: 0.5
+    mode: slider
+    unit_of_measurement: "L/min"
+
+template:
+  - sensor:
+      - name: Grid power
+        unique_id: sim_grid_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: "{{ states('input_number.sim_grid_power') | float(0) }}"
+
+      - name: PV power
+        unique_id: sim_pv_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: "{{ states('input_number.sim_pv_power') | float(0) }}"
+
+      - name: Battery power
+        unique_id: sim_battery_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: "{{ states('input_number.sim_battery_power') | float(0) }}"
+
+      - name: Wallbox power
+        unique_id: sim_wallbox_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: "{{ states('input_number.sim_wallbox_power') | float(0) }}"
+
+      - name: Battery level
+        unique_id: sim_battery_level
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        state: "{{ states('input_number.sim_battery_level') | float(0) }}"
+
+      - name: Gas flow
+        unique_id: sim_gas_flow
+        unit_of_measurement: "m³/h"
+        state_class: measurement
+        state: "{{ states('input_number.sim_gas_flow') | float(0) }}"
+
+      - name: Water flow
+        unique_id: sim_water_flow
+        unit_of_measurement: "L/min"
+        state_class: measurement
+        state: "{{ states('input_number.sim_water_flow') | float(0) }}"

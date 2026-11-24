@@ -32,6 +32,7 @@ def fetch(options: dict, ctx) -> dict:
 - **Give every network call a timeout**, for example `requests.get(url, timeout=10)`. Better: `from glancebox import http` and `http.get_json(url, params=..., headers=...)`. It sets a 10-second timeout and the User-Agent `glancebox/<version>`, raises on HTTP errors and returns the parsed JSON. The 20-second limit only stops waiting for the result: a call that hangs keeps its worker thread busy, and a few of them can stall all script pages.
 - `validate(options)` is optional. Raise `ValueError("...")` to reject a bad configuration. The server then refuses to start and shows your message with the page number.
 - `MIN_REFRESH = 60` is optional (an integer). It sets the smallest allowed `refresh` for your page, for example to respect a rate limit.
+- `DEFAULT_REFRESH = 5` is optional (an integer). It is your page's `refresh` when the page entry in `config.yaml` sets none; without it `refresh` defaults to `duration`. Below `MIN_REFRESH` it is raised to `MIN_REFRESH`.
 - Other `.py` files in the same folder can be imported with `from .helper import something`.
 
 `options` holds every key of the page entry in `config.yaml` except `type`, `duration` and `refresh`. `ctx` has four fields:

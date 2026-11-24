@@ -6,6 +6,47 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0]
+
+New page type `energy` with moving arrows drawn by the display. Update the server and the
+firmware together: the arrows need the new firmware. With older firmware the page works as a
+still picture.
+
+Checked on one GeekMagic SmallTV Ultra against a Home Assistant with simulated sensors
+(2026-11-23 to 2026-11-24): how the arrows look and move on both energy pages, no visible edge
+around the tracks, the device page and an OTA update while the arrows run, the offline screen
+when the server goes away, and a run of 20 hours (ended early, after the beta had run with no
+problems): no restart, free memory stable, in 5.6 hours of animation 3 pauses over 100 ms and
+none over 250 ms. A network outage of the server during the run did not need a restart. Not
+checked: night mode with brightness 0 while the arrows run, the Home Assistant add-on with this
+version, and the arm64 image on a Raspberry Pi.
+
+### Added
+- Page type `energy`: energy flow from Home Assistant in 1 to 4 rows of the types `grid`, `pv`,
+  `battery`, `gas`, `water` and `wallbox`, each with an icon, a track, the value and a status
+  line (direction, battery level). Options: `title`, `animate`, `url`, `token` (not needed in
+  the add-on), `lang`, `refresh` (default 5, at least 2) and per row `type`, `entity`, `soc`
+  (battery level, battery only), `invert`, `full` (value for full arrow speed) and `min`
+  (smaller values count as 0). Signs follow the Home Assistant energy dashboard: grid positive
+  = import, battery positive = discharging.
+- Firmware: draws moving arrows on the tracks described by the new `X-Anim` response header of
+  the frame, also while the next frame is fetched and decoded. Frames without the header are
+  shown as before.
+- Firmware: `/status` has the new fields `frame_errors` (failed frame requests since boot),
+  `anim_tracks` (tracks animated now), `anim_gaps_100` and `anim_gaps_250` (pauses of the
+  animation longer than 100 or 250 ms) and `anim_run_s` (seconds of animation since boot).
+- Own pages: `DEFAULT_REFRESH` in `page.py` sets the page's default `refresh` when the page
+  entry has none.
+
+## [0.7.0-beta.1]
+
+**Beta (pre-release).** Try it if you like to test new things; the stable version stays 0.6.3.
+Docker: use the image `ghcr.io/robinlanger/glancebox:0.7.0-beta.1` (`:latest` stays on 0.6.3).
+Display: upload `glancebox-ultra-0.7.0-beta.1.bin` on the device page. The Home Assistant add-on
+store does not offer betas.
+
+First beta of 0.7.0. The changes are listed under 0.7.0.
+
 ## [0.6.3]
 
 Firmware update for the device web page and the setup portal. The server and the Home Assistant

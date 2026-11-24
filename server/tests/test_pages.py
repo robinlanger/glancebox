@@ -123,3 +123,36 @@ def test_builtin_min_refresh_keeps_frames_fresh():
     # playlist until the next allowed refresh.
     for name, page_type in load_page_types([REAL]).items():
         assert page_type.min_refresh <= STALE_AFTER_S, name
+
+
+def write_page(tmp_path, body):
+    (tmp_path / "hooked").mkdir()
+    (tmp_path / "hooked" / "page.py").write_text(
+        "def fetch(options, ctx):\n    return {}\n" + body)
+    return load_page_types([tmp_path])
+
+
+def test_default_refresh_applies_only_without_explicit_refresh(tmp_path):
+    types = write_page(tmp_path, "DEFAULT_REFRESH = 5\nMIN_REFRESH = 2\n")
+    implicit = validate_config(cfg_of(("hooked", {}, {"duration": 30})), types)
+    assert implicit.pages[0].refresh == 5
+    explicit = validate_config(cfg_of(("hooked", {}, {"refresh": 60})), types)
+    assert explicit.pages[0].refresh == 60
+    with pytest.raises(ConfigError, match="at least 2"):
+        validate_config(cfg_of(("hooked", {}, {"refresh": 1})), types)
+
+
+@pytest.mark.parametrize("line,hook", [
+    ("DEFAULT_REFRESH = 0", "DEFAULT_REFRESH"),
+    ("DEFAULT_REFRESH = True", "DEFAULT_REFRESH"),
+    ('DEFAULT_REFRESH = "5"', "DEFAULT_REFRESH"),
+    ("SKIP_UNCHANGED = 1", "SKIP_UNCHANGED"),
+])
+def test_default_refresh_and_skip_unchanged_must_be_well_formed(tmp_path, line, hook):
+    with pytest.raises(ConfigError, match=hook):
+        write_page(tmp_path, line + "\n")
+
+
+def test_pages_without_the_hooks_behave_as_before():
+    clock = load_page_types([REAL])["clock"]
+    assert clock.default_refresh is None and clock.skip_unchanged is False

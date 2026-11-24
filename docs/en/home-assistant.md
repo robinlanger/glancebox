@@ -40,7 +40,7 @@ Server it is `/addon_configs/<id>_glancebox/config.yaml`. It uses the same forma
 
 - `timezone`, `lang` and the location of a `weather` page are optional; without them the values
   from Home Assistant are used. Values you set always win.
-- A `homeassistant` page needs neither `url` nor `token`; it reads from this Home Assistant.
+- A `homeassistant` or `energy` page needs neither `url` nor `token`; it reads from this Home Assistant.
 
 If that folder is empty (the add-on could not save the starter file there), the add-on's web UI
 shows the starter content: create `config.yaml` with it in the File editor.

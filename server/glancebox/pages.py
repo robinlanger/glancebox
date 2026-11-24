@@ -34,10 +34,13 @@ class PageType:
                  validate: Callable[[dict], None] | None = None,
                  fetch: Callable[[dict, PageContext], dict] | None = None,
                  template_path: Path | None = None,
-                 push_keys: dict[str, tuple[str, ...]] | None = None) -> None:
+                 push_keys: dict[str, tuple[str, ...]] | None = None,
+                 default_refresh: int | None = None, skip_unchanged: bool = False) -> None:
         self.name = name
         self.kind = kind
         self.min_refresh = min_refresh
+        self.default_refresh = default_refresh
+        self.skip_unchanged = skip_unchanged
         self._validate = validate
         self._fetch = fetch
         self.template_path = template_path
@@ -129,10 +132,19 @@ def _load_script_page(page_dir: Path) -> PageType:
     min_refresh = getattr(module, "MIN_REFRESH", 0)
     if isinstance(min_refresh, bool) or not isinstance(min_refresh, int) or min_refresh < 0:
         raise ConfigError(f"page {name!r} ({page_dir}): MIN_REFRESH must be an integer >= 0")
+    default_refresh = getattr(module, "DEFAULT_REFRESH", None)
+    if default_refresh is not None and (
+            isinstance(default_refresh, bool) or not isinstance(default_refresh, int)
+            or default_refresh < 1):
+        raise ConfigError(f"page {name!r} ({page_dir}): DEFAULT_REFRESH must be an integer >= 1")
+    skip_unchanged = getattr(module, "SKIP_UNCHANGED", False)
+    if not isinstance(skip_unchanged, bool):
+        raise ConfigError(f"page {name!r} ({page_dir}): SKIP_UNCHANGED must be True or False")
     push_keys = _check_push_keys(getattr(module, "PUSH_KEYS", {}),
                                  f"page {name!r} ({page_dir})")
     return PageType(name, "script", min_refresh=min_refresh, validate=validate, fetch=fetch,
-                    template_path=page_dir / "template.html", push_keys=push_keys)
+                    template_path=page_dir / "template.html", push_keys=push_keys,
+                    default_refresh=default_refresh, skip_unchanged=skip_unchanged)
 
 
 def load_page_types(dirs: Sequence[Path]) -> dict[str, PageType]:
@@ -163,6 +175,8 @@ def validate_config(cfg: AppConfig, types: dict[str, PageType]) -> AppConfig:
         except ValueError as e:
             raise ConfigError(f"{where}: {e}") from e
         refresh = page.refresh
+        if page_type.default_refresh is not None and not page.refresh_explicit:
+            refresh = page_type.default_refresh
         if refresh < page_type.min_refresh:
             if page.refresh_explicit:
                 raise ConfigError(f"{where}: refresh must be at least {page_type.min_refresh}")

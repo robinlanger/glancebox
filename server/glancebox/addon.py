@@ -127,7 +127,7 @@ def ha_defaults(info: HaInfo, environ: Mapping[str, str]) -> Callable[[dict], di
         if kind == "weather" and not any(
                 page.get(k) is not None for k in ("location", "latitude", "longitude")):
             page["latitude"], page["longitude"] = info.latitude, info.longitude
-        elif kind == "homeassistant" and "url" not in page and "token" not in page:
+        elif kind in ("homeassistant", "energy") and "url" not in page and "token" not in page:
             page["url"] = SUPERVISOR_CORE
             page["token"] = environ.get("SUPERVISOR_TOKEN", "")
         return page

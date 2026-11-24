@@ -93,6 +93,16 @@ def test_ha_defaults_fill_only_missing():
     assert data["pages"][0] == {"type": "weather"}  # input not mutated
 
 
+def test_ha_defaults_fill_energy_like_homeassistant():
+    hook = ha_defaults(HaInfo("Europe/Berlin", "de", 1.0, 2.0), {"SUPERVISOR_TOKEN": "sup"})
+    rows = [{"type": "grid", "entity": "sensor.grid_power"}]
+    out = hook({"pages": [{"type": "energy", "rows": rows},
+                          {"type": "energy", "url": "http://other:8123", "token": "t",
+                           "rows": rows}]})
+    assert (out["pages"][0]["url"], out["pages"][0]["token"]) == ("http://supervisor/core", "sup")
+    assert (out["pages"][1]["url"], out["pages"][1]["token"]) == ("http://other:8123", "t")
+
+
 def test_ha_defaults_yaml_wins():
     hook = ha_defaults(HaInfo("America/New_York", "en", 1.0, 2.0), {"SUPERVISOR_TOKEN": "s"})
     out = hook({"timezone": "Europe/Berlin", "lang": "de", "pages": [{"type": "clock"}]})

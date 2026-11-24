@@ -31,6 +31,12 @@ jobs:
         run: |
           version=$(tr -d '[:space:]' < VERSION)
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          # A version with a suffix (0.7.0-beta.1) is a pre-release: no :latest image tag and
+          # a GitHub release marked as pre-release, so Docker users on :latest never get it.
+          case "$version" in
+            *-*) echo "PRERELEASE=true" >> "$GITHUB_ENV" ;;
+            *) echo "PRERELEASE=false" >> "$GITHUB_ENV" ;;
+          esac
           if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
             echo "::error::tag $GITHUB_REF_NAME does not match VERSION file (v$version)"
             exit 1
@@ -98,7 +104,7 @@ jobs:
           build-args: VERSION=${{ env.VERSION }}
           tags: |
             ${{ env.IMAGE }}:${{ env.VERSION }}
-            ${{ env.IMAGE }}:latest
+            ${{ env.PRERELEASE != 'true' && format('{0}:latest', env.IMAGE) || '' }}
 
       # Build provenance, checkable with `gh attestation verify` (see docs/RELEASING.md).
       - name: Attest the image
@@ -122,5 +128,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v$VERSION" dist/* \
+          pre=()
+          if [ "$PRERELEASE" = "true" ]; then pre=(--prerelease); fi
+          gh release create "v$VERSION" dist/* "${pre[@]}" \
             --target "$GITHUB_SHA" --title "v$VERSION" --notes-file release-notes.md

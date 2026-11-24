@@ -368,3 +368,43 @@ def test_ingress_csp_allows_framing_by_home_assistant():
     nonce = re.search(r"script-src 'nonce-([^']+)'", csp).group(1)
     assert f'<script nonce="{nonce}">' in first.text
     assert nonce not in second.headers["content-security-policy"]  # fresh per response
+
+
+ANIM = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48"
+
+
+def anim_store() -> FrameStore:
+    store = filled_store()
+    store.put(1, b"jpeg1", NOW - 1, anim=ANIM)
+    return store
+
+
+def test_x_anim_on_200_and_304_only_for_its_frame():
+    client, _ = make_client(anim_store(), now=NOW)          # NOW % 60 == 40: page 1
+    first = client.get("/api/v1/frame")
+    assert first.status_code == 200 and first.headers["x-anim"] == ANIM
+    again = client.get("/api/v1/frame", headers={"If-None-Match": first.headers["etag"]})
+    assert again.status_code == 304 and again.headers["x-anim"] == ANIM
+    other, _ = make_client(anim_store(), now=NOW + 30)      # page 0 has no description
+    assert "x-anim" not in other.get("/api/v1/frame").headers
+
+
+def test_no_x_anim_on_the_error_frame():
+    client, _ = make_client(FrameStore(2))
+    assert "x-anim" not in client.get("/api/v1/frame").headers
+
+
+def test_anim_does_not_change_the_etag():
+    store = FrameStore(2)
+    store.put(0, b"jpeg0", NOW)
+    plain = store.get(0, NOW).etag
+    store.put(0, b"jpeg0", NOW, anim=ANIM)
+    assert store.get(0, NOW).etag == plain
+
+
+def test_response_head_stays_below_the_device_limit():
+    store = filled_store()
+    store.put(1, b"jpeg1", NOW - 1, anim="1" * 160)         # as long as the limit allows
+    r = make_client(store)[0].get("/api/v1/frame")
+    head = 17 + sum(len(k) + len(v) + 4 for k, v in r.headers.items()) + 2
+    assert head + 60 <= 1024                                # 60: date and server from uvicorn

@@ -1,7 +1,7 @@
 # Home Assistant add-on for the Glance Box server. Uses the same image as the Docker setup.
 # version must equal the repo-root VERSION (checked by server/tests/test_addon_package.py).
 name: Glance Box
-version: "0.6.3"
+version: "0.7.0"
 slug: glancebox
 description: Server for the Glance Box display (GeekMagic SmallTV Ultra) - any HTML page on a tiny Wi-Fi screen
 url: https://github.com/robinlanger/glancebox

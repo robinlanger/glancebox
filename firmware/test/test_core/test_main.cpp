@@ -2,7 +2,9 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
+#include "anim.h"
 #include "auth_throttle.h"
 #include "boot_guard.h"
 #include "frame_poll.h"
@@ -1165,6 +1167,631 @@ void test_http_head_etag_and_values_follow_existing_rules() {
   TEST_ASSERT_EQUAL(-1, head.localSec);
 }
 
+bool anim(const char* v, gb::AnimSpec* a) { return gb::parseAnim(v, strlen(v), a); }
+
+void test_anim_parses_the_example() {
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34D399,22", &a));
+  TEST_ASSERT_EQUAL_UINT8(2, a.count);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x0b, 0x0d, 0x12), a.background);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x23, 0x2a, 0x38), a.trackColor);
+  TEST_ASSERT_EQUAL_INT16(64, a.tracks[0].rect.x);
+  TEST_ASSERT_EQUAL_INT16(67, a.tracks[0].rect.y);
+  TEST_ASSERT_EQUAL_INT16(85, a.tracks[0].rect.w);
+  TEST_ASSERT_EQUAL_INT16(15, a.tracks[0].rect.h);
+  TEST_ASSERT_FALSE(a.tracks[0].left);
+  TEST_ASSERT_EQUAL_UINT8(48, a.tracks[0].speed);
+  TEST_ASSERT_TRUE(a.tracks[1].left);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x34, 0xd3, 0x99), a.tracks[1].color);
+}
+
+void test_anim_rejects_every_broken_limit() {
+  const char* bad[] = {
+      "",                                                    // empty
+      "2;0b0d12;232a38;64,67,85,15,r,ffb020,48",             // other version
+      "1;0b0d12;232a38",                                     // no track
+      ("1;0b0d12;232a38;64,10,85,15,r,ffb020,48;64,50,85,15,r,ffb020,48;64,90,85,15,r,ffb020,48;"
+       "64,130,85,15,r,ffb020,48;64,170,85,15,r,ffb020,48"),  // five tracks
+      "1;0b0d1;232a38;64,67,85,15,r,ffb020,48",              // 5 hex digits
+      "1;0b0d12;232a38;64,67,85,15,r,ffb02g,48",             // not hex
+      "1;0b0d12;232a38;200,67,85,15,r,ffb020,48",            // right edge beyond 240
+      "1;0b0d12;232a38;64,230,85,15,r,ffb020,48",            // bottom edge beyond 240
+      "1;0b0d12;232a38;64,67,15,15,r,ffb020,48",             // too narrow
+      "1;0b0d12;232a38;64,67,85,7,r,ffb020,48",              // too low
+      "1;0b0d12;232a38;64,67,85,33,r,ffb020,48",             // too high
+      "1;0b0d12;232a38;64,67,85,15,x,ffb020,48",             // direction
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,0",              // speed 0
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,201",            // speed too high
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,75,85,15,r,ffb020,48",  // overlap
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;",            // trailing separator
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020",                // field missing
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,48,1",           // field too many
+      "1;0b0d12;232a38; 64,67,85,15,r,ffb020,48",            // blank inside
+      "1;0b0d12;232a38;-4,67,85,15,r,ffb020,48",             // sign
+      "1;0b0d12;232a38;64,67,85,15,r,ffb020,4800000000",     // digits overflow
+      "1;0b0d12;232a38;064,67,85,15,r,ffb020,48",            // leading zero
+  };
+  for (const char* v : bad) {
+    gb::AnimSpec a;
+    a.count = 3;
+    TEST_ASSERT_FALSE_MESSAGE(anim(v, &a), v);
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, a.count, v);
+  }
+}
+
+void test_anim_touching_tracks_are_allowed() {
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,10,85,15,r,ffb020,48;64,25,85,15,l,ffb020,48", &a));
+  TEST_ASSERT_EQUAL_UINT8(2, a.count);
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;0,0,240,8,r,ffb020,1;0,232,16,8,l,ffb020,200", &a));
+}
+
+void test_anim_never_reads_beyond_len() {
+  // A buffer without NUL: bytes after len would extend the value into something else valid.
+  const char full[] = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48";
+  const size_t n = strlen(full);
+  std::vector<char> exact(full, full + n);  // heap block of exactly n bytes
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(gb::parseAnim(exact.data(), n, &a));
+  for (size_t cut = 0; cut < n; ++cut) {  // every truncation stays inside its len
+    std::vector<char> part(full, full + cut);
+    if (cut == 0) part.reserve(1);
+    gb::parseAnim(part.empty() ? "" : part.data(), cut, &a);
+  }
+  // "48" cut to "4" is still valid: proves the digits after len are not read.
+  TEST_ASSERT_TRUE(gb::parseAnim(full, n - 1, &a));
+  TEST_ASSERT_EQUAL_UINT8(4, a.tracks[0].speed);
+}
+
+void test_anim_value_length_limit() {
+  std::string v = "1;0b0d12;232a38";
+  const int ys[] = {10, 50, 90, 130};
+  for (int y : ys) v += ";100," + std::to_string(y) + ",140,32,l,ffffff,200";
+  TEST_ASSERT_TRUE(v.size() <= gb::kAnimMaxValueLen);
+  gb::AnimSpec a;
+  TEST_ASSERT_TRUE(anim(v.c_str(), &a));
+  TEST_ASSERT_EQUAL_UINT8(4, a.count);
+  v += ";100,170,140,32,l,ffffff,200;100,210,140,32,l,ffffff,200";
+  TEST_ASSERT_TRUE(v.size() > gb::kAnimMaxValueLen);
+  a.count = 3;
+  TEST_ASSERT_FALSE(anim(v.c_str(), &a));
+  TEST_ASSERT_EQUAL_UINT8(0, a.count);
+  // exactly kAnimMaxValueLen + 1 characters of otherwise valid text up to the limit
+  std::string pad(gb::kAnimMaxValueLen + 1, '1');
+  TEST_ASSERT_FALSE(anim(pad.c_str(), &a));
+}
+
+void test_anim_same_geometry() {
+  gb::AnimSpec a, b;
+  const char* base = "1;0b0d12;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22";
+  TEST_ASSERT_TRUE(anim(base, &a));
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,l,010203,99;64,133,85,15,r,040506,5", &b));
+  TEST_ASSERT_TRUE(gb::animSameGeometry(a, b));
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,68,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other y
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a38;64,67,85,15,r,ffb020,48", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other track count
+  TEST_ASSERT_TRUE(anim("1;0b0d22;232a38;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other background
+  TEST_ASSERT_TRUE(anim("1;0b0d12;232a48;64,67,85,15,r,ffb020,48;64,133,85,15,l,34d399,22", &b));
+  TEST_ASSERT_FALSE(gb::animSameGeometry(a, b));  // other track color
+}
+
+// --- animation: arrow position, block clipping, track state rules ---
+
+void test_anim_advance_right_left_and_wrap() {
+  TEST_ASSERT_EQUAL_UINT16(5000, gb::animAdvance(0, 100, 50, false));
+  TEST_ASSERT_EQUAL_UINT16(13000, gb::animAdvance(0, 100, 50, true));      // leftward from 0
+  TEST_ASSERT_EQUAL_UINT16(2000, gb::animAdvance(17000, 100, 30, false));  // wraps at 18000
+  TEST_ASSERT_EQUAL_UINT16(0, gb::animAdvance(0, 0, 200, true));
+  TEST_ASSERT_EQUAL_UINT16(gb::animAdvance(0, 1000, 200, false),
+                           gb::animAdvance(0, 4000000000u, 200, false));   // capped, no overflow
+  for (uint32_t ms = 0; ms < 2000; ms += 37) {
+    TEST_ASSERT_TRUE(gb::animAdvance(17999, ms, 200, false) < gb::kAnimPhaseMod);
+    TEST_ASSERT_TRUE(gb::animAdvance(0, ms, 200, true) < gb::kAnimPhaseMod);
+  }
+}
+
+void test_anim_advance_left_wrap_small_steps() {
+  // 40 ms at 50 px/s is 2 px; leftward from 1 px lands on 17 px, not on a huge number.
+  TEST_ASSERT_EQUAL_UINT16(17000, gb::animAdvance(1000, 40, 50, true));
+  TEST_ASSERT_EQUAL_UINT16(1000, gb::animAdvance(17000, 40, 50, false));
+  // a full second at 200 px/s is 200 px = 11 patterns + 2 px
+  TEST_ASSERT_EQUAL_UINT16(2000, gb::animAdvance(0, 1000, 200, false));
+  TEST_ASSERT_EQUAL_UINT16(16000, gb::animAdvance(0, 1000, 200, true));
+  TEST_ASSERT_EQUAL_UINT16(16000, gb::animAdvance(0, 0xFFFFFFFFu, 200, true));
+}
+
+namespace {
+
+gb::AnimRect rect(int x, int y, int w, int h) {
+  return {static_cast<int16_t>(x), static_cast<int16_t>(y), static_cast<int16_t>(w),
+          static_cast<int16_t>(h)};
+}
+
+bool inside(const gb::AnimRect& r, int x, int y) {
+  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+}
+
+// Every cell of block: inside a hole covered by no part, otherwise by exactly one.
+void assertExactCover(const gb::AnimRect& block, const gb::AnimRect* holes, size_t nHoles,
+                      const gb::AnimRect* parts, size_t n) {
+  for (size_t i = 0; i < n; ++i) {  // parts stay inside the block
+    TEST_ASSERT_TRUE(parts[i].w > 0 && parts[i].h > 0);
+    TEST_ASSERT_TRUE(parts[i].x >= block.x && parts[i].x + parts[i].w <= block.x + block.w);
+    TEST_ASSERT_TRUE(parts[i].y >= block.y && parts[i].y + parts[i].h <= block.y + block.h);
+  }
+  for (int y = block.y; y < block.y + block.h; ++y) {
+    for (int x = block.x; x < block.x + block.w; ++x) {
+      bool inHole = false;
+      for (size_t k = 0; k < nHoles; ++k) inHole = inHole || inside(holes[k], x, y);
+      int covered = 0;
+      for (size_t i = 0; i < n; ++i) covered += inside(parts[i], x, y) ? 1 : 0;
+      TEST_ASSERT_EQUAL_INT(inHole ? 0 : 1, covered);
+    }
+  }
+}
+
+int area(const gb::AnimRect* parts, size_t n) {
+  int a = 0;
+  for (size_t i = 0; i < n; ++i) a += parts[i].w * parts[i].h;
+  return a;
+}
+
+}  // namespace
+
+void test_anim_clip_no_hole() {
+  gb::AnimRect out[gb::kAnimClipMax];
+  const gb::AnimRect block = rect(16, 32, 16, 16);
+  TEST_ASSERT_EQUAL(1, gb::animClip(block, nullptr, 0, out, gb::kAnimClipMax));
+  TEST_ASSERT_EQUAL_INT16(16, out[0].x);
+  TEST_ASSERT_EQUAL_INT16(32, out[0].y);
+  TEST_ASSERT_EQUAL_INT16(16, out[0].w);
+  TEST_ASSERT_EQUAL_INT16(16, out[0].h);
+}
+
+void test_anim_clip_hole_covers_block() {
+  gb::AnimRect out[gb::kAnimClipMax];
+  const gb::AnimRect hole = rect(60, 60, 30, 30);
+  TEST_ASSERT_EQUAL(0, gb::animClip(rect(64, 64, 16, 16), &hole, 1, out, gb::kAnimClipMax));
+  const gb::AnimRect same = rect(64, 64, 16, 16);
+  TEST_ASSERT_EQUAL(0, gb::animClip(rect(64, 64, 16, 16), &same, 1, out, gb::kAnimClipMax));
+}
+
+void test_anim_clip_track_through_a_block() {
+  gb::AnimRect out[gb::kAnimClipMax];
+  const gb::AnimRect hole = rect(64, 67, 85, 15);
+  const gb::AnimRect block = rect(64, 64, 16, 16);  // rows 64 to 79
+  const size_t n = gb::animClip(block, &hole, 1, out, gb::kAnimClipMax);
+  TEST_ASSERT_TRUE(n >= 1);
+  TEST_ASSERT_EQUAL_INT(48, area(out, n));
+  for (size_t i = 0; i < n; ++i) {
+    TEST_ASSERT_TRUE(out[i].y >= 64 && out[i].y + out[i].h <= 67);
+  }
+  assertExactCover(block, &hole, 1, out, n);
+  // the block left of the track is not touched
+  const gb::AnimRect left = rect(48, 64, 16, 16);
+  TEST_ASSERT_EQUAL(1, gb::animClip(left, &hole, 1, out, gb::kAnimClipMax));
+  TEST_ASSERT_EQUAL_INT16(48, out[0].x);
+  TEST_ASSERT_EQUAL_INT16(16, out[0].w);
+  TEST_ASSERT_EQUAL_INT16(16, out[0].h);
+}
+
+void test_anim_clip_corner_holes() {
+  gb::AnimRect out[gb::kAnimClipMax];
+  const gb::AnimRect block = rect(32, 48, 16, 16);
+  const gb::AnimRect holes[] = {rect(28, 44, 9, 9), rect(43, 44, 9, 9), rect(28, 59, 9, 9),
+                                rect(43, 59, 9, 9)};
+  const size_t n = gb::animClip(block, holes, 4, out, gb::kAnimClipMax);
+  TEST_ASSERT_TRUE(n <= gb::kAnimClipMax);
+  assertExactCover(block, holes, 4, out, n);
+  TEST_ASSERT_EQUAL_INT(256 - 4 * 25, area(out, n));
+  // a hole in the middle and two edge strips
+  const gb::AnimRect mixed[] = {rect(37, 53, 6, 6), rect(32, 48, 16, 2), rect(46, 48, 2, 16)};
+  const size_t m = gb::animClip(block, mixed, 3, out, gb::kAnimClipMax);
+  TEST_ASSERT_TRUE(m <= gb::kAnimClipMax);
+  assertExactCover(block, mixed, 3, out, m);
+}
+
+void test_anim_clip_hole_outside() {
+  gb::AnimRect out[gb::kAnimClipMax];
+  const gb::AnimRect block = rect(64, 64, 16, 16);
+  const gb::AnimRect holes[] = {rect(80, 64, 10, 16), rect(64, 80, 16, 10), rect(0, 0, 64, 64),
+                                rect(70, 70, 0, 5)};  // touching edges, empty hole
+  TEST_ASSERT_EQUAL(1, gb::animClip(block, holes, 4, out, gb::kAnimClipMax));
+  assertExactCover(block, nullptr, 0, out, 1);
+}
+
+void test_anim_clip_overflow_falls_back_to_whole_block() {
+  // Too small an output: draw the whole block (arrows are redrawn next tick) instead of
+  // leaving pixels of the new frame out.
+  gb::AnimRect out[2];
+  const gb::AnimRect block = rect(32, 48, 16, 16);
+  const gb::AnimRect hole = rect(37, 53, 6, 6);  // middle hole needs four parts
+  TEST_ASSERT_EQUAL(1, gb::animClip(block, &hole, 1, out, 2));
+  TEST_ASSERT_EQUAL_INT16(16, out[0].w);
+  TEST_ASSERT_EQUAL(0, gb::animClip(block, &hole, 1, out, 0));
+}
+
+namespace {
+
+const uint16_t kBg = 0x0862;     // #0b0d12
+const uint16_t kTrack = 0x2147;  // #232a38
+
+gb::AnimTrack trackAt(int y, uint8_t speed, bool left, uint16_t color) {
+  gb::AnimTrack t;
+  t.rect = rect(64, y, 85, 15);
+  t.left = left;
+  t.color = color;
+  t.speed = speed;
+  return t;
+}
+
+gb::AnimSpec spec1(uint8_t speed = 48, bool left = false, uint16_t color = 0xFD84) {
+  gb::AnimSpec s{};
+  s.count = 1;
+  s.background = kBg;
+  s.trackColor = kTrack;
+  s.tracks[0] = trackAt(67, speed, left, color);
+  return s;
+}
+
+gb::AnimSpec spec2() {
+  gb::AnimSpec s = spec1();
+  s.count = 2;
+  s.tracks[1] = trackAt(133, 22, true, 0x369B);
+  return s;
+}
+
+gb::AnimSpec specMoved() {
+  gb::AnimSpec s = spec1();
+  s.tracks[0].rect.y = 133;
+  return s;
+}
+
+gb::AnimSpec specEmpty() {
+  gb::AnimSpec s{};
+  s.count = 0;
+  return s;
+}
+
+void start(gb::AnimState* st, const gb::AnimSpec& s, uint32_t now) {
+  st->onHead200(s);
+  st->onDecoded(now);
+}
+
+}  // namespace
+
+void test_anim_base_colors_match_rgb565() {
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x0b, 0x0d, 0x12), kBg);
+  TEST_ASSERT_EQUAL_HEX16(gb::animRgb565(0x23, 0x2a, 0x38), kTrack);
+}
+
+void test_anim_new_track_starts_only_after_decode() {
+  gb::AnimState st;
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  st.onHead200(spec1());
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());  // nothing to cut out while decoding
+  TEST_ASSERT_FALSE(st.tick(500, true));
+  st.onDecoded(1000);
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_INT16(67, st.track(0).rect.y);
+  TEST_ASSERT_EQUAL_UINT8(0, st.offsetPx(0));
+  TEST_ASSERT_EQUAL_HEX16(kBg, st.background());
+  TEST_ASSERT_EQUAL_HEX16(kTrack, st.trackColor());
+  // one kept, one new: only the kept one runs during decoding
+  st.onHead200(spec2());
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  st.onDecoded(2000);
+  TEST_ASSERT_EQUAL_UINT8(2, st.count());
+  TEST_ASSERT_EQUAL_INT16(133, st.track(1).rect.y);
+}
+
+void test_anim_same_rect_keeps_running_with_new_values() {
+  gb::AnimState st;
+  start(&st, spec1(48, false, 0xFD84), 0);
+  for (uint32_t t = 40; t <= 200; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  const uint8_t before = st.offsetPx(0);
+  TEST_ASSERT_EQUAL_UINT8(9, before);  // 200 ms at 48 px/s = 9.6 px
+  st.onHead200(spec1(22, true, 0x369B));
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_UINT8(22, st.track(0).speed);
+  TEST_ASSERT_TRUE(st.track(0).left);
+  TEST_ASSERT_EQUAL_HEX16(0x369B, st.track(0).color);
+  TEST_ASSERT_EQUAL_UINT8(before, st.offsetPx(0));
+  st.onDecoded(220);
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_UINT8(before, st.offsetPx(0));  // decoding does not reset the phase
+}
+
+void test_anim_missing_track_stops_before_decode() {
+  gb::AnimState st;
+  start(&st, spec2(), 0);
+  TEST_ASSERT_EQUAL_UINT8(2, st.count());
+  st.onHead200(spec1());
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_INT16(67, st.track(0).rect.y);
+  st.onDecoded(1000);
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  // the second one missing instead of the first
+  start(&st, spec2(), 2000);
+  st.onHead200(specMoved());
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_INT16(133, st.track(0).rect.y);
+}
+
+void test_anim_200_without_description_stops_all() {
+  gb::AnimState st;
+  start(&st, spec2(), 0);
+  st.onHead200(specEmpty());
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  st.onDecoded(1000);
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  TEST_ASSERT_FALSE(st.tick(2000, true));
+}
+
+void test_anim_base_color_change_stops_all_until_decoded() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  gb::AnimSpec other = spec1();
+  other.background = 0xFFFF;
+  st.onHead200(other);
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  st.onDecoded(1000);
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_HEX16(0xFFFF, st.background());
+  gb::AnimSpec otherTrack = other;
+  otherTrack.trackColor = 0x0000;
+  st.onHead200(otherTrack);
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+}
+
+void test_anim_304_same_geometry_takes_values() {
+  gb::AnimState st;
+  start(&st, spec1(48, false, 0xFD84), 0);
+  TEST_ASSERT_TRUE(st.onHead304(spec1(60, true, 0x369B)));
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_EQUAL_UINT8(60, st.track(0).speed);
+  TEST_ASSERT_TRUE(st.track(0).left);
+  TEST_ASSERT_EQUAL_HEX16(0x369B, st.track(0).color);
+}
+
+void test_anim_304_other_geometry_or_missing_stops_and_asks_refetch() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  TEST_ASSERT_FALSE(st.onHead304(specMoved()));
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  start(&st, spec1(), 1000);
+  TEST_ASSERT_FALSE(st.onHead304(specEmpty()));
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  start(&st, spec1(), 2000);
+  TEST_ASSERT_FALSE(st.onHead304(spec2()));  // more tracks than run
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  start(&st, spec1(), 3000);
+  gb::AnimSpec other = spec1();
+  other.trackColor = 0x0000;
+  TEST_ASSERT_FALSE(st.onHead304(other));  // other base color
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+}
+
+void test_anim_304_never_starts_tracks() {
+  gb::AnimState st;
+  TEST_ASSERT_TRUE(st.onHead304(spec1()));  // straight after boot
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  start(&st, spec1(), 0);
+  st.stopAll();
+  TEST_ASSERT_TRUE(st.onHead304(spec1()));
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  TEST_ASSERT_FALSE(st.tick(1000, true));
+}
+
+void test_anim_decode_failure_stops_all() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  st.onHead200(spec1());
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  st.onDecodeFailed();
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  st.onDecoded(1000);  // a stray completion without a new head starts nothing
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+}
+
+void test_anim_failed_fetch_keeps_running() {
+  // A failed fetch reports no event: the tracks run on as long as the frame stands.
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  for (uint32_t t = 40; t <= 4000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+}
+
+void test_anim_status_screen_stops_until_a_new_frame() {
+  gb::AnimState st;
+  start(&st, spec2(), 0);
+  st.stopAll();
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  TEST_ASSERT_FALSE(st.tick(1000, true));
+  // a status screen in the middle of a decode: that frame does not start tracks either
+  st.onHead200(spec2());
+  st.stopAll();
+  st.onDecoded(2000);
+  TEST_ASSERT_EQUAL_UINT8(0, st.count());
+  // the next complete frame does
+  start(&st, spec2(), 3000);
+  TEST_ASSERT_EQUAL_UINT8(2, st.count());
+}
+
+void test_anim_tick_every_40_ms_and_wraparound() {
+  gb::AnimState st;
+  start(&st, spec1(50), 0xFFFFFFF0u);
+  TEST_ASSERT_FALSE(st.tick(0xFFFFFFF0u + 39, true));
+  TEST_ASSERT_TRUE(st.tick(0x00000018u, true));  // 40 ms later, across the overflow
+  TEST_ASSERT_EQUAL_UINT8(2, st.offsetPx(0));
+  TEST_ASSERT_FALSE(st.tick(0x00000018u + 39, true));
+  TEST_ASSERT_TRUE(st.tick(0x00000018u + 40, true));
+  TEST_ASSERT_EQUAL_UINT8(4, st.offsetPx(0));
+}
+
+void test_anim_left_track_offset_wraps_down() {
+  gb::AnimState st;
+  start(&st, spec1(50, true), 0);
+  TEST_ASSERT_TRUE(st.tick(40, true));
+  TEST_ASSERT_EQUAL_UINT8(16, st.offsetPx(0));  // 0 - 2 px wraps to 16
+  for (uint32_t t = 80; t <= 2000; t += 40) {
+    TEST_ASSERT_TRUE(st.tick(t, true));
+    TEST_ASSERT_TRUE(st.offsetPx(0) < gb::kAnimArrowSpacing);
+  }
+}
+
+void test_anim_speed_change_does_not_jump() {
+  gb::AnimState st;
+  start(&st, spec1(50), 0);
+  for (uint32_t t = 40; t <= 400; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  TEST_ASSERT_EQUAL_UINT8(2, st.offsetPx(0));  // 20 px
+  TEST_ASSERT_TRUE(st.onHead304(spec1(100)));
+  TEST_ASSERT_EQUAL_UINT8(2, st.offsetPx(0));
+  TEST_ASSERT_TRUE(st.tick(440, true));
+  TEST_ASSERT_EQUAL_UINT8(6, st.offsetPx(0));
+}
+
+void test_anim_invisible_keeps_state_and_draws_nothing() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  TEST_ASSERT_TRUE(st.tick(40, true));
+  TEST_ASSERT_TRUE(st.tick(80, true));
+  TEST_ASSERT_FALSE(st.tick(500, false));
+  TEST_ASSERT_FALSE(st.tick(5000, false));
+  TEST_ASSERT_EQUAL_UINT8(1, st.count());
+  TEST_ASSERT_TRUE(st.tick(5040, true));
+  TEST_ASSERT_TRUE(st.offsetPx(0) < gb::kAnimArrowSpacing);
+  const gb::AnimStats s = st.stats(5040);
+  TEST_ASSERT_EQUAL_UINT32(0, s.gapsOver100);  // the dark time is no gap
+  TEST_ASSERT_EQUAL_UINT32(0, s.gapsOver250);
+  TEST_ASSERT_EQUAL_UINT8(1, s.tracks);
+}
+
+void test_anim_gap_counters() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  uint32_t t = 0;
+  const uint32_t steps[] = {40, 40, 120, 300, 40};
+  for (uint32_t d : steps) {
+    t += d;
+    TEST_ASSERT_TRUE(st.tick(t, true));
+  }
+  gb::AnimStats s = st.stats(t);
+  TEST_ASSERT_EQUAL_UINT32(2, s.gapsOver100);
+  TEST_ASSERT_EQUAL_UINT32(1, s.gapsOver250);
+  TEST_ASSERT_EQUAL_UINT32(0, s.runS);  // 540 ms
+  for (t += 40; t <= 3000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  TEST_ASSERT_FALSE(st.tick(3000, true));  // not due (last frame 2980), but counts run time
+  s = st.stats(3000);
+  TEST_ASSERT_EQUAL_UINT32(3, s.runS);
+  st.stopAll();
+  s = st.stats(10000);
+  TEST_ASSERT_EQUAL_UINT8(0, s.tracks);
+  TEST_ASSERT_EQUAL_UINT32(3, s.runS);  // stopped time does not count
+  start(&st, spec1(), 10000);
+  TEST_ASSERT_TRUE(st.tick(10040, true));  // the pause before is no gap
+  for (t = 10080; t <= 12000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  s = st.stats(12000);
+  TEST_ASSERT_EQUAL_UINT32(2, s.gapsOver100);
+  TEST_ASSERT_EQUAL_UINT32(1, s.gapsOver250);
+  TEST_ASSERT_EQUAL_UINT32(5, s.runS);
+  TEST_ASSERT_EQUAL_UINT32(5, st.stats(12900).runS);  // counted up to now, not to the last tick
+  TEST_ASSERT_EQUAL_UINT32(6, st.stats(13000).runS);
+}
+
+void test_anim_run_time_counts_only_while_visible() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  for (uint32_t t = 40; t <= 2000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(2000).runS);
+  TEST_ASSERT_FALSE(st.tick(2040, false));  // 2000..2040 still visible: 2040 ms
+  TEST_ASSERT_FALSE(st.tick(10000, false));
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(10000).runS);
+  TEST_ASSERT_EQUAL_UINT32(2, st.stats(20000).runS);  // dark, even between ticks
+  TEST_ASSERT_FALSE(st.tick(20000, false));
+  TEST_ASSERT_TRUE(st.tick(20040, true));  // 20000..20040 was dark
+  for (uint32_t t = 20080; t <= 21000; t += 40) TEST_ASSERT_TRUE(st.tick(t, true));
+  gb::AnimStats s = st.stats(21000);
+  TEST_ASSERT_EQUAL_UINT32(3, s.runS);  // 2040 + 960 ms
+  TEST_ASSERT_EQUAL_UINT32(0, s.gapsOver100);
+  TEST_ASSERT_EQUAL_UINT32(3, st.stats(21959).runS);
+  TEST_ASSERT_EQUAL_UINT32(3, st.stats(21960).runS);
+  TEST_ASSERT_EQUAL_UINT32(4, st.stats(22000).runS);
+}
+
+void test_anim_run_time_survives_millis_wraparound() {
+  gb::AnimState st;
+  start(&st, spec1(), 0xFFFFF000u);  // 4096 ms before the overflow
+  uint32_t t = 0xFFFFF000u;
+  for (int i = 0; i < 250; ++i) {  // 10 s in 40 ms steps
+    t += 40;
+    TEST_ASSERT_TRUE(st.tick(t, true));
+  }
+  TEST_ASSERT_EQUAL_UINT32(10, st.stats(t).runS);
+}
+
+void test_anim_track_index_out_of_range_is_safe() {
+  gb::AnimState st;
+  start(&st, spec1(), 0);
+  (void)st.track(200);
+  TEST_ASSERT_TRUE(st.offsetPx(200) < gb::kAnimArrowSpacing);
+}
+
+void test_anim_same_geometry_garbage_count() {
+  gb::AnimSpec a = spec1();
+  gb::AnimSpec b = spec1();
+  a.count = 250;  // must not read beyond tracks[]
+  b.count = 250;
+  for (size_t i = 1; i < gb::kAnimMaxTracks; ++i) {
+    a.tracks[i] = trackAt(static_cast<int>(20 * i), 1, false, 0);
+    b.tracks[i] = a.tracks[i];
+  }
+  TEST_ASSERT_TRUE(gb::animSameGeometry(a, b));
+}
+
+void test_http_head_carries_x_anim() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 304 Not Modified\r\nETag: \"a\"\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(1, head.anim.count);
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);   // absent: reset, nothing left over
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nX-Anim: 9;x\r\nContent-Length: 5\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);   // invalid: the frame itself still counts
+  TEST_ASSERT_EQUAL(5, head.contentLength);
+}
+
+void test_http_head_duplicate_x_anim_is_invalid() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+  // an invalid first one followed by a valid one stays invalid
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nX-Anim: 9\r\n"
+                             "X-Anim: 1;0b0d12;232a38;64,67,85,15,r,ffb020,48\r\n\r\n", &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+}
+
+void test_http_head_x_anim_name_case_blanks_and_length() {
+  gb::HttpHead head;
+  TEST_ASSERT_TRUE(parseHead("HTTP/1.1 200 OK\r\nx-anim:  1;0b0d12;232a38;64,67,85,15,r,ffb020,48  \r\n\r\n",
+                             &head));
+  TEST_ASSERT_EQUAL_UINT8(1, head.anim.count);
+  std::string v = "1;0b0d12;232a38";
+  const int ys[] = {10, 50, 90, 130};
+  for (int y : ys) v += ";100," + std::to_string(y) + ",140,32,l,ffffff,200";
+  const std::string ok = "HTTP/1.1 200 OK\r\nX-Anim: " + v + "\r\n\r\n";
+  TEST_ASSERT_TRUE(parseHead(ok.c_str(), &head));
+  TEST_ASSERT_EQUAL_UINT8(4, head.anim.count);
+  v += ";100,170,140,32,l,ffffff,200;100,210,140,32,l,ffffff,200";
+  const std::string longer = "HTTP/1.1 200 OK\r\nX-Anim: " + v + "\r\n\r\n";
+  TEST_ASSERT_TRUE(parseHead(longer.c_str(), &head));
+  TEST_ASSERT_EQUAL_UINT8(0, head.anim.count);
+}
+
 void test_server_target() {
   gb::ServerTarget t;
   TEST_ASSERT_TRUE(gb::parseServerTarget("http://192.168.1.10:8090", &t));
@@ -1570,6 +2197,44 @@ int main() {
   RUN_TEST(test_http_head_rejects_garbage);
   RUN_TEST(test_http_head_bad_length_is_minus_one);
   RUN_TEST(test_http_head_etag_and_values_follow_existing_rules);
+  RUN_TEST(test_anim_parses_the_example);
+  RUN_TEST(test_anim_rejects_every_broken_limit);
+  RUN_TEST(test_anim_touching_tracks_are_allowed);
+  RUN_TEST(test_anim_never_reads_beyond_len);
+  RUN_TEST(test_anim_value_length_limit);
+  RUN_TEST(test_anim_same_geometry);
+  RUN_TEST(test_anim_advance_right_left_and_wrap);
+  RUN_TEST(test_anim_advance_left_wrap_small_steps);
+  RUN_TEST(test_anim_clip_no_hole);
+  RUN_TEST(test_anim_clip_hole_covers_block);
+  RUN_TEST(test_anim_clip_track_through_a_block);
+  RUN_TEST(test_anim_clip_corner_holes);
+  RUN_TEST(test_anim_clip_hole_outside);
+  RUN_TEST(test_anim_clip_overflow_falls_back_to_whole_block);
+  RUN_TEST(test_anim_base_colors_match_rgb565);
+  RUN_TEST(test_anim_new_track_starts_only_after_decode);
+  RUN_TEST(test_anim_same_rect_keeps_running_with_new_values);
+  RUN_TEST(test_anim_missing_track_stops_before_decode);
+  RUN_TEST(test_anim_200_without_description_stops_all);
+  RUN_TEST(test_anim_base_color_change_stops_all_until_decoded);
+  RUN_TEST(test_anim_304_same_geometry_takes_values);
+  RUN_TEST(test_anim_304_other_geometry_or_missing_stops_and_asks_refetch);
+  RUN_TEST(test_anim_304_never_starts_tracks);
+  RUN_TEST(test_anim_decode_failure_stops_all);
+  RUN_TEST(test_anim_failed_fetch_keeps_running);
+  RUN_TEST(test_anim_status_screen_stops_until_a_new_frame);
+  RUN_TEST(test_anim_tick_every_40_ms_and_wraparound);
+  RUN_TEST(test_anim_left_track_offset_wraps_down);
+  RUN_TEST(test_anim_speed_change_does_not_jump);
+  RUN_TEST(test_anim_invisible_keeps_state_and_draws_nothing);
+  RUN_TEST(test_anim_gap_counters);
+  RUN_TEST(test_anim_run_time_counts_only_while_visible);
+  RUN_TEST(test_anim_run_time_survives_millis_wraparound);
+  RUN_TEST(test_anim_track_index_out_of_range_is_safe);
+  RUN_TEST(test_anim_same_geometry_garbage_count);
+  RUN_TEST(test_http_head_carries_x_anim);
+  RUN_TEST(test_http_head_duplicate_x_anim_is_invalid);
+  RUN_TEST(test_http_head_x_anim_name_case_blanks_and_length);
   RUN_TEST(test_server_target);
   RUN_TEST(test_server_target_userinfo);
   RUN_TEST(test_deadline_wraparound);

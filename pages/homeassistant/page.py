@@ -12,25 +12,20 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 import time
-from functools import lru_cache
 from typing import NamedTuple
-from urllib.parse import urlparse
 
 import requests
-from PIL import ImageFont
 
-from glancebox import http
-from glancebox.render import FONTS_DIR
+from glancebox import hass
+from glancebox.hass import LANGS, NA, entity_id
+from glancebox.render import text_width
 
 log = logging.getLogger(__name__)
 
-LANGS = ("de", "en")
 LAYOUTS = ("tiles", "list")
 MAX_TILES = 4
 MAX_LIST = 6
-ENTITY_RE = re.compile(r"^[a-z0-9_]+\.[a-z0-9_]+$")
 DEFAULT_TITLE = "Home Assistant"
 
 
@@ -44,15 +39,9 @@ def default_layout(n: int) -> str:
     return "tiles" if n <= MAX_TILES else "list"
 
 
-def _entity_id(value: object) -> str:
-    if not isinstance(value, str) or not ENTITY_RE.match(value):
-        raise ValueError(f"entity id {value!r} must look like 'sensor.name' (a-z, 0-9, _)")
-    return value
-
-
 def _entry(item: object) -> Entry:
     if isinstance(item, str):
-        return Entry(_entity_id(item), None, None)
+        return Entry(entity_id(item), None, None)
     if not isinstance(item, dict) or "entity" not in item:
         raise ValueError("each entity must be an entity id or a mapping with 'entity'")
     label = item.get("label")
@@ -62,7 +51,7 @@ def _entry(item: object) -> Entry:
     if decimals is not None and (isinstance(decimals, bool) or not isinstance(decimals, int)
                                  or not 0 <= decimals <= 3):
         raise ValueError("decimals must be an integer from 0 to 3")
-    return Entry(_entity_id(item["entity"]), label, decimals)
+    return Entry(entity_id(item["entity"]), label, decimals)
 
 
 def entries(options: dict) -> list[Entry]:
@@ -70,17 +59,7 @@ def entries(options: dict) -> list[Entry]:
 
 
 def validate(options: dict) -> None:
-    url = options.get("url")
-    if not isinstance(url, str) or not url:
-        raise ValueError("url is required")
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError("url must start with http:// or https://")
-    token = options.get("token")
-    if not isinstance(token, str) or not token:
-        raise ValueError("token is required (long-lived access token)")
-    if any(c.isspace() or not c.isprintable() for c in token):
-        raise ValueError("token must not contain whitespace or control characters")
+    hass.validate_connection(options)
     items = options.get("entities")
     if not isinstance(items, list) or not items:
         raise ValueError("entities is required and must be a non-empty list")
@@ -92,10 +71,6 @@ def validate(options: dict) -> None:
         raise ValueError("layout must be 'tiles' or 'list'")
     if (layout or default_layout(len(parsed_entries))) == "tiles" and len(items) > MAX_TILES:
         raise ValueError(f"layout 'tiles' allows at most {MAX_TILES} entities")
-    if options.get("lang", "de") not in LANGS:
-        raise ValueError("lang must be 'de' or 'en'")
-    if "title" in options and not isinstance(options["title"], str):
-        raise ValueError("title must be a string")
 
 
 class Cell(NamedTuple):
@@ -104,8 +79,6 @@ class Cell(NamedTuple):
     tone: str  # "" (white), "warn" (orange), "open" (orange), "on" (yellow)
 
 
-MINUS = "\u2212"
-NA = {"de": "n. v.", "en": "n/a"}
 OPEN_CLASSES = ("window", "door", "opening", "garage_door")
 PRESENCE_CLASSES = ("motion", "occupancy", "presence")
 ON_OFF_DOMAINS = ("binary_sensor", "light", "switch", "input_boolean", "fan")
@@ -114,14 +87,6 @@ WORDS = {
     "presence": {"de": ("erkannt", "frei"), "en": ("detected", "clear")},
     "plain": {"de": ("an", "aus"), "en": ("on", "off")},
 }
-
-
-def _number(text: str) -> float | None:
-    try:
-        number = float(text)
-    except ValueError:
-        return None
-    return number if math.isfinite(number) else None
 
 
 def _non_finite(text: str) -> bool:
@@ -133,18 +98,7 @@ def _non_finite(text: str) -> bool:
 
 def _format_number(number: float, unit: str | None, decimals: int | None,
                    lang: str) -> Cell:
-    shown = round(number, 1 if decimals is None else decimals)
-    if unit in ("W", "Wh") and abs(shown) >= 1000:
-        number /= 1000
-        unit = "k" + unit
-    if decimals is None:
-        decimals = 0 if round(number, 1) == int(round(number, 1)) else 1
-    rounded = round(number, decimals)
-    text = f"{abs(rounded):.{decimals}f}"
-    if rounded < 0:
-        text = MINUS + text
-    if lang == "de":
-        text = text.replace(".", ",")
+    text, unit = hass.format_number(number, unit, decimals, lang)
     return Cell(text, unit, "")
 
 
@@ -176,7 +130,7 @@ def format_state(state: dict, decimals: int | None, lang: str) -> Cell:
     binary = _binary(str(state.get("entity_id", "")), attrs.get("device_class"), raw, lang)
     if binary:
         return binary
-    number = _number(raw)
+    number = hass.number(raw)
     if number is not None:
         return _format_number(number, attrs.get("unit_of_measurement") or None, decimals, lang)
     if _non_finite(raw):
@@ -195,25 +149,9 @@ _BOXES = {
     "list": (134, {"m": (17, 13, 3), "s": (14, 13, 3)}),
 }
 _SAFETY_PX = 1  # rounding of the layout box
-_FONT_FILE = FONTS_DIR / "DejaVuSans-Bold.ttf"
 # The server gives a page FETCH_TIMEOUT_S = 20 s; stay well below it for all entities together.
 _BUDGET_S = 15.0
 _CALL_TIMEOUT_S = 5.0
-_FONT_UNITS = 1000  # measure at a large size and scale: no hinting, matches Chromium to ~0.5 px
-
-
-@lru_cache(maxsize=1)
-def _font() -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(str(_FONT_FILE), _FONT_UNITS)
-
-
-def text_width(value: str, unit: str | None, sizes: tuple[int, int, int]) -> float:
-    """Estimated rendered width in px of value + unit in bold DejaVu Sans (the page font)."""
-    value_px, unit_px, margin = sizes
-    width = _font().getlength(value) * value_px / _FONT_UNITS
-    if unit:
-        width += margin + _font().getlength(unit) * unit_px / _FONT_UNITS
-    return width
 
 
 def size_class(value: str, unit: str | None, layout: str, count: int) -> str:
@@ -239,24 +177,6 @@ TEXT = {
 }
 
 
-def _status(exc: Exception) -> int | None:
-    response = getattr(exc, "response", None)
-    return getattr(response, "status_code", None)
-
-
-def _log_failure(url: str, exc: Exception) -> None:
-    """Log without ever echoing a message that might carry the Authorization header.
-
-    Only HTTPError/ConnectionError/Timeout messages (URL and status) are logged; anything else
-    (e.g. requests' InvalidHeader, which quotes the header value) logs just its type.
-    """
-    if isinstance(exc, (requests.HTTPError, requests.ConnectionError, requests.Timeout)):
-        log.warning("homeassistant: %s: %s: %s", http.redact_urls(url), type(exc).__name__,
-                    http.redact_urls(str(exc)))
-    else:
-        log.warning("homeassistant: %s: %s", http.redact_urls(url), type(exc).__name__)
-
-
 def fetch(options: dict, ctx) -> dict:
     lang = options.get("lang", ctx.lang if ctx.lang in LANGS else "de")
     clock = ctx.now.strftime("%H:%M")
@@ -264,8 +184,6 @@ def fetch(options: dict, ctx) -> dict:
     texts = TEXT[lang]
     parsed = entries(options)
     layout = options.get("layout") or default_layout(len(parsed))
-    base = f"{options['url'].rstrip('/')}/api/states"
-    headers = {"Authorization": f"Bearer {options['token']}"}
 
     def result(state: str, items=(), **extra) -> dict:
         data = {"title": title, "clock": clock, "lang": lang, "layout": layout,
@@ -276,23 +194,20 @@ def fetch(options: dict, ctx) -> dict:
     cells = []
     deadline = time.monotonic() + _BUDGET_S
     for entry in parsed:
-        url = f"{base}/{entry.entity_id}"
+        url = hass.state_url(options["url"], entry.entity_id)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             log.warning("homeassistant: time budget used up before %s", entry.entity_id)
             return result("error", message=texts["error"], sub=f"{texts['asof']} {clock}")
         try:
-            state = http.get_json(url, headers=headers,
-                                  timeout=min(_CALL_TIMEOUT_S, remaining))
-            if not isinstance(state, dict):
-                raise TypeError("unexpected response shape")
+            state = hass.get_state(url, options["token"], min(_CALL_TIMEOUT_S, remaining))
         except (requests.RequestException, ValueError, TypeError) as exc:
-            status = _status(exc)
+            status = hass.status_of(exc)
             if status == 404:
                 cells.append((entry.label or entry.entity_id,
                               Cell(texts["missing"], None, "warn")))
                 continue
-            _log_failure(url, exc)
+            hass.log_failure("homeassistant", url, exc)
             if status in (401, 403):
                 return result("token", message=texts["token"], sub=texts["token_sub"])
             return result("error", message=texts["error"], sub=f"{texts['asof']} {clock}")

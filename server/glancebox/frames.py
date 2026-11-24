@@ -9,7 +9,7 @@ import logging
 import secrets
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 import jinja2
 from PIL import Image
 
+from .anim import Anim, encode
 from .config import AppConfig, PageConfig
 from .http import redact_urls
 from .pages import PageContext, PageType
@@ -28,6 +29,7 @@ log = logging.getLogger(__name__)
 STALE_AFTER_S = 600
 FETCH_TIMEOUT_S = 20
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+ANIM_KEY = "_anim"  # reserved key in a page's fetch() result: the animation description
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,8 @@ class Frame:
     jpeg: bytes
     etag: str
     rendered_at: float
+    anim: str | None = None  # finished, checked X-Anim header value; not part of the ETag
+    data: dict | None = None  # fetch() result without ANIM_KEY, for SKIP_UNCHANGED
 
 
 def _static_error_jpeg() -> bytes:
@@ -59,8 +63,9 @@ class FrameStore:
         etag = hashlib.sha1(jpeg).hexdigest()[:16] + self._nonce
         return Frame(jpeg, etag, now)
 
-    def put(self, index: int, jpeg: bytes, now: float) -> None:
-        self._frames[index] = self._make_frame(jpeg, now)
+    def put(self, index: int, jpeg: bytes, now: float, anim: str | None = None,
+            data: dict | None = None) -> None:
+        self._frames[index] = replace(self._make_frame(jpeg, now), anim=anim, data=data)
 
     def get(self, index: int, now: float) -> Frame | None:
         frame = self._frames.get(index)
@@ -103,6 +108,28 @@ def _jinja_env(extra_dirs: list) -> jinja2.Environment:
     return env
 
 
+async def fetch_page_data(page: PageConfig, ptype: PageType, cfg: AppConfig, now: float,
+                          inbox: PushInbox | None = None) -> dict:
+    """Run the page type's fetch(); the result may still carry ANIM_KEY."""
+    ctx = PageContext(
+        now=datetime.fromtimestamp(now, ZoneInfo(cfg.timezone)),
+        lang=page.options.get("lang", cfg.lang),
+        timezone=cfg.timezone,
+        **({} if inbox is None else {"pushed": inbox.get}),
+    )
+    return await asyncio.wait_for(
+        asyncio.to_thread(ptype.fetch, page.options, ctx), FETCH_TIMEOUT_S)
+
+
+async def render_data(ptype: PageType, data: dict, renderer) -> bytes:
+    path = ptype.template_path
+    if path is None or not path.is_file():
+        raise FileNotFoundError(f"template not found: {path}")
+    data = {k: v for k, v in data.items() if k != ANIM_KEY}
+    html = _jinja_env([path.parent]).get_template(path.name).render(**data)
+    return await renderer.render_html(html)
+
+
 async def render_page(page: PageConfig, ptype: PageType, cfg: AppConfig, renderer,
                        now: float, inbox: PushInbox | None = None) -> bytes:
     if ptype.kind == "url":
@@ -112,16 +139,21 @@ async def render_page(page: PageConfig, ptype: PageType, cfg: AppConfig, rendere
     path = ptype.template_path
     if path is None or not path.is_file():
         raise FileNotFoundError(f"template not found: {path}")
-    ctx = PageContext(
-        now=datetime.fromtimestamp(now, ZoneInfo(cfg.timezone)),
-        lang=page.options.get("lang", cfg.lang),
-        timezone=cfg.timezone,
-        **({} if inbox is None else {"pushed": inbox.get}),
-    )
-    data = await asyncio.wait_for(
-        asyncio.to_thread(ptype.fetch, page.options, ctx), FETCH_TIMEOUT_S)
-    html = _jinja_env([path.parent]).get_template(path.name).render(**data)
-    return await renderer.render_html(html)
+    data = await fetch_page_data(page, ptype, cfg, now, inbox)
+    return await render_data(ptype, data, renderer)
+
+
+def _encode_anim(value, label: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, Anim):
+        log.warning("%s: X-Anim dropped: not an Anim: %s", label, type(value).__name__)
+        return None
+    try:
+        return encode(value)
+    except ValueError as e:
+        log.warning("%s: X-Anim dropped: %s", label, e)
+        return None
 
 
 async def refresh_once(cfg: AppConfig, types: dict[str, PageType], renderer,
@@ -135,7 +167,20 @@ async def refresh_once(cfg: AppConfig, types: dict[str, PageType], renderer,
             ptype = types.get(page.type)
             if ptype is None:
                 raise LookupError(f"unknown page type {page.type!r}")
-            jpeg = await render_page(page, ptype, cfg, renderer, now, inbox)
+            anim = None
+            data = None
+            if ptype.kind == "url":
+                jpeg = await render_page(page, ptype, cfg, renderer, now, inbox)
+            else:
+                raw = await fetch_page_data(page, ptype, cfg, now, inbox)
+                data = {k: v for k, v in raw.items() if k != ANIM_KEY}
+                anim = _encode_anim(raw.get(ANIM_KEY), label)
+                old = store.get(page.index, now)
+                if ptype.skip_unchanged and old is not None and old.data == data:
+                    store.put(page.index, old.jpeg, now, anim=anim, data=data)
+                    store.mark_attempt(page.index, now, None)
+                    continue
+                jpeg = await render_data(ptype, data, renderer)
         except Exception as e:  # noqa: BLE001 - any page may fail; logged with traceback below
             error = redact_urls(f"{type(e).__name__}: {e}")
             # One record: the short error, then the traceback, both without URL secrets.
@@ -143,7 +188,7 @@ async def refresh_once(cfg: AppConfig, types: dict[str, PageType], renderer,
                         redact_urls(traceback.format_exc()).rstrip())
             store.mark_attempt(page.index, now, error)
             continue
-        store.put(page.index, jpeg, now)
+        store.put(page.index, jpeg, now, anim=anim, data=data)
         store.mark_attempt(page.index, now, None)
 
 
