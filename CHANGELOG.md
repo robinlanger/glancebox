@@ -17,9 +17,9 @@ Checked on one GeekMagic SmallTV Ultra against a Home Assistant with simulated s
 around the tracks, the device page and an OTA update while the arrows run, the offline screen
 when the server goes away, and a run of 20 hours (ended early, after the beta had run with no
 problems): no restart, free memory stable, in 5.6 hours of animation 3 pauses over 100 ms and
-none over 250 ms. A network outage of the server during the run did not need a restart. Not
-checked: night mode with brightness 0 while the arrows run, the Home Assistant add-on with this
-version, and the arm64 image on a Raspberry Pi.
+none over 250 ms. A network outage of the server during the run did not need a restart. Night mode
+with brightness 0 while the arrows run: checked afterwards, the display stays dark (2026-11-24).
+Not checked: the Home Assistant add-on with this version, and the arm64 image on a Raspberry Pi.
 
 ### Added
 - Page type `energy`: energy flow from Home Assistant in 1 to 4 rows of the types `grid`, `pv`,
