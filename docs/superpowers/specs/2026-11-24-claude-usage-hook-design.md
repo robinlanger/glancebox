@@ -1,6 +1,6 @@
 # ai-Seite: Claude-Limits auch ohne Terminal (Hook) – Design
 
-Stand: 2026-11-24 · Ziel-Version: 0.8.0 · Größe: kleine Änderung (kurzes Design)
+Stand: 2026-11-24 · Ziel-Version: 0.7.1 (von Robin so festgelegt, geplant war 0.8.0) · Größe: kleine Änderung (kurzes Design)
 
 ## Absicht
 
@@ -95,7 +95,7 @@ Reset vorbei, Vorrang der Formate); Skript-Test wie `test_statusline.py` mit ein
 `claude`-Ersatz im `PATH` (sendet die richtige Zeile, Drosselung, Schleifenschutz, nichts
 ohne `usage_report`).
 
-**Release:** 0.8.0, CHANGELOG mit dem, was geprüft wurde und was nicht.
+**Release:** 0.7.1, CHANGELOG mit dem, was geprüft wurde und was nicht.
 
 ## Meine Festlegungen (nicht mit Robin besprochen)
 
@@ -103,7 +103,7 @@ ohne `usage_report`).
 - Drosselung fest auf 60 Sekunden, keine Einstellung dafür.
 - Eigene Skripte statt eines Schalters im Statuszeilen-Skript.
 - `weekly_scoped` wird nicht angezeigt.
-- Version 0.8.0 (neue Funktion), ohne Firmware-Änderung.
+- Version ohne Firmware-Änderung (Robin hat danach 0.7.1 gewählt).
 
 ## Dem Umsetzer überlassen
 

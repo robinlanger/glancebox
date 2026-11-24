@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1]
+
 The `ai` page with `provider: claude` now also gets its limits when you use Claude Code without
 its terminal view (T3 Code, the desktop app, an IDE extension): a hook script asks Claude Code
 for its usage report after an answer and sends it. Server and scripts only; no firmware change.
