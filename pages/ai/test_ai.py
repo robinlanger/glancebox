@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -37,13 +37,23 @@ def limits(five=(42.0, IN_2H13), seven=(81.0, THURSDAY_9)) -> dict:
     return {"rate_limits": rl}
 
 
+def report(session=(42.0, IN_2H13), weekly=(81.0, THURSDAY_9), extra=()) -> dict:
+    """usage_report shape of `claude -p "/usage"` (SDKUsageReport, Claude Code 2.1.330)."""
+    entries = []
+    for kind, window in (("session", session), ("weekly_all", weekly)):
+        if window:
+            at = datetime.fromtimestamp(window[1], UTC).isoformat()
+            entries.append({"kind": kind, "percent": window[0], "resets_at": at})
+    return {"usage_report": {"rate_limits": {"limits": [*entries, *extra]}}}
+
+
 @pytest.fixture
 def ai():
     return load_page_types([PAGES_DIR])["ai"]
 
 
 def test_push_keys_declared(ai):
-    assert ai.push_keys == {"claude": ("rate_limits",)}
+    assert ai.push_keys == {"claude": ("rate_limits", "usage_report")}
 
 
 def test_validate_unknown_provider(ai):
@@ -154,6 +164,84 @@ def test_claude_no_windows_in_push(ai):
         assert data["stand"] == "Stand 13:58"
 
 
+def test_claude_report_rows_match_status_line(ai):
+    # same numbers in either format give the same page data
+    assert ai.fetch(OPTIONS, ctx(report())) == ai.fetch(OPTIONS, ctx(limits()))
+
+
+def test_claude_report_ignores_scoped_and_unknown_kinds(ai):
+    extra = ({"kind": "weekly_scoped", "percent": 16, "resets_at": None},
+             {"kind": "something_new", "percent": 99, "resets_at": None}, "junk", None)
+    data = ai.fetch(OPTIONS, ctx(report(extra=extra)))
+    assert [r["label"] for r in data["rows"]] == ["5 Stunden", "Woche"]
+
+
+def test_claude_report_only_session(ai):
+    data = ai.fetch(OPTIONS, ctx(report(weekly=None)))
+    assert [r["label"] for r in data["rows"]] == ["5 Stunden"]
+
+
+@pytest.mark.parametrize("rate_limits", [None, {}, {"limits": None}, {"limits": []}, "x"])
+def test_claude_report_without_limits_is_notice(ai, rate_limits):
+    data = ai.fetch(OPTIONS, ctx({"usage_report": {"rate_limits": rate_limits}}))
+    assert data["message"] == "Keine Limitdaten" and data["rows"] == []
+
+
+def test_claude_report_not_a_dict_is_notice(ai):
+    assert ai.fetch(OPTIONS, ctx({"usage_report": [1]}))["message"] == "Keine Limitdaten"
+
+
+@pytest.mark.parametrize("resets_at", [None, "soon", 5, ""])
+def test_claude_report_bad_reset_keeps_row(ai, resets_at):
+    push = {"usage_report": {"rate_limits": {"limits": [
+        {"kind": "session", "percent": 42, "resets_at": resets_at}]}}}
+    row = ai.fetch(OPTIONS, ctx(push))["rows"][0]
+    assert (row["percent"], row["reset"], row["text"]) == (42.0, "", "42 %")
+
+
+def test_claude_report_reset_without_offset_is_utc(ai):
+    naive = datetime.fromtimestamp(IN_2H13, UTC).replace(tzinfo=None).isoformat()
+    push = {"usage_report": {"rate_limits": {"limits": [
+        {"kind": "session", "percent": 42, "resets_at": naive}]}}}
+    assert ai.fetch(OPTIONS, ctx(push))["rows"][0]["reset"] == "in 2:13"
+
+
+def test_claude_report_reset_passed_is_zero(ai):
+    data = ai.fetch(OPTIONS, ctx(report(session=(90.0, NOW.timestamp() - 60))))
+    assert (data["rows"][0]["percent"], data["rows"][0]["reset"]) == (0.0, "zurückgesetzt")
+
+
+@pytest.mark.parametrize("percent", [True, "5", None])
+def test_claude_report_bad_percent_skips_row(ai, percent):
+    push = {"usage_report": {"rate_limits": {"limits": [
+        {"kind": "session", "percent": percent, "resets_at": None}]}}}
+    assert ai.fetch(OPTIONS, ctx(push))["message"] == "Keine Limitdaten"
+
+
+def test_claude_report_wins_over_rate_limits(ai):
+    push = {**limits(five=(10.0, IN_2H13), seven=None), **report(session=(42.0, IN_2H13))}
+    assert ai.fetch(OPTIONS, ctx(push))["rows"][0]["percent"] == 42.0
+
+
+def test_claude_report_first_of_a_kind_wins(ai):
+    extra = ({"kind": "session", "percent": 77, "resets_at": None},)
+    assert ai.fetch(OPTIONS, ctx(report(extra=extra)))["rows"][0]["percent"] == 42.0
+
+
+def test_claude_report_unhashable_kind_is_skipped(ai):
+    extra = ({"kind": ["session"], "percent": 77, "resets_at": None},)
+    data = ai.fetch(OPTIONS, ctx(report(session=None, extra=extra)))
+    assert [r["label"] for r in data["rows"]] == ["Woche"]
+
+def test_claude_report_through_the_inbox(ai):
+    inbox = PushInbox()
+    inbox.put("claude", report(weekly=(95.0, THURSDAY_9)), RECEIVED)
+    context = PageContext(now=NOW, lang="de", timezone="Europe/Berlin", pushed=inbox.get)
+    data = ai.fetch(OPTIONS, context)
+    assert [(r["label"], r["percent"]) for r in data["rows"]] == [
+        ("5 Stunden", 42.0), ("Woche", 95.0)]
+
+
 def _has(img, rgb, tol=40):
     return any(all(abs(a - b) < tol for a, b in zip(img.getpixel((x, y)), rgb, strict=True))
                for x in range(0, 240, 3) for y in range(34, 232, 3))
@@ -173,7 +261,8 @@ GREEN = (60, 200, 110)
 
 
 @pytest.mark.browser
-async def test_template_renders_claude(ai):
+@pytest.mark.parametrize("push", [limits, report], ids=["status_line", "usage_report"])
+async def test_template_renders_claude(ai, push):
     from glancebox.render import MAX_JPEG_BYTES, Renderer
 
     cfg = AppConfig(interval=30, timezone="Europe/Berlin", lang="de",
@@ -183,7 +272,7 @@ async def test_template_renders_claude(ai):
         inbox = PushInbox()
         empty = Image.open(io.BytesIO(
             await render_page(page, ai, cfg, r, NOW.timestamp(), inbox))).convert("RGB")
-        inbox.put("claude", limits(five=(42.0, IN_2H13), seven=(95.0, THURSDAY_9)), RECEIVED)
+        inbox.put("claude", push((42.0, IN_2H13), (95.0, THURSDAY_9)), RECEIVED)
         jpeg = await render_page(page, ai, cfg, r, NOW.timestamp(), inbox)
         full = Image.open(io.BytesIO(jpeg)).convert("RGB")
     assert empty.size == full.size == (240, 240)

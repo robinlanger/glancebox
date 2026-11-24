@@ -14,8 +14,9 @@ from .providers import anthropic_api, claude, copilot, openai_api, xai_api
 LANGS = ("de", "en")
 SHOWS = ("used", "remaining")  # show: what the bars count (issue #6)
 
-# Only the claude provider reads pushed data (from the Claude Code status-line script).
-PUSH_KEYS = {"claude": ("rate_limits",)}
+# Only the claude provider reads pushed data (from the Claude Code status-line script or the
+# usage hook script).
+PUSH_KEYS = {"claude": ("rate_limits", "usage_report")}
 
 PROVIDERS: dict[str, ModuleType] = {
     "claude": claude,
