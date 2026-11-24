@@ -9,7 +9,7 @@ Wie viel von einem KI-Abo oder -Budget verbraucht ist. Jede Seite zeigt einen An
 
 | `provider` | Zeigt | Wie die Daten ankommen |
 | --- | --- | --- |
-| `claude` | Die Limits deines Claude-Abos: das 5-Stunden-Fenster und die Woche, jeweils in Prozent mit der Zeit des nächsten Resets | Claude Code auf deinem Rechner schickt sie an den Server (Push) |
+| `claude` | Die Limits deines Claude-Abos: das 5-Stunden-Fenster und die Woche, jeweils in Prozent mit der Zeit des nächsten Resets | Claude Code auf deinem Rechner schickt sie an den Server (Push), über seine Statuszeile oder ein Hook-Skript |
 | `anthropic-api` | Kosten der Claude-API im laufenden Monat in USD, auf Wunsch gegen dein eigenes Budget | Der Server fragt die Usage and Cost Analytics API von Anthropic mit einem Admin-Key |
 | `openai-api` | Kosten der OpenAI-API im laufenden Monat in USD, auf Wunsch gegen dein eigenes Budget | Der Server fragt die Costs API von OpenAI mit einem Admin-Key |
 | `xai-api` | Prepaid-Guthaben deines xAI-Teams in USD | Der Server fragt die Management API von xAI mit einem Management-Key |
@@ -25,7 +25,7 @@ Für `claude`:
 
 - **Reset:** weniger als einen Tag entfernt als `in 2:13` (Stunden:Minuten), sonst als Wochentag und Uhrzeit, zum Beispiel `Do 09:00`. Ist die Reset-Zeit schon vorbei, zeigt der Balken `0 %` und `zurückgesetzt` (mit `show: remaining`: ein voller Balken und `100 %`).
 - **Alter:** unten zeigt die Seite immer, wann die Werte ankamen, zum Beispiel `Stand 13:58`, oder `Stand Sa 13:58`, wenn sie von einem früheren Tag sind.
-- **Noch keine Daten:** bis die ersten Werte ankommen, zeigt die Seite den Hinweis `Noch keine Daten` mit `Statuszeilen-Skript einrichten`.
+- **Noch keine Daten:** bis die ersten Werte ankommen, zeigt die Seite den Hinweis `Noch keine Daten` mit `Statuszeilen-Skript einrichten`. Der Hinweis ist derselbe, wenn du das Hook-Skript nutzt.
 - **Keine Limitdaten:** Werte kamen an, aber ohne brauchbare Limits, zum Beispiel nach dem `curl`-Test unter [Wenn etwas nicht stimmt](#wenn-etwas-nicht-stimmt). Die nächste Antwort von Claude Code bringt die echten Werte. Limits hat Claude Code nur mit einem Claude-Abo (Pro oder Max); mit einem API-Key schickt das Skript nichts, und die Seite bleibt bei `Noch keine Daten`.
 - Hat dein Abo kein Wochenlimit, erscheint nur der 5-Stunden-Balken.
 
@@ -50,7 +50,7 @@ Für `claude`:
 
 - Ein Claude-Abo (Pro oder Max) und [Claude Code](https://code.claude.com/docs) auf einem Rechner im selben Heimnetz wie der Glance-Box-Server.
 - `curl` auf diesem Rechner (macOS und Linux haben es). Unter Windows reicht PowerShell.
-- Das Skript `tools/statusline/glancebox-statusline.sh` (macOS, Linux) oder `tools/statusline/glancebox-statusline.ps1` (Windows) aus diesem Repository auf diesem Rechner.
+- Das Skript `tools/statusline/glancebox-statusline.sh` (macOS, Linux) oder `tools/statusline/glancebox-statusline.ps1` (Windows) aus diesem Repository auf diesem Rechner. Nutzt du Claude Code in einer anderen App statt im Terminal, brauchst du `tools/statusline/glancebox-usage.sh` oder `.ps1` (siehe [Claude Code in anderen Apps](#claude-code-in-anderen-apps)).
 
 Für `anthropic-api`, `openai-api` und `xai-api`:
 
@@ -64,6 +64,8 @@ Für `copilot`:
 - Internetzugang für den Glance-Box-Server.
 
 Claude Code gibt seiner [Statuszeile](https://code.claude.com/docs/en/statusline) nach jeder Antwort einen kleinen JSON-Text. Darin stehen deine Limits (`rate_limits`). Das Skript reicht diesen Text im Hintergrund an den Server weiter und zeigt danach deine normale Statuszeile.
+
+Die Statuszeile gibt es nur in der Terminal-Ansicht von Claude Code. In anderen Apps, die Claude Code ausführen, etwa T3 Code, der Desktop-App oder einer IDE-Erweiterung, übernimmt ein Hook-Skript ihre Aufgabe: Nach einer Antwort fragt es Claude Code nach denselben Limits und schickt sie weiter.
 
 ## Beispiel
 
@@ -162,6 +164,47 @@ Hast du schon eine Statuszeile, gib ihren Befehl dem Skript als Argumente mit. D
 }
 ```
 
+### Claude Code in anderen Apps
+
+Die Statuszeile gibt es nur, wenn du Claude Code im Terminal nutzt. Arbeitest du über T3 Code, die Desktop-App von Claude, eine IDE-Erweiterung oder eine andere App, die Claude Code ohne seine Terminal-Ansicht ausführt, gibt es keine Statuszeile, und das Display bleibt bei den letzten Werten stehen. Für diesen Fall gibt es ein zweites Skript.
+
+Nach einer Antwort von Claude Code fragt das Skript Claude Code im Hintergrund nach seinem Nutzungsbericht (dasselbe wie `/usage`) und schickt ihn an den Server. Das passiert höchstens einmal pro Minute, dauert etwa 3 Sekunden und kostet keine Tokens.
+
+Du brauchst ein aktuelles Claude Code (geprüft mit Version 2.1.330, siehe `claude --version`) und ein Claude-Abo (Pro oder Max). Die Schritte 1 bis 3 unter [Claude](#claude) bleiben gleich; `push_key`, die Seite und `push.env` brauchst du wie dort beschrieben.
+
+1. **Das Skript.** Kopiere `tools/statusline/glancebox-usage.sh` an einen Ort deiner Wahl, zum Beispiel `~/.claude/glancebox-usage.sh`, und mache es ausführbar:
+
+   ```sh
+   chmod +x ~/.claude/glancebox-usage.sh
+   ```
+
+2. **Claude Code.** Ergänze in `~/.claude/settings.json`:
+
+   ```json
+   {
+     "hooks": {
+       "Stop": [
+         { "hooks": [{ "type": "command", "command": "~/.claude/glancebox-usage.sh" }] }
+       ],
+       "PostToolUse": [
+         { "hooks": [{ "type": "command", "command": "~/.claude/glancebox-usage.sh" }] }
+       ]
+     }
+   }
+   ```
+
+   `hooks` steht auf oberster Ebene der Datei, neben deinen anderen Einstellungen. Gibt es in der Datei schon einen Abschnitt `hooks`, ergänze darin `Stop` und `PostToolUse`. `Stop` läuft nach jeder Antwort, `PostToolUse` nach jedem Werkzeugschritt, so aktualisieren auch lange Aufgaben das Display zwischendurch. Das Skript gibt nichts aus und kehrt sofort zurück, Claude Code wartet also nicht darauf.
+
+3. **Neue Sitzung.** Claude Code liest Hooks beim Start einer Sitzung. Öffne in deiner App eine neue Sitzung oder einen neuen Thread; eine schon offene führt das Skript nicht aus.
+
+4. **Prüfen.** Frag Claude Code in der App etwas. Öffne nach der Antwort `http://<server>:8080/` und warte auf das nächste Neuladen der Seite (bis zu 30 Sekunden): `Stand` zeigt die Zeit der Antwort.
+
+**Beides nutzen:** Arbeitest du auch im Terminal, behalte die Statuszeile. Beide schicken dieselben Limits. Direkt nachdem die Statuszeile gesendet hat, hält das Hook-Skript eine Minute still, es fragt also nicht doppelt ab.
+
+**Experimentell:** Anthropic kennzeichnet diesen Nutzungsbericht als experimentell. Ein Update von Claude Code kann ihn ändern oder entfernen. Dann schickt das Skript nichts, und die Seite zeigt weiter die letzten Werte mit ihrer Uhrzeit (`Stand`). Mit einem API-Key statt eines Claude-Abos oder mit einem älteren Claude Code gibt es ebenfalls keinen Nutzungsbericht.
+
+**Ohne Claude Code:** Der Hook läuft nur, wenn du Claude Code nutzt. Soll das Display auch deiner Nutzung von claude.ai im Browser oder am Handy folgen, kannst du das Skript über einen Zeitplaner deines Systems starten (cron, launchd oder die Windows-Aufgabenplanung), zum Beispiel alle 5 Minuten. Auch dort braucht das Skript `push.env` und muss `claude` finden. Dieses Projekt richtet das nicht ein und hat es nicht getestet.
+
 ### Windows
 
 1. Lege `%APPDATA%\glancebox\push.env` mit denselben zwei Zeilen wie in Schritt 3 an.
@@ -178,6 +221,23 @@ Hast du schon eine Statuszeile, gib ihren Befehl dem Skript als Argumente mit. D
    ```
 
    Schreib den Pfad mit Schrägstrichen `/`: Claude Code führt den Befehl unter Umständen über Git Bash aus, und Git Bash verschluckt Backslashes. Eine vorhandene Statuszeile kommt wie oben ans Ende des Befehls. Mit installiertem Git Bash kannst du auch das `.sh`-Skript wie unter macOS nehmen.
+
+Für [Claude Code in anderen Apps](#claude-code-in-anderen-apps) kopiere zusätzlich `tools\statusline\glancebox-usage.ps1` und ergänze in derselben `settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:/Users/<du>/.claude/glancebox-usage.ps1" }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:/Users/<du>/.claude/glancebox-usage.ps1" }] }
+    ]
+  }
+}
+```
+
+Dieses Skript ist unter Windows noch nicht getestet. Probierst du es aus, prüfe nach einer Antwort `Stand` auf der Seite und sag uns in einem Issue, ob es funktioniert.
 
 ### Grenzen
 
@@ -279,8 +339,9 @@ Die Seite nutzt die [Billing-Usage-API](https://docs.github.com/en/rest/billing/
 
 ## Datenschutz & Sicherheit
 
-- **Nur `rate_limits` wird gespeichert.** Das JSON der Statuszeile enthält auch Dinge wie den Arbeitsordner und die Sitzungs-ID. Der Server verwirft sofort alles außer `rate_limits`, schreibt nichts auf die Platte und protokolliert den Inhalt nicht.
-- **Kein Anthropic-Token verlässt deinen Rechner.** Das Skript schickt nur den Text, den Claude Code der Statuszeile gibt, zusammen mit dem Glance-Box-Schlüssel. Der Server meldet sich nie bei Anthropic an.
+- **Nur `rate_limits` oder `usage_report` wird gespeichert.** Das JSON der Statuszeile enthält auch Dinge wie den Arbeitsordner und die Sitzungs-ID. Der Server verwirft sofort alles außer `rate_limits`, schreibt nichts auf die Platte und protokolliert den Inhalt nicht.
+- **Das Hook-Skript** schickt eine JSON-Zeile aus dem Nutzungsbericht von Claude Code. Der Server behält davon nur `usage_report` (deine Limits und die Kostenzähler des Abrufs) und verwirft den Rest, wie oben nur im Arbeitsspeicher.
+- **Kein Anthropic-Token verlässt deinen Rechner.** Das Statuszeilen-Skript schickt nur den Text, den Claude Code der Statuszeile gibt, zusammen mit dem Glance-Box-Schlüssel. Auch das Hook-Skript liest dein Claude-Login nicht: Es startet `claude` so, wie du es tun würdest, und schickt die Zeile, die zurückkommt. Der Server meldet sich nie bei Anthropic an.
 - **Der Push-Schlüssel** erlaubt nur, Werte an dein Display zu schicken. Bewahre ihn in `.env` auf dem Server und in `push.env` (`chmod 600`) auf deinem Rechner auf, nie in `config.yaml`.
 - Der Server und sein Daten-Eingang sind nur für dein Heimnetz gedacht. Mach sie nicht aus dem Internet erreichbar.
 - **API-Keys** (`anthropic-api`, `openai-api`, `xai-api`) sind mächtig: Sie können weit mehr als Kosten lesen. Das GitHub-Token für `copilot` braucht nur das Leserecht `Plan`; gib ihm nicht mehr (ein klassisches Ersatz-Token nur den einen Scope, den GitHub nennt). Bewahre sie nur in `.env` auf, schreib `${NAME}` in `config.yaml` und gib `.env` nie weiter. Der Server schickt sie nur an den Anbieter, im Kopf der Anfrage, und schreibt sie nie in sein Log. Die Beträge hält er 5 Minuten im Arbeitsspeicher und speichert nichts auf der Platte.
@@ -290,6 +351,8 @@ Die Seite nutzt die [Billing-Usage-API](https://docs.github.com/en/rest/billing/
 - **`Noch keine Daten` bleibt:** Claude Code schickt Limits nur mit einem Claude-Abo (Pro oder Max) und in aktuellen Versionen. Mit einem API-Key statt eines Abos oder mit einem älteren Claude Code schickt das Skript nichts, und die Seite bleibt bei `Noch keine Daten`; sonst ist dann nichts falsch. Andernfalls prüfe, dass `push_key` gesetzt ist und du nach der Änderung an `.env` `docker compose up -d` ausgeführt hast. Teste dann den Weg von deinem Rechner zum Server: `curl -i -X POST -H "Authorization: Bearer <der Schlüssel>" -H "Content-Type: application/json" -d '{"rate_limits":{}}' http://<server>:8080/api/v1/push/claude`. `204` ist richtig (die Seite zeigt dann `Keine Limitdaten` bis zur nächsten Antwort von Claude Code), `401` heißt, der Schlüssel stimmt nicht, `404` heißt, der Server hat keinen `push_key`. Klappt `curl`, prüfe `push.env` (beide Zeilen, keine Leerzeichen um `=`) und den Pfad in `settings.json`.
 - **`Keine Limitdaten`:** ein Push kam an, aber ohne brauchbare Limitfenster, zum Beispiel der `curl`-Test oben mit `{"rate_limits":{}}`. Die nächste Antwort von Claude Code ersetzt ihn durch die echten Werte.
 - **Die Statuszeile ist leer:** das ist ohne eigene Statuszeile normal. Um eine zu zeigen, gib ihren Befehl als Argumente mit.
+- **Das Display aktualisiert sich nur, wenn ich im Terminal arbeite:** die Statuszeile läuft nur in der Terminal-Ansicht von Claude Code. Für T3 Code, die Desktop-App oder eine IDE-Erweiterung richte das Hook-Skript ein, wie unter [Claude Code in anderen Apps](#claude-code-in-anderen-apps) beschrieben.
+- **Vom Hook kommt nichts an:** starte das Skript zuerst von Hand in einem Terminal mit `~/.claude/glancebox-usage.sh`. Es gibt nichts aus; nach etwa 5 Sekunden und dem nächsten Neuladen der Seite sollte `Stand` die aktuelle Uhrzeit zeigen. Das Skript fragt höchstens einmal pro Minute ab, warte also eine Minute nach dem letzten Senden, bevor du es probierst. Ändert sich `Stand` nicht, teste, ob Claude Code überhaupt einen Nutzungsbericht liefert: `claude -p "/usage" --output-format stream-json --verbose --no-session-persistence | grep -c usage_report` sollte `1` ausgeben. `0` heißt: ein älteres Claude Code, eine Anmeldung mit API-Key statt Claude-Abo oder ein Fehler; prüfe dann auch `push.env` mit dem `curl`-Test oben. Klappt es von Hand, aber nicht aus der App: Öffne eine neue Sitzung oder einen neuen Thread (Hooks werden beim Start gelesen) und prüfe, ob die App `claude` findet. Eine App, die du über das Dock oder das Startmenü startest, kennt den Ordner, in dem dein Terminal `claude` findet, unter Umständen nicht. `command -v claude` im Terminal zeigt diesen Ordner; setz ihn vor den Hook-Befehl, zum Beispiel `PATH=$HOME/.local/bin:$PATH ~/.claude/glancebox-usage.sh`.
 - **`Keine Daten` mit roter Kopfzeile (API-Anbieter):** der Anbieter war nicht erreichbar oder hat die Anfrage abgelehnt. Im Log des Servers steht eine Zeile wie `ai openai-api: no data: HTTPError (HTTP 401)`. `401` oder `403` heißt, der Key ist falsch, abgelaufen oder hat nicht das nötige Recht; prüfe `.env` und führe nach einer Änderung `docker compose up -d` aus. Bei `xai-api` heißt `404` meist, dass `team_id` nicht stimmt. Bei `copilot` heißt `403`, dass dem Token das Recht `Plan` fehlt oder GitHub für dein Konto kein Fine-grained Token annimmt; dann probier ein klassisches Token wie unter [GitHub Copilot](#github-copilot) beschrieben. `404` heißt, dass `username` nicht stimmt. Die Seite versucht es beim nächsten Neuladen wieder.
 - **Der Anthropic-Betrag wirkt zu niedrig:** Anthropic aktualisiert die Kostendaten etwa alle 4 Stunden; `Stand` zeigt die Zeit der Daten.
 - **Der Server startet nicht und nennt `key`, `team_id` oder `budget`:** `key` (und bei `xai-api` `team_id`) muss gesetzt und nicht leer sein, etwa weil die Variable in `.env` fehlt; `budget` muss eine positive Zahl sein und geht nur mit `anthropic-api` und `openai-api`.
