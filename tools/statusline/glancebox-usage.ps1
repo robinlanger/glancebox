@@ -68,7 +68,8 @@ try {
 }
 
 $timeout = "$env:GLANCEBOX_USAGE_TIMEOUT"
-if ($timeout -notmatch '^[1-9][0-9]*$') { $timeout = '30' }
+# 1 to 999999 seconds; anything else means the default.
+if ($timeout -notmatch '^[1-9][0-9]{0,5}$') { $timeout = '30' }
 
 # A separate hidden PowerShell process does the fetch and the request, so the hook returns
 # at once (a Start-Job would be stopped when this script exits) and the hook runner never
@@ -76,12 +77,16 @@ if ($timeout -notmatch '^[1-9][0-9]*$') { $timeout = '30' }
 # command line.
 $request = @'
 try {
+    # The key and the address stay in this process; claude and what it starts never see them.
+    $uri = $env:GLANCEBOX_PUSH_URI
+    $key = $env:GLANCEBOX_PUSH_KEY
+    Remove-Item -Path Env:GLANCEBOX_PUSH_KEY, Env:GLANCEBOX_PUSH_URI
     $env:GLANCEBOX_USAGE = '1'
     Set-Location -LiteralPath $env:GLANCEBOX_USAGE_DIR
     $claude = Get-Command claude -CommandType Application | Select-Object -First 1
     if (-not $claude) { exit 0 }
     $info = New-Object Diagnostics.ProcessStartInfo
-    $info.FileName = $claude.Source
+    $info.FileName = $claude.Path
     $info.Arguments = '-p "/usage" --output-format stream-json --verbose --no-session-persistence'
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
@@ -102,8 +107,8 @@ try {
         Where-Object { $_.Contains('"usage_report"') -and $_ -match '"limits":\[[^\]]' } |
         Select-Object -First 1
     if ($line) {
-        Invoke-RestMethod -Method Post -Uri $env:GLANCEBOX_PUSH_URI `
-            -Headers @{ Authorization = "Bearer $env:GLANCEBOX_PUSH_KEY" } `
+        Invoke-RestMethod -Method Post -Uri $uri `
+            -Headers @{ Authorization = "Bearer $key" } `
             -ContentType 'application/json' -TimeoutSec 5 `
             -Body ([Text.Encoding]::UTF8.GetBytes($line)) | Out-Null
     }

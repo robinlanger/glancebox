@@ -35,10 +35,19 @@ fi
 case "$input" in
   *'"rate_limits"'*)
     if [ -n "$GLANCEBOX_URL" ] && [ -n "$GLANCEBOX_PUSH_KEY" ]; then
-      printf '%s' "$input" | curl -s -m 2 -o /dev/null -X POST \
-        -H "Authorization: Bearer $GLANCEBOX_PUSH_KEY" \
-        -H "Content-Type: application/json" \
-        --data-binary @- "${GLANCEBOX_URL%/}/api/v1/push/claude" >/dev/null 2>&1 &
+      # The key goes in through curl's config on stdin (printf is a shell builtin), so it
+      # never appears on a command line; \ and " are escaped for the quoted config value.
+      # The body goes through a private temp file.
+      (
+        umask 077
+        body=$(mktemp) || exit 0
+        printf '%s' "$input" > "$body"
+        key=$(printf '%s' "$GLANCEBOX_PUSH_KEY" | sed 's/[\\"]/\\&/g')
+        printf 'header = "Authorization: Bearer %s"\n' "$key" |
+          curl -s -m 2 -o /dev/null -X POST -K - -H "Content-Type: application/json" \
+            --data-binary @"$body" "${GLANCEBOX_URL%/}/api/v1/push/claude"
+        rm -f "$body"
+      ) < /dev/null > /dev/null 2>&1 &
       # The usage hook (glancebox-usage.sh) skips its fetch for a minute after this.
       { date +%s > "${env_file%/*}/usage.stamp"; } 2>/dev/null
     fi

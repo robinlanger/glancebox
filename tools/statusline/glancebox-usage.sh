@@ -23,8 +23,8 @@
 # The `claude` call below runs hooks too, this one included.
 [ "$GLANCEBOX_USAGE" = 1 ] && exit 0
 
-GLANCEBOX_URL=
-GLANCEBOX_PUSH_KEY=
+# Unset, not emptied: a value exported by the user's shell would reach claude otherwise.
+unset GLANCEBOX_URL GLANCEBOX_PUSH_KEY
 env_file="${XDG_CONFIG_HOME:-$HOME/.config}/glancebox/push.env"
 if [ -r "$env_file" ]; then
   while IFS= read -r line || [ -n "$line" ]; do
@@ -46,8 +46,8 @@ lock="$dir/usage.lock"
 # fetch once. It is held for a moment only; one left behind by a killed run is removed
 # after a minute.
 if ! mkdir "$lock" 2>/dev/null; then
-  [ -n "$(find "$lock" -prune -mmin +1 2>/dev/null)" ] && rmdir "$lock" 2>/dev/null
-  exit 0
+  [ -n "$(find "$lock" -prune -mmin +1 2>/dev/null)" ] && rmdir "$lock" 2>/dev/null &&
+    mkdir "$lock" 2>/dev/null || exit 0
 fi
 now=$(date +%s)
 last=$(cat "$stamp" 2>/dev/null)
@@ -65,22 +65,26 @@ esac
 rmdir "$lock" 2>/dev/null
 
 timeout=${GLANCEBOX_USAGE_TIMEOUT:-30}
-# At least 1 second: the runner below needs a moment to set its trap.
+# 1 to 999999 seconds: the runner below needs a moment to set its trap, and a huge number
+# could make sleep fail at once and leave claude without a limit.
 case "$timeout" in '' | 0* | *[!0-9]*) timeout=30 ;; esac
+[ ${#timeout} -le 6 ] || timeout=30
 
 # Detached from stdin, stdout and stderr: a hook runner may wait until those are closed.
 (
   cd "$dir" || exit 0
+  umask 077
   out=$(mktemp) || exit 0
   # No `timeout` binary on macOS: a timer, and a runner that starts claude, stops the timer
-  # when claude ends and stops claude when it is stopped itself. Nothing outlives the fetch.
+  # when claude ends and stops claude when it is stopped itself (TERM, after 2 seconds KILL).
+  # Nothing outlives the fetch.
   sleep "$timeout" &
   timer=$!
   (
     GLANCEBOX_USAGE=1 claude -p "/usage" --output-format stream-json --verbose \
       --no-session-persistence < /dev/null > "$out" 2>/dev/null &
     pid=$!
-    trap 'kill "$pid" 2>/dev/null; exit 0' TERM
+    trap 'kill "$pid" 2>/dev/null; sleep 2; kill -9 "$pid" 2>/dev/null; exit 0' TERM
     wait "$pid"
     kill "$timer" 2>/dev/null
   ) &
@@ -90,12 +94,15 @@ case "$timeout" in '' | 0* | *[!0-9]*) timeout=30 ;; esac
   wait "$runner"
   # The usage report line, only with at least one limit ("limits":null or [] sends nothing).
   line=$(grep '"usage_report"' "$out" | grep '"limits":\[[^]]' | head -n 1)
-  rm -f "$out"
   if [ -n "$line" ]; then
-    printf '%s' "$line" | curl -s -m 5 -o /dev/null -X POST \
-      -H "Authorization: Bearer $GLANCEBOX_PUSH_KEY" \
-      -H "Content-Type: application/json" \
-      --data-binary @- "${GLANCEBOX_URL%/}/api/v1/push/claude"
+    printf '%s' "$line" > "$out"
+    # The key goes in through curl's config on stdin (printf is a shell builtin), so it never
+    # appears on a command line; \ and " are escaped for the quoted config value.
+    key=$(printf '%s' "$GLANCEBOX_PUSH_KEY" | sed 's/[\\"]/\\&/g')
+    printf 'header = "Authorization: Bearer %s"\n' "$key" |
+      curl -s -m 5 -o /dev/null -X POST -K - -H "Content-Type: application/json" \
+        --data-binary @"$out" "${GLANCEBOX_URL%/}/api/v1/push/claude"
   fi
+  rm -f "$out"
 ) < /dev/null > /dev/null 2>&1 &
 exit 0

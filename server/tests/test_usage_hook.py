@@ -3,12 +3,13 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
 import time
 from pathlib import Path
 
 import pytest
-from test_statusline import KEY, wait_for, write_env
+from test_statusline import KEY, logging_curl, wait_for, write_env
 
 TOOLS = Path(__file__).resolve().parents[2] / "tools" / "statusline"
 SCRIPT = TOOLS / "glancebox-usage.sh"
@@ -63,6 +64,13 @@ def wait_until(condition, seconds: float = 3.0) -> None:
     deadline = time.monotonic() + seconds
     while not condition() and time.monotonic() < deadline:
         time.sleep(0.05)
+
+
+def sleeps(seconds: str) -> list[str]:
+    """Running `sleep <seconds>` processes (of any user and run)."""
+    ps = subprocess.run(["ps", "-A", "-o", "command="], capture_output=True, text=True,
+                        check=True)
+    return [c for c in ps.stdout.splitlines() if c.strip() == f"sleep {seconds}"]
 
 
 def assert_posted_line(r: subprocess.CompletedProcess, received: list, log: Path) -> None:
@@ -124,9 +132,11 @@ def test_two_hooks_at_once_fetch_once(tmp_path, server, fake_claude):
     url, received = server
     log = fake_claude(printing(LINE))
     xdg = write_env(tmp_path, url)
-    procs = [subprocess.Popen([str(SCRIPT)], stdin=subprocess.DEVNULL,
-                              env=env_for(tmp_path, xdg)) for _ in range(2)]
-    assert [p.wait(timeout=10) for p in procs] == [0, 0]
+    procs = [subprocess.Popen([str(SCRIPT)], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, env=env_for(tmp_path, xdg))
+             for _ in range(2)]
+    assert [p.communicate(timeout=10) for p in procs] == [(b"", b"")] * 2
+    assert [p.returncode for p in procs] == [0, 0]
     wait_for(received)
     time.sleep(1)
     assert len(calls(log)) == 1 and len(received) == 1
@@ -225,3 +235,100 @@ def test_silent_without_config(tmp_path, fake_claude):
     assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
     time.sleep(0.5)
     assert calls(log) == []
+
+
+def test_key_not_on_command_line(tmp_path, server, fake_claude):
+    """Command lines are visible to every local user (ps); the key must not be on curl's."""
+    url, received = server
+    fake_claude(printing(LINE))
+    log = logging_curl(tmp_path / "bin")
+    run(tmp_path, write_env(tmp_path, url))
+    wait_for(received)
+    assert received[0]["auth"] == f"Bearer {KEY}" and received[0]["body"] == LINE.encode()
+    assert log.read_text().count("\n") == 1 and KEY not in log.read_text()
+
+
+def test_key_not_passed_to_claude(tmp_path, server, fake_claude):
+    # Not even when the user's shell exports it.
+    url, received = server
+    env_dump = tmp_path / "claude.env"
+    fake_claude(f'env > "{env_dump}"\n' + printing(LINE))
+    run(tmp_path, write_env(tmp_path, url), GLANCEBOX_PUSH_KEY=KEY, GLANCEBOX_URL=url)
+    wait_for(received)
+    assert len(received) == 1
+    assert KEY not in env_dump.read_text() and "GLANCEBOX_URL" not in env_dump.read_text()
+
+
+def test_huge_timeout_falls_back_to_30(tmp_path, server, fake_claude):
+    url, received = server
+    timers = tmp_path / "timers"
+    fake_claude(f"ps -A -o command= > \"{timers}\"\n" + printing(LINE))
+    run(tmp_path, write_env(tmp_path, url), GLANCEBOX_USAGE_TIMEOUT="99999999999")
+    wait_for(received)
+    assert len(received) == 1
+    commands = timers.read_text().splitlines()
+    assert "sleep 30" in commands and "sleep 99999999999" not in commands
+
+
+def test_claude_ignoring_term_is_killed(tmp_path, server, fake_claude):
+    url, _ = server
+    pid_file = tmp_path / "claude.pid"
+    # No exec: the shell itself ignores TERM; its short sleeps end on their own.
+    fake_claude(f'echo $$ > "{pid_file}"\ntrap "" TERM\nwhile :; do sleep 1; done')
+    r = run(tmp_path, write_env(tmp_path, url), GLANCEBOX_USAGE_TIMEOUT="1")
+    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
+    wait_until(pid_file.exists)
+    pid = int(pid_file.read_text())
+
+    def gone() -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        return False
+
+    wait_until(gone, 6)
+    if not gone():
+        os.kill(pid, signal.SIGKILL)  # do not leave it running when the test fails
+        pytest.fail("claude ignoring TERM was not killed")
+
+
+def test_stale_lock_is_removed(tmp_path, server, fake_claude):
+    # A run killed while it held the lock must not stop the hook for good.
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    lock = xdg / "glancebox" / "usage.lock"
+    lock.mkdir()
+    old = time.time() - 120
+    os.utime(lock, (old, old))
+    r = run(tmp_path, xdg)
+    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
+    wait_for(received)
+    assert len(calls(log)) == 1 and len(received) == 1
+    assert not lock.exists()
+
+
+def test_fresh_lock_blocks(tmp_path, server, fake_claude):
+    url, received = server
+    log = fake_claude(printing(LINE))
+    xdg = write_env(tmp_path, url)
+    (xdg / "glancebox" / "usage.lock").mkdir()
+    r = run(tmp_path, xdg)
+    assert r.returncode == 0 and r.stdout == "" and r.stderr == ""
+    time.sleep(1)
+    assert calls(log) == [] and received == []
+
+
+def test_no_timer_left_without_claude(tmp_path, server):
+    """A missing claude ends the fetch at once; its timer must not stay behind (it did once:
+    stopped before it had set its trap, the watchdog left its sleep running)."""
+    if shutil.which("claude", path=SYSTEM_PATH):
+        pytest.skip("a real claude is on the system PATH")
+    url, received = server
+    xdg = write_env(tmp_path, url)
+    for _ in range(3):
+        (xdg / "glancebox" / "usage.stamp").unlink(missing_ok=True)
+        run(tmp_path, xdg, GLANCEBOX_USAGE_TIMEOUT="7")
+    wait_until(lambda: not sleeps("7"), 2)
+    assert sleeps("7") == [] and received == []
