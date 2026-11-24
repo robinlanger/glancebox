@@ -8,23 +8,33 @@
 
 **Website with a step-by-step guide: [robinlanger.github.io/glancebox](https://robinlanger.github.io/glancebox/)**
 
-![Glance Box on the GeekMagic SmallTV Ultra, showing live departures, next to an earbuds case for size](docs/img/hero.jpg)
+![Glance Box on the GeekMagic SmallTV Ultra, showing the energy page with grid export, PV and battery, next to an earbuds case for size](docs/img/hero.jpg)
 
-**Glance Box turns the ~15 € GeekMagic SmallTV Ultra into a 240x240 Wi-Fi display for anything you can write as HTML:** open-source firmware for the display, plus a small Docker server that renders your pages and sends them over as images. Departures, a clock, the weather, the state of your home server, how much of your AI plan is left, live values from your Home Assistant, from solar power to open windows, whatever fits on 240x240 pixels.
+**Glance Box turns the ~15 € GeekMagic SmallTV Ultra into a 240x240 Wi-Fi display for anything you can write as HTML:** open-source firmware for the display, plus a small Docker server that renders your pages and sends them over as images. Departures, a clock, the weather, the state of your home server, how much of your AI plan is left, live values from your Home Assistant, from solar power to open windows, the energy flow of your home with moving arrows, whatever fits on 240x240 pixels.
 
 > [!TIP]
 > **No soldering needed.** You flash Glance Box through the **"Firmware update"** menu of the stock firmware, in your browser. No case to open, no wires.
 
+## New in 0.7.0: live energy flow
+
+<img src="docs/img/energy-flow.gif" alt="The energy page on the real display: arrows move from the grid icon away (export), from PV into the home and towards the battery (charging)" width="360" height="360" align="right">
+
+The new [`energy`](docs/en/templates/energy.md) page shows where energy flows in your home, from Home Assistant: grid, PV, battery, gas, water or wallbox, up to four rows per page. The display moves the arrows itself, in the direction of the flow and faster the more flows, while the server sends a new picture only when a value changes.
+
+The clip is the real display, filmed with a camera. Only the black of the screen was darkened afterwards: depending on the viewing angle, this panel looks blue-grey on camera.
+
+<br clear="right">
+
 ## Highlights
 
 - **Pages are just HTML.** Write a page as a template, or point the server at any web page. The server renders it with headless Chromium, the same engine as in Chrome.
-- **Ready-made templates** for the weather, Uptime Kuma, Home Assistant, AI usage (Claude, OpenAI, xAI, GitHub Copilot), departures and a clock. You only add them to `config.yaml`.
+- **Ready-made templates** for the weather, Uptime Kuma, Home Assistant, the energy flow with moving arrows, AI usage (Claude, OpenAI, xAI, GitHub Copilot), departures and a clock. You only add them to `config.yaml`.
 - **Open firmware for the ESP8266**: Wi-Fi setup portal, a small settings page, night mode with its own brightness (or backlight off).
 - **Safe updates over Wi-Fi**: password-protected, every image is checked against its MD5. A wrong file is rejected and the old firmware keeps running. After a broken update the device starts in safe mode instead of a boot loop.
 - **Runs in Docker** on a PC, NAS or home server. The display only shows pictures; all the work happens on the server.
 - **MIT licensed**, no cloud, no account. The display only talks to your own server.
 
-Tested on a real SmallTV Ultra: first flash through the stock "Firmware update" menu, OTA updates with MD5 check, safe mode after a broken update, night mode, and the pages for departures, clock, weather, Uptime Kuma and Claude limits.
+Tested on a real SmallTV Ultra: first flash through the stock "Firmware update" menu, OTA updates with MD5 check, safe mode after a broken update, night mode, and the pages for departures, clock, weather, Uptime Kuma, Claude limits and the energy flow.
 
 ## Gallery
 

@@ -2,6 +2,10 @@
 
 ![Vorschau der Energiefluss-Seite: Einspeisung, PV und Speicher lädt](../../img/templates/energy.png)
 
+Auf dem echten Display, mit einer Kamera gefilmt (nachträglich nur das Schwarz des Bildschirms abgedunkelt):
+
+![Die Energiefluss-Seite auf dem echten Display mit laufenden Pfeilen](../../img/energy-flow.gif){ width="360" }
+
 ## Was sie zeigt
 
 Den Energiefluss in deinem Zuhause, aus [Home Assistant](https://www.home-assistant.io/): eine bis vier Zeilen, jede mit Symbol, einer Spur mit laufenden Pfeilen, dem Wert und einer kurzen Statuszeile. Typisch sind Netz, PV und Speicher auf einer Seite, Gas, Wasser und Wallbox auf einer zweiten. Du kannst beliebig viele `energy`-Seiten anlegen.

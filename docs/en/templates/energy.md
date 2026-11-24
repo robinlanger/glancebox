@@ -2,6 +2,10 @@
 
 ![Preview of the energy page: grid export, PV and battery charging](../../img/templates/energy.png)
 
+On the real display, filmed with a camera (only the black of the screen darkened afterwards):
+
+![The energy page on the real display with moving arrows](../../img/energy-flow.gif){ width="360" }
+
 ## What it shows
 
 Where energy flows in your home, from [Home Assistant](https://www.home-assistant.io/): one to four rows, each with an icon, a track with moving arrows, the value and a short status line. Typical rows are grid, PV and battery on one page, gas, water and wallbox on another. You can add as many `energy` pages as you like.

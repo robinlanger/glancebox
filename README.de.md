@@ -8,23 +8,33 @@
 
 **Website mit Schritt-für-Schritt-Anleitung: [robinlanger.github.io/glancebox/de](https://robinlanger.github.io/glancebox/de/)**
 
-![Glance Box auf dem GeekMagic SmallTV Ultra mit Live-Abfahrten, daneben ein Kopfhörer-Etui als Größenvergleich](docs/img/hero.jpg)
+![Glance Box auf dem GeekMagic SmallTV Ultra mit der Energiefluss-Seite (Einspeisung, PV, Speicher), daneben ein Kopfhörer-Etui als Größenvergleich](docs/img/hero.jpg)
 
-**Glance Box macht aus dem GeekMagic SmallTV Ultra für ca. 15 € ein WLAN-Display mit 240x240 Pixeln für alles, was du als HTML schreiben kannst:** eine Open-Source-Firmware für das Display und ein kleiner Docker-Server, der deine Seiten rendert und als Bilder ans Display schickt. Abfahrten, eine Uhr, das Wetter, den Zustand deines Heimservers, wie viel von deinem KI-Abo noch übrig ist, Live-Werte aus deinem Home Assistant, von der Solarleistung bis zum offenen Fenster, alles, was auf 240x240 Pixel passt.
+**Glance Box macht aus dem GeekMagic SmallTV Ultra für ca. 15 € ein WLAN-Display mit 240x240 Pixeln für alles, was du als HTML schreiben kannst:** eine Open-Source-Firmware für das Display und ein kleiner Docker-Server, der deine Seiten rendert und als Bilder ans Display schickt. Abfahrten, eine Uhr, das Wetter, den Zustand deines Heimservers, wie viel von deinem KI-Abo noch übrig ist, Live-Werte aus deinem Home Assistant, von der Solarleistung bis zum offenen Fenster, den Energiefluss in deinem Zuhause mit laufenden Pfeilen, alles, was auf 240x240 Pixel passt.
 
 > [!TIP]
 > **Kein Löten nötig.** Du flashst Glance Box über das Menü **„Firmware update“** der Original-Firmware, im Browser. Kein Gehäuse öffnen, keine Kabel.
 
+## Neu in 0.7.0: Energiefluss live
+
+<img src="docs/img/energy-flow.gif" alt="Die Energiefluss-Seite auf dem echten Display: Pfeile laufen vom Netz-Symbol weg (Einspeisung), von der PV ins Haus und zum Speicher hin (lädt)" width="360" height="360" align="right">
+
+Die neue Seite [`energy`](docs/de/templates/energy.md) zeigt, wohin in deinem Zuhause Energie fließt, aus Home Assistant: Netz, PV, Speicher, Gas, Wasser oder Wallbox, bis zu vier Zeilen pro Seite. Die Pfeile bewegt das Display selbst, in Flussrichtung und umso schneller, je mehr fließt. Der Server schickt nur dann ein neues Bild, wenn sich ein Wert ändert.
+
+Der Clip zeigt das echte Display, mit einer Kamera gefilmt. Nachträglich ist nur das Schwarz des Bildschirms abgedunkelt: Je nach Blickwinkel wirkt dieses Panel auf der Kamera blaugrau.
+
+<br clear="right">
+
 ## Highlights
 
 - **Seiten sind einfach HTML.** Schreib eine Seite als Vorlage oder richte den Server auf irgendeine Webseite. Der Server rendert sie mit Headless-Chromium, derselben Engine wie in Chrome.
-- **Fertige Vorlagen** für Wetter, Uptime Kuma, Home Assistant, KI-Nutzung (Claude, OpenAI, xAI, GitHub Copilot), Abfahrten und eine Uhr. Du trägst sie nur in die `config.yaml` ein.
+- **Fertige Vorlagen** für Wetter, Uptime Kuma, Home Assistant, den Energiefluss mit laufenden Pfeilen, KI-Nutzung (Claude, OpenAI, xAI, GitHub Copilot), Abfahrten und eine Uhr. Du trägst sie nur in die `config.yaml` ein.
 - **Offene Firmware für den ESP8266**: WLAN-Einrichtungsportal, eine kleine Einstellungsseite, Nachtmodus mit eigener Helligkeit (oder Hintergrundbeleuchtung aus).
 - **Sichere Updates über WLAN**: passwortgeschützt, jedes Abbild wird gegen seine MD5 geprüft. Eine falsche Datei wird abgelehnt, und die alte Firmware läuft weiter. Nach einem kaputten Update startet das Gerät im Safe Mode statt in einer Boot-Schleife.
 - **Läuft in Docker** auf einem PC, NAS oder Homeserver. Das Display zeigt nur Bilder an; die ganze Arbeit macht der Server.
 - **MIT-Lizenz**, keine Cloud, kein Konto. Das Display spricht nur mit deinem eigenen Server.
 
-Am echten SmallTV Ultra getestet: erstes Flashen über das Menü „Firmware update“ der Original-Firmware, OTA-Updates mit MD5-Prüfung, Safe Mode nach einem kaputten Update, Nachtmodus sowie die Seiten für Abfahrten, Uhr, Wetter, Uptime Kuma und Claude-Limits.
+Am echten SmallTV Ultra getestet: erstes Flashen über das Menü „Firmware update“ der Original-Firmware, OTA-Updates mit MD5-Prüfung, Safe Mode nach einem kaputten Update, Nachtmodus sowie die Seiten für Abfahrten, Uhr, Wetter, Uptime Kuma, Claude-Limits und den Energiefluss.
 
 ## Galerie
 
