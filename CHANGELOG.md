@@ -13,7 +13,9 @@ If you use the status-line script, replace your copy of `glancebox-statusline.sh
 
 Checked on macOS with Claude Code 2.1.330 (2026-11-24): a headless session (`claude -p`) fires
 the hooks `Stop` and `PostToolUse`; the real script, started by a real `Stop` hook, delivered a
-real usage report to a local test listener; the provider turned a real report into the two rows.
+real usage report to a local test listener; a session with a tool call sent one report at once
+and a second one a minute later, and left no process or marker file behind; the provider turned
+a real report into the two rows.
 Not checked: the PowerShell scripts (the new hook and the stamp line added to the status-line
 script; never run, no Windows available), the changed status-line script in a live terminal
 session, Linux, a live session in T3 Code or the desktop app, the display itself, and the Home

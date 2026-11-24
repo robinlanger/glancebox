@@ -121,6 +121,8 @@ if [ -n "$age" ] && [ "$age" -ge 0 ] && [ "$age" -lt "$throttle" ]; then
       mkdir "$pending" 2>/dev/null
   }; then
     (
+      # Wait beside push.env, not in the project folder the hook was started in.
+      cd "$dir" 2>/dev/null || cd / || exit 0
       sleep $((throttle - age))
       rmdir "$pending" 2>/dev/null
       take_lock || exit 0

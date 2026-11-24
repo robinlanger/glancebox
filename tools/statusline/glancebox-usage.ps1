@@ -139,6 +139,8 @@ try {
     $info = New-Object Diagnostics.ProcessStartInfo
     $info.FileName = $claude.Path
     $info.Arguments = '-p "/usage" --output-format stream-json --verbose --no-session-persistence'
+    # Set-Location does not change the directory that .NET starts processes in.
+    $info.WorkingDirectory = $env:GLANCEBOX_USAGE_DIR
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
     $info.RedirectStandardInput = $true
@@ -175,6 +177,7 @@ try {
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($request))
     $shell = (Get-Process -Id $PID).Path
     Start-Process -FilePath $shell -WindowStyle Hidden `
+        -WorkingDirectory $dir `
         -ArgumentList '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
 } catch {}
 exit 0
