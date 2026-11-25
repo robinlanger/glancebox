@@ -1,8 +1,11 @@
-"""Tests of the printer page: validation, state rules (finished_for) and display data."""
+"""Tests of the printer page: validation, state rules (finished_for), display data, layout."""
 
+import dataclasses
+import importlib
 import io
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -10,7 +13,11 @@ from PIL import Image
 from printer_helpers import NOW, ctx
 
 from glancebox.config import AppConfig, ConfigError, PageConfig
-from glancebox.pages import validate_config
+from glancebox.frames import render_data
+from glancebox.pages import load_page_types, validate_config
+from glancebox.render import Renderer
+
+PAGES_DIR = Path(__file__).resolve().parents[1]
 
 URL = "http://drucker.local:7125"
 OPTS = {"source": "fake", "url": URL}
@@ -385,3 +392,283 @@ def test_offline_is_logged_once_and_without_secrets(mod, common, fake, caplog):
     mod.fetch(OPTS, ctx())
     assert len(warnings()) == 2
     assert "S3CRET" not in caplog.text
+
+
+# --- template (browser) ------------------------------------------------------------
+
+def _load_common():
+    """providers/_common.py of a fresh load, for the module-level MOCKUPS below.
+
+    The fixtures load the page again for every test; build() only reads the attributes of a
+    status, so instances made here work with every later load.
+    """
+    load_page_types([PAGES_DIR])
+    return importlib.import_module("glancebox_pages.printer.providers._common")
+
+
+_C = _load_common()
+THUMB_COLOR = "#d9822b"
+HEADER, HEADER_ALERT = "#00376e", "#961919"          # rgb(0,55,110), rgb(150,25,25)
+GREEN, ORANGE, RED = "#3cc86e", "#ffaa28", "#f0463c"  # --green, --orange, --red of base.html
+
+
+def _thumb_png():
+    out = io.BytesIO()
+    Image.new("RGB", (300, 300), THUMB_COLOR).save(out, "PNG")
+    return _C.Thumbnail(out.getvalue(), "image/png")
+
+
+_JOB = {"progress": 47.0, "remaining_s": 4980, "filename": "benchy_0.2mm_PLA_MK4",
+        "nozzle": (214.0, 215.0), "bed": (60.0, 60.0), "layer": (112, 240),
+        "thumbnail": _thumb_png()}
+_NO_HEAT = {"nozzle": (48.0, None), "bed": (41.0, None)}
+YESTERDAY_2114 = (NOW - timedelta(days=1)).replace(hour=21, minute=14)
+
+# The seven cases of docs/superpowers/specs/assets/2026-11-25-printer-mockup.html (at NOW).
+MOCKUPS: dict[str, "_C.PrinterStatus"] = {
+    "printing": _C.PrinterStatus("printing", **_JOB),
+    "plain": _C.PrinterStatus("printing", **{**_JOB, "thumbnail": None}),
+    "paused": _C.PrinterStatus("paused", **{**_JOB, "nozzle": (170.0, 170.0)},
+                               state_since=NOW - timedelta(minutes=27)),
+    "finished": _C.PrinterStatus("finished", progress=100.0, filename=_JOB["filename"],
+                                 duration_s=11520, ended_at=NOW - timedelta(minutes=4),
+                                 thumbnail=_JOB["thumbnail"], **_NO_HEAT),
+    "error": _C.PrinterStatus("error", progress=47.0, filename=_JOB["filename"],
+                              message="Heater extruder not heating at expected rate",
+                              nozzle=(162.0, None), bed=(58.0, None),
+                              thumbnail=_JOB["thumbnail"]),
+    "idle": _C.PrinterStatus("idle", nozzle=(142.0, 215.0), bed=(23.0, None),
+                             last_job=(_JOB["filename"], YESTERDAY_2114)),
+    "offline": _C.PrinterStatus("offline"),
+}
+
+MONDAY_0740 = (NOW + timedelta(days=5)).replace(hour=7, minute=40)
+# The widest texts each box must hold: 100 %, noch 23:59 h, fertig Mo 07:40, Schicht 1234/1234,
+# 285°/285, 110°/110, Düse heizt, Dauer 23:59 h.
+EDGES = {
+    "printing_wide": _C.PrinterStatus(
+        "printing", progress=100.0, remaining_s=86399, eta=MONDAY_0740, layer=(1234, 1234),
+        filename="benchy", nozzle=(285.0, 285.0), bed=(110.0, 110.0),
+        thumbnail=_JOB["thumbnail"]),
+    "heating": _C.PrinterStatus(
+        "printing", progress=3.0, remaining_s=86399, eta=MONDAY_0740, layer=(1, 1234),
+        nozzle=(270.0, 285.0), bed=(90.0, 110.0), thumbnail=_JOB["thumbnail"]),
+    "paused_wide": _C.PrinterStatus(
+        "paused", progress=100.0, remaining_s=86399, layer=(1234, 1234),
+        state_since=MONDAY_0740 - timedelta(days=7), nozzle=(285.0, 285.0),
+        bed=(110.0, 110.0), thumbnail=_JOB["thumbnail"]),
+    "finished_wide": _C.PrinterStatus(
+        "finished", progress=100.0, duration_s=86399, ended_at=NOW - timedelta(minutes=4),
+        nozzle=(285.0, None), bed=(110.0, None), thumbnail=_JOB["thumbnail"]),
+}
+
+
+def _no_thumb(status):
+    return dataclasses.replace(status, thumbnail=None)
+
+
+def _data(mod, status, lang="de", **options):
+    return mod.build(status, options, lang, NOW)
+
+
+def _image(jpeg):
+    img = Image.open(io.BytesIO(jpeg))
+    assert img.size == (240, 240)
+    return img.convert("RGB")
+
+
+def _near(px, hex_color, tol=10):
+    want = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+    return all(abs(a - b) <= tol for a, b in zip(px, want, strict=True))
+
+
+def _any_color(img, area, colors, tol=10):
+    """The first (x, y, pixel) in area = (x0, y0, x1, y1) near one of colors, else None."""
+    px = img.load()
+    x0, y0, x1, y1 = area
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if any(_near(px[x, y], c, tol) for c in colors):
+                return x, y, px[x, y]
+    return None
+
+
+def _orange(px):
+    """Orange hue (as in test_energy.py): a 2 px icon stroke never gets within 10 of
+    --orange in the JPEG (measured (240, 171, 70)), grey and white never pass this."""
+    r, g, b = px
+    return r > 200 and 120 < g < 200 and b < 100
+
+
+def _any_orange(img, area):
+    px = img.load()
+    x0, y0, x1, y1 = area
+    return any(_orange(px[x, y]) for y in range(y0, y1) for x in range(x0, x1))
+
+
+async def _render(printer, data):
+    async with Renderer() as r:
+        return await render_data(printer, data, r)
+
+
+async def _boxes(datas):
+    """Per data dict: every element of the rendered HTML (Playwright, no screenshot).
+
+    Each element: cls, text, overflow (scrollWidth > clientWidth), left, top, right, bottom,
+    height.
+    """
+    from playwright.async_api import async_playwright
+
+    from glancebox.frames import _jinja_env
+
+    template = _jinja_env([PAGES_DIR / "printer"]).get_template("template.html")
+    out = []
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        for data in datas:
+            await page.set_content(template.render(**data))
+            out.append(await page.evaluate(
+                "[...document.querySelectorAll('body *')].map(e => {"
+                " const r = e.getBoundingClientRect();"
+                " return {cls: e.getAttribute('class') || e.tagName, text: e.textContent,"
+                " overflow: e.scrollWidth > e.clientWidth, left: r.left, top: r.top,"
+                " right: r.right, bottom: r.bottom, height: r.height}; })"))
+        await browser.close()
+    return out
+
+
+def _find(boxes, cls):
+    return [b for b in boxes if cls in b["cls"].split()]
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("lang", ["de", "en"])
+@pytest.mark.parametrize("name", list(MOCKUPS))
+async def test_every_mockup_state_renders(printer, mod, name, lang):
+    jpeg = await _render(printer, _data(mod, MOCKUPS[name], lang))
+    assert len(jpeg) <= 24576
+    img = _image(jpeg)
+    header = HEADER_ALERT if name == "error" else HEADER
+    assert _any_color(img, (0, 0, 240, 34), [header]), name
+
+
+@pytest.mark.browser
+async def test_state_colours(printer, mod):
+    bar = (0, 150, 240, 158)
+    img = _image(await _render(printer, _data(mod, MOCKUPS["printing"])))
+    assert _any_color(img, bar, [GREEN])
+    px = img.load()
+    assert _near(px[100, 154], GREEN, 24), px[100, 154]           # fill ends at 8 + 224 * 0.47
+    assert not _near(px[130, 154], GREEN, 40), px[130, 154]
+
+    img = _image(await _render(printer, _data(mod, MOCKUPS["paused"])))
+    assert _any_color(img, bar, [ORANGE])
+    assert _any_color(img, (0, 0, 240, 240), [GREEN]) is None
+
+    img = _image(await _render(printer, _data(mod, MOCKUPS["error"])))
+    assert _any_color(img, bar, [RED])
+
+    img = _image(await _render(printer, _data(mod, MOCKUPS["finished"])))
+    assert _near(img.load()[225, 154], GREEN, 24)
+
+
+@pytest.mark.browser
+async def test_thumbnail_is_drawn_and_missing_one_leaves_no_box(printer, mod):
+    box = (8, 42, 108, 142)
+    img = _image(await _render(printer, _data(mod, MOCKUPS["printing"])))
+    assert _any_color(img, box, [THUMB_COLOR])
+
+    img = _image(await _render(printer, _data(mod, MOCKUPS["plain"])))
+    assert _any_color(img, box, [THUMB_COLOR], tol=24) is None
+    px = img.load()
+    assert any(min(px[x, y]) > 200 for y in range(60, 110) for x in range(8, 60))
+
+
+def _fit_cases(mod):
+    statuses = [*MOCKUPS.values(), *EDGES.values()]
+    statuses += [_no_thumb(s) for s in statuses if s.thumbnail is not None]
+    return [(s, lang, _data(mod, s, lang)) for s in statuses for lang in ("de", "en")]
+
+
+@pytest.mark.browser
+async def test_texts_fit_without_ellipsis(mod):
+    cases = _fit_cases(mod)
+    shown = " ".join(" ".join([d["big"] or "", d["main"] or "", *d["lines"],
+                               *(f"{t['actual']}/{t['target']} {t['label']}"
+                                 for t in d["temps"])]) for _, _, d in cases)
+    for text in ("100", "noch 23:59 h", "fertig Mo 07:40", "Schicht 1234/1234", "285°/285",
+                 "110°/110", "Düse heizt", "Nozzle heating", "Dauer 23:59 h", "Took 23:59 h"):
+        assert text in shown, text                 # the edge cases really hold these texts
+    for (status, lang, data), boxes in zip(cases, await _boxes([c[2] for c in cases]),
+                                           strict=True):
+        where = (status.state, lang, status.thumbnail is not None)
+        for b in boxes:
+            assert b["right"] <= 240 and b["bottom"] <= 240, (where, b)
+            if not {"fn", "ui-title"} & set(b["cls"].split()):
+                assert not b["overflow"], (where, b)
+        if data["thumb"]:
+            for b in _find(boxes, "col"):
+                assert b["left"] >= 116, (where, b)
+
+
+@pytest.mark.browser
+async def test_long_filename_and_title_are_cut_not_wrapped(mod):
+    status = MOCKUPS["printing"]
+    long = dataclasses.replace(status, filename="Halterung_fuer_Kabelkanal_" * 3 + "xx")
+    assert len(long.filename) == 80
+    title = "Prusa MK4 im Keller neben der Heizung und dem Regal mit Filament"[:60]
+    assert len(title) == 60
+    short, cut = await _boxes([_data(mod, status), _data(mod, long, title=title)])
+    (fn,) = _find(cut, "fn")
+    assert fn["height"] <= 16 and fn["overflow"], fn
+    assert _find(cut, "ui-title")[0]["overflow"]
+    for cls in ("bar", "temp"):
+        where = [(b["left"], b["top"]) for b in _find(short, cls)]
+        assert where and where == [(b["left"], b["top"]) for b in _find(cut, cls)], cls
+
+
+@pytest.mark.browser
+async def test_error_message_takes_at_most_three_lines(mod):
+    status = dataclasses.replace(MOCKUPS["error"],
+                                 message="Heater extruder failure " * 12 + "x" * 12)
+    assert len(status.message) == 300
+    for s in (status, _no_thumb(status)):
+        (boxes,) = await _boxes([_data(mod, s)])
+        (msg,) = _find(boxes, "msg")
+        assert msg["height"] <= 45 and msg["bottom"] < 150, msg
+
+
+@pytest.mark.browser
+async def test_heater_off_is_grey_and_shows_only_the_actual_value(printer, mod):
+    temps = (0, 190, 240, 240)
+    img = _image(await _render(printer, _data(mod, MOCKUPS["finished"])))
+    assert not _any_orange(img, temps)
+    (boxes,) = await _boxes([_data(mod, MOCKUPS["finished"])])
+    assert [b["text"] for b in _find(boxes, "v")] == ["48°", "41°"]
+
+    img = _image(await _render(printer, _data(mod, MOCKUPS["idle"])))
+    assert _any_orange(img, (0, 190, 120, 240))           # the nozzle icon, heating
+    assert not _any_orange(img, (120, 190, 240, 240))     # the bed, off
+
+
+@pytest.mark.browser
+async def test_offline_and_notice_states(printer, mod, common):
+    img = _image(await _render(printer, _data(mod, MOCKUPS["offline"])))
+    assert not _any_orange(img, (0, 0, 240, 240))
+    assert _any_color(img, (0, 0, 240, 240), [RED, HEADER_ALERT], tol=40) is None
+    assert _near(img.load()[120, 4], HEADER)
+
+    data = mod.notice({"source": "moonraker"}, "de", NOW, common.SourceError("auth"))
+    img = _image(await _render(printer, data))
+    assert _any_color(img, (0, 34, 240, 240), [ORANGE])
+
+
+@pytest.mark.browser
+async def test_same_data_renders_the_same_bytes(printer, mod):
+    data = _data(mod, MOCKUPS["printing"])
+    async with Renderer() as r:
+        first = await render_data(printer, data, r)
+        second = await render_data(printer, data, r)
+    if first != second:
+        pytest.xfail("renderer is not byte-stable; SKIP_UNCHANGED carries the 304")

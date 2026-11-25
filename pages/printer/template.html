@@ -1,1 +1,115 @@
 {% extends "base.html" %}
+{% import "ui.html" as ui %}
+{#- Measurements from docs/superpowers/specs/assets/2026-11-25-printer-mockup.html (240×240).
+    view "job": picture 100×100 at (8, 42) and the texts in the right column (.col, x >= 116),
+    or without a picture the percentage large on the left; bar, file name, temperatures below.
+    view "idle": "Bereit" large, the last print, temperatures. view "notice": ui.notice.
+    Font sizes step down with the length of a text so the widest values still fit their box
+    (test_texts_fit_without_ellipsis); only the file name and the title are cut with "…". -#}
+{%- set color = {"green": "var(--green)", "orange": "var(--orange)", "red": "var(--red)",
+                 "muted": "var(--muted)"} %}
+{% macro icon(kind) -%}
+<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+{%- if kind == "nozzle" %}<path d="M6 3h12v6H6zM8 9h8l-2 6h-4zM12 15v3M9 21h6"/>
+{%- else %}<path d="M3 17h18M7 13c1-1.5-1-2.5 0-4M12 13c1-1.5-1-2.5 0-4M17 13c1-1.5-1-2.5 0-4"/>
+{%- endif %}</svg>
+{%- endmacro %}
+{% block head %}
+<style>
+.a{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.thumb{position:absolute;left:8px;top:42px;width:100px;height:100px;border-radius:6px;background:#141922;overflow:hidden;}
+.thumb img{display:block;width:100px;height:100px;object-fit:contain;}
+.lbl{font-size:13px;line-height:16px;font-weight:700;}
+.big{font-weight:700;}
+.mid{font-weight:700;font-size:16px;line-height:19px;}
+.mid.s{font-size:14px;}
+.sm{font-size:12px;line-height:15px;color:var(--muted);}
+.msg{white-space:normal;line-height:15px;max-height:45px;color:var(--fg);}
+.bar{position:absolute;left:8px;top:150px;width:224px;height:8px;border-radius:4px;background:var(--divider);overflow:hidden;}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;}
+.fn{color:var(--fg);}
+.div{position:absolute;left:8px;top:184px;width:224px;height:1px;background:var(--divider);}
+.temp{position:absolute;top:192px;width:112px;height:42px;}
+.temp .ic{position:absolute;left:0;top:9px;width:22px;height:22px;}
+.temp .v{position:absolute;left:26px;top:4px;width:86px;font-weight:700;font-size:20px;line-height:26px;white-space:nowrap;overflow:hidden;color:var(--fg);}
+.temp .v span{font-size:13px;color:var(--muted);}
+.temp .k{position:absolute;left:26px;top:30px;width:86px;font-size:10px;line-height:12px;color:var(--muted);white-space:nowrap;overflow:hidden;}
+</style>
+{% endblock %}
+{% block body %}
+{{ ui.header(title, clock, alert) }}
+{%- if view == "notice" %}
+{{ ui.notice(notice.message, notice.sub, notice.tone) }}
+{%- elif view == "idle" %}
+<div class="a big" style="left:8px;top:48px;width:224px;font-size:30px;line-height:36px">{{ big }}</div>
+{%- for line in lines %}
+<div class="a sm" style="left:8px;top:{{ 90 + 16 * loop.index0 }}px;width:224px">{{ line }}</div>
+{%- endfor %}
+{%- if message %}
+<div class="a sm" style="left:8px;top:{{ 90 + 16 * lines|length }}px;width:224px">{{ message }}</div>
+{%- endif %}
+{%- else %}
+{#- job: printing, paused, finished, error -#}
+{%- set tone_color = color[tone] %}
+{#- the percentage of a running print is white, a finish time or a paused/failed one coloured -#}
+{%- set big_color = "var(--fg)" if tone == "green" and big_unit else tone_color %}
+{%- set block_msg = message if alert else None %}
+{%- set smalls = ([message] if message and not alert else []) + lines %}
+{%- if thumb %}
+<div class="thumb"><img src="{{ thumb }}" alt=""></div>
+<div class="a lbl col" style="left:118px;top:42px;width:114px;color:{{ tone_color }}">{{ label }}</div>
+{%- if big %}
+{%- if big_unit %}{% set size, lh, top = 34, 38, 58 %}
+{%- elif big|length <= 5 %}{% set size, lh, top = 30, 36, 60 %}
+{%- elif big|length <= 9 %}{% set size, lh, top = 19, 36, 60 %}
+{%- else %}{% set size, lh, top = 12, 36, 60 %}{% endif %}
+<div class="a big col" style="left:116px;top:{{ top }}px;width:116px;font-size:{{ size }}px;line-height:{{ lh }}px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:20px"> {{ big_unit }}</span>{% endif %}</div>
+{%- endif %}
+{%- if block_msg %}
+<div class="a sm msg col" style="left:118px;top:100px;width:114px">{{ block_msg }}</div>
+{%- else %}
+{%- if main %}
+<div class="a mid col{% if main|length > 11 %} s{% endif %}" style="left:118px;top:98px;width:114px{% if main_muted %};color:var(--muted){% endif %}">{{ main }}</div>
+{%- endif %}
+{%- for line in smalls[:2] %}
+<div class="a sm col" style="left:118px;top:{{ 118 + 15 * loop.index0 }}px;width:114px">{{ line }}</div>
+{%- endfor %}
+{%- endif %}
+{%- else %}
+{#- no picture: the number large on the left, times right-aligned up to x = 232 -#}
+<div class="a lbl" style="left:8px;top:42px;width:224px;color:{{ tone_color }}">{{ label }}</div>
+{%- if big %}
+{%- if big_unit %}{% set size = 52 if big|length <= 2 else 40 %}
+{%- elif big|length <= 5 %}{% set size = 34 %}
+{%- elif big|length <= 9 %}{% set size = 19 %}
+{%- else %}{% set size = 12 %}{% endif %}
+<div class="a big" style="left:6px;top:56px;width:116px;font-size:{{ size }}px;line-height:58px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:{{ size // 2 }}px"> {{ big_unit }}</span>{% endif %}</div>
+{%- endif %}
+{%- if block_msg %}
+<div class="a sm msg" style="left:124px;top:62px;width:108px">{{ block_msg }}</div>
+{%- else %}
+{%- if main %}
+<div class="a mid{% if main|length > 11 %} s{% endif %}" style="left:116px;top:62px;width:116px;text-align:right{% if main_muted %};color:var(--muted){% endif %}">{{ main }}</div>
+{%- endif %}
+{%- if smalls %}
+<div class="a sm" style="left:116px;top:84px;width:116px;text-align:right">{{ smalls[0] }}</div>
+{%- endif %}
+{%- if smalls[1] %}
+<div class="a sm" style="left:8px;top:124px;width:224px">{{ smalls[1] }}</div>
+{%- endif %}
+{%- endif %}
+{%- endif %}
+{%- if bar is not none %}
+<div class="bar"><i style="width:{{ bar }}%;background:{{ tone_color }}"></i></div>
+{%- endif %}
+{%- if filename %}
+<div class="a sm fn" style="left:8px;top:164px;width:224px">{{ filename }}</div>
+{%- endif %}
+{%- endif %}
+{%- if view != "notice" and temps %}
+<div class="div"></div>
+{%- for t in temps %}
+<div class="temp" style="left:{{ 8 + 116 * loop.index0 }}px;color:{{ 'var(--orange)' if t.on else 'var(--muted)' }}">{{ icon(t.kind) }}<div class="v">{{ t.actual }}{% if t.target %}<span>/{{ t.target }}</span>{% endif %}</div><div class="k">{{ t.label }}</div></div>
+{%- endfor %}
+{%- endif %}
+{% endblock %}
