@@ -28,7 +28,7 @@ Der Clip zeigt das echte Display, mit einer Kamera gefilmt. Nachträglich ist nu
 ## Highlights
 
 - **Seiten sind einfach HTML.** Schreib eine Seite als Vorlage oder richte den Server auf irgendeine Webseite. Der Server rendert sie mit Headless-Chromium, derselben Engine wie in Chrome.
-- **Fertige Vorlagen** für Wetter, Uptime Kuma, Home Assistant, den Energiefluss mit laufenden Pfeilen, KI-Nutzung (Claude, OpenAI, xAI, GitHub Copilot), Abfahrten und eine Uhr. Du trägst sie nur in die `config.yaml` ein.
+- **Fertige Vorlagen** für Wetter, Uptime Kuma, Home Assistant, den Energiefluss mit laufenden Pfeilen, einen 3D-Drucker (Moonraker, OctoPrint, PrusaLink oder Home Assistant), KI-Nutzung (Claude, OpenAI, xAI, GitHub Copilot), Abfahrten und eine Uhr. Du trägst sie nur in die `config.yaml` ein.
 - **Offene Firmware für den ESP8266**: WLAN-Einrichtungsportal, eine kleine Einstellungsseite, Nachtmodus mit eigener Helligkeit (oder Hintergrundbeleuchtung aus).
 - **Sichere Updates über WLAN**: passwortgeschützt, jedes Abbild wird gegen seine MD5 geprüft. Eine falsche Datei wird abgelehnt, und die alte Firmware läuft weiter. Nach einem kaputten Update startet das Gerät im Safe Mode statt in einer Boot-Schleife.
 - **Läuft in Docker** auf einem PC, NAS oder Homeserver. Das Display zeigt nur Bilder an; die ganze Arbeit macht der Server.
@@ -59,6 +59,10 @@ Alle eingebauten Seiten:
 <td width="33%" valign="top"><b><code>homeassistant</code>: Kacheln</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home-Assistant-Seite mit vier Kacheln" width="240" height="240"><br>Bis zu vier große Werte, zum Beispiel Solarleistung und Akku.</td>
 <td width="33%" valign="top"><b><code>homeassistant</code>: Liste</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home-Assistant-Seite mit Liste" width="240" height="240"><br>Bis zu sechs Zeilen: Temperaturen, Türen, Fenster, Lichter.</td>
 <td width="33%" valign="top"><b><code>energy</code>: Energiefluss</b><br><img src="docs/img/templates/energy.png" alt="Energiefluss-Seite mit Netz, PV und Speicher" width="240" height="240"><br>Netz, PV, Speicher, Gas, Wasser oder Wallbox, mit Pfeilen, die das Display in Richtung des Flusses bewegt (ab Firmware 0.7.0; hier eine feste Stellung).</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>printer</code>: Druckt</b><br><img src="docs/img/templates/printer-printing.png" alt="3D-Drucker-Seite während des Drucks" width="240" height="240"><br>Fortschritt, Restzeit, Fertig-Uhrzeit, Schicht, Slicer-Vorschaubild, Düse und Bett, von Moonraker, OctoPrint, PrusaLink oder Home Assistant. Noch nicht an einem echten Drucker geprüft.</td>
+<td width="33%" valign="top"><b><code>printer</code>: Fertig</b><br><img src="docs/img/templates/printer-finished.png" alt="3D-Drucker-Seite nach einem fertigen Druck" width="240" height="240"><br>Ende, Dauer und wie lange her; nach <code>finished_for</code> Minuten zeigt die Seite Bereit.</td>
 </tr>
 </table>
 

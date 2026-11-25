@@ -123,6 +123,7 @@ nav:
       - kuma: templates/kuma.md
       - homeassistant: templates/homeassistant.md
       - energy: templates/energy.md
+      - printer: templates/printer.md
       - ai: templates/ai.md
   - Your own pages: writing-pages.md
   - Help:

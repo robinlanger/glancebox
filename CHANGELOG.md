@@ -6,6 +6,38 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+New page `printer`: one 3D printer at a glance, with state, progress, time left, finish time,
+layer, file name, the slicer's preview picture and nozzle/bed temperatures. The status comes
+directly from Moonraker (Klipper), OctoPrint or PrusaLink, or from the printer's entities in
+Home Assistant. Server only; no firmware change.
+
+Checked (2026-11-25): only with fixtures, answers rebuilt by hand from the documentation and
+source code of Moonraker master b559b9a8 (with Klipper 7558e8c2, Mainsail ce96e4d7, Fluidd
+8509fc70), OctoPrint 2.0.2 with PrusaSlicer Thumbnails 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
+for Home Assistant, moonraker-home-assistant v1.14.0, the core integrations OctoPrint and
+PrusaLink (dev), ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; the layout in the browser
+render tests.
+Not checked: any real printer (the test on a Moonraker printer is pending), the Moonraker and
+OctoPrint simulators, any Home Assistant instance, the display itself, and the Home Assistant
+add-on.
+
+### Added
+- Page `printer` with `source: moonraker | octoprint | prusalink | hass`. With `hass`,
+  `integration:` picks a preset for `moonraker` (HACS), `octoprint`, `prusalink` (core),
+  `bambu_lab`, `creality` (HACS) or `custom`; `device:` is the entity prefix, `entities:`
+  replaces single entities (also `sensor.x#attribute`), `states:` maps extra raw state words.
+  Options `api_key`, `user`/`password` (PrusaLink, HTTP Digest), `token`, `title`,
+  `thumbnail`, `finished_for` (minutes "Finished" stays, default 120, 0 = never) and `refresh`
+  (default 10 s, at least 5). The slicer preview (at most 512 KiB, PNG or JPEG) is scaled
+  down and embedded in the page; an unreadable image only leaves the picture out. A refused key
+  or password shows "Access denied", a switched-off printer "Printer not reachable" in grey.
+  In the add-on, `source: hass` needs neither `url` nor `token`. Docs: `printer` in the
+  template catalog, with an honest "Tested with" table.
+- `glancebox.http.get_bytes(url, max_bytes=...)` for your own pages: fetches an image and
+  returns `(bytes, mime)`, only `image/png` and `image/jpeg`, with a size limit and without
+  following redirects. `get_json` and `get_bytes` take `auth=` (for example HTTP Digest), and
+  `get_json` returns `None` on HTTP 204.
+
 ## [0.7.1]
 
 The `ai` page with `provider: claude` now also gets its limits when you use Claude Code without

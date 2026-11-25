@@ -41,6 +41,10 @@ pages:
   #     - type: battery
   #       entity: sensor.battery_power  # positive = discharging, negative = charging
   #       soc: sensor.battery_level     # optional
+  # - type: printer                 # 3D printer; refresh defaults to 10 here (minimum 5)
+  #   source: moonraker             # Klipper; octoprint, prusalink and hass: docs/en/templates/printer.md
+  #   url: http://drucker.local:7125
+  #   # api_key: ${MOONRAKER_KEY}   # only if Moonraker does not list this server in trusted_clients
   # - type: ai
   #   provider: claude      # values from Claude Code's status line, needs push_key above
   #   refresh: 30

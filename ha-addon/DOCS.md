@@ -28,8 +28,8 @@ could not save the starter file there), the web UI shows the starter content: cr
 `config.yaml` with it in the File editor. Restart the add-on after editing.
 All page types and options are described at <https://robinlanger.github.io/glancebox/templates/>.
 
-Home Assistant entities need no token here: a `homeassistant` or `energy` page without `url` and
-`token` reads directly from this Home Assistant.
+Home Assistant entities need no token here: a `homeassistant` or `energy` page, or a `printer` page
+with `source: hass`, without `url` and `token` reads directly from this Home Assistant.
 
 ```yaml
 pages:
@@ -53,7 +53,9 @@ The Configuration tab holds only secrets. All fields are optional.
 - **Anthropic / OpenAI / xAI / GitHub Copilot keys**: for the `ai` page with the matching provider.
   In `config.yaml` write them as `${ANTHROPIC_ADMIN_KEY}`, `${OPENAI_ADMIN_KEY}`,
   `${XAI_MANAGEMENT_KEY}`, `${GITHUB_COPILOT_TOKEN}`.
-- **More secrets**: name/value pairs for your own pages, used as `${NAME}`.
+- **More secrets**: name/value pairs for your own pages, used as `${NAME}`. Also for the key or
+  password of a `printer` page that reads the printer directly, for example `OCTOPRINT_KEY` used
+  as `api_key: ${OCTOPRINT_KEY}`.
 
 Restart the add-on after changing them.
 

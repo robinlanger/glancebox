@@ -40,7 +40,7 @@ Server it is `/addon_configs/<id>_glancebox/config.yaml`. It uses the same forma
 
 - `timezone`, `lang` and the location of a `weather` page are optional; without them the values
   from Home Assistant are used. Values you set always win.
-- A `homeassistant` or `energy` page needs neither `url` nor `token`; it reads from this Home Assistant.
+- A `homeassistant` or `energy` page, and a `printer` page with `source: hass`, needs neither `url` nor `token`; it reads from this Home Assistant. A `printer` page that reads the printer directly (Moonraker, OctoPrint, PrusaLink) needs its `url`; put its key or password under "More secrets" (see below).
 
 If that folder is empty (the add-on could not save the starter file there), the add-on's web UI
 shows the starter content: create `config.yaml` with it in the File editor.
@@ -52,7 +52,7 @@ Restart the add-on after editing.
 The add-on's **Configuration** tab holds only secrets, all optional: the push key for the Claude
 usage page (used automatically), the keys for the `ai` page providers (in `config.yaml` as
 `${ANTHROPIC_ADMIN_KEY}`, `${OPENAI_ADMIN_KEY}`, `${XAI_MANAGEMENT_KEY}`,
-`${GITHUB_COPILOT_TOKEN}`), and "More secrets" for your own pages (`${NAME}`). Secrets never
+`${GITHUB_COPILOT_TOKEN}`), and "More secrets" for your own pages and for the key or password of a printer read directly (`${NAME}`, for example `${OCTOPRINT_KEY}`). Secrets never
 need to be written into `config.yaml` in plain text.
 
 ## Security

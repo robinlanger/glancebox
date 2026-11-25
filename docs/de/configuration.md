@@ -53,9 +53,9 @@ pages:
 
 | Schlüssel | Standard | Bedeutung |
 | --- | --- | --- |
-| `type` | Pflicht | Seitentyp: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `ai` oder ein eigener. Die fertigen Seiten stehen im [Vorlagen-Katalog](templates/README.md). |
+| `type` | Pflicht | Seitentyp: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `printer`, `ai` oder ein eigener. Die fertigen Seiten stehen im [Vorlagen-Katalog](templates/README.md). |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
-| `refresh` | `duration` | Eine Seite wird höchstens alle `refresh` Sekunden neu gerendert. Nimm einen größeren Wert für Daten, die sich langsam ändern, oder für Dienste, die Anfragen begrenzen. Ein Seitentyp kann einen eigenen Standard und ein eigenes Minimum haben, zum Beispiel `energy`: Standard 5, mindestens 2. |
+| `refresh` | `duration` | Eine Seite wird höchstens alle `refresh` Sekunden neu gerendert. Nimm einen größeren Wert für Daten, die sich langsam ändern, oder für Dienste, die Anfragen begrenzen. Ein Seitentyp kann einen eigenen Standard und ein eigenes Minimum haben, zum Beispiel `energy`: Standard 5, mindestens 2; `printer`: Standard 10, mindestens 5. |
 
 Alle anderen Schlüssel gehören zum Seitentyp und stehen unten. Fertige Seiten mit Vorschaubildern findest du im [Vorlagen-Katalog](templates/README.md).
 
@@ -174,6 +174,17 @@ Energiefluss aus Home Assistant in 1 bis 4 Zeilen (`grid`, `pv`, `battery`, `gas
     - type: battery
       entity: sensor.battery_power
       soc: sensor.battery_level
+```
+
+## Seitentyp: printer
+
+Zustand, Fortschritt, Restzeit und Temperaturen eines 3D-Druckers, mit dem Vorschaubild des Slicers. `source:` sagt, woher der Zustand kommt: `moonraker` (Klipper), `octoprint`, `prusalink` direkt vom Drucker oder `hass` mit einer Vorlage für die Home-Assistant-Integration des Druckers (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` oder `custom`). Ohne `refresh` gelten für diese Seite 10 Sekunden, mindestens 5. Keys und Passwörter gehören in die `.env`, siehe [Geheimnisse und Umgebungsvariablen](#geheimnisse-und-umgebungsvariablen). Noch nicht an einem echten Drucker geprüft. Ausführlich, mit Optionen und Einrichtung je Quelle: [printer](templates/printer.md).
+
+```yaml
+- type: printer
+  source: moonraker
+  url: http://drucker.local:7125
+  # api_key: ${MOONRAKER_KEY}
 ```
 
 ## Seitentyp: ai

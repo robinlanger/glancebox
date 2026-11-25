@@ -48,6 +48,9 @@ gallery:
   - img: img/templates/energy.png
     caption: Energy flow
     href: templates/energy/
+  - img: img/templates/printer-printing.png
+    caption: 3D printer
+    href: templates/printer/
 photo_alt: Four photos of the display showing departures, Uptime Kuma, weather and Claude limits
 photo_caption: On the real display.
 features:
