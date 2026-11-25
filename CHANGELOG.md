@@ -13,7 +13,8 @@ Home Assistant. Server only; no firmware change.
 
 Checked (2026-11-25): only with fixtures, answers rebuilt by hand from the documentation and
 source code of Moonraker master b559b9a8 (with Klipper 7558e8c2, Mainsail ce96e4d7, Fluidd
-8509fc70), OctoPrint 2.0.2 with PrusaSlicer Thumbnails 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
+8509fc70), OctoPrint 2.0.2 with the Slicer Thumbnails plugin
+(OctoPrint-PrusaSlicerThumbnails) 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
 for Home Assistant, moonraker-home-assistant v1.14.0, the core integrations OctoPrint and
 PrusaLink (dev), ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; the layout in the browser
 render tests.

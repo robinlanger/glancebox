@@ -34,7 +34,7 @@ Limits:
 - No webcam picture, only the slicer's preview of the file.
 - The page only reads. It cannot pause or cancel a print.
 - Bambu Lab and Creality only through Home Assistant, not directly.
-- OctoPrint and PrusaLink give no layer. OctoPrint 1.x gives a preview picture only with the plugin [PrusaSlicer Thumbnails](https://plugins.octoprint.org/plugins/prusaslicerthumbnails/).
+- OctoPrint and PrusaLink give no layer. OctoPrint 1.x gives a preview picture only with the plugin [Slicer Thumbnails](https://plugins.octoprint.org/plugins/prusaslicerthumbnails/) (repository OctoPrint-PrusaSlicerThumbnails).
 - Elegoo, Anycubic, Snapmaker, Duet and others have no preset: use Home Assistant with `integration: custom` and your own entities.
 
 ## What you need
@@ -181,13 +181,13 @@ The page reads the time left, layer and preview picture from the file's metadata
 
 ### OctoPrint
 
-Create an application key in OctoPrint under **Settings → Application Keys**, put it in `.env` as `OCTOPRINT_KEY=...` and set `api_key: ${OCTOPRINT_KEY}`.
+Create an application key in OctoPrint: **Settings → Application Keys** (or the same section in your user settings), "Manually generate an application key", enter a name such as `glancebox` and click **Generate**. Put it in `.env` as `OCTOPRINT_KEY=...` and set `api_key: ${OCTOPRINT_KEY}`.
 
-The preview picture: OctoPrint 2.x has thumbnails of its own; OctoPrint 1.x only with the plugin "PrusaSlicer Thumbnails". Only files stored on OctoPrint get a picture, not files printed from the printer's SD card. Behind a reverse proxy that gives OctoPrint another host name or scheme than `url`, the picture is left out, so the key is never sent to another address. OctoPrint has no print history in its core, so the Ready view shows no "Last:" unless the page saw the print finish itself.
+The preview picture: OctoPrint 2.x has thumbnails of its own; OctoPrint 1.x only with the plugin "Slicer Thumbnails". Only files stored on OctoPrint get a picture, not files printed from the printer's SD card. Behind a reverse proxy that gives OctoPrint another host name or scheme than `url`, the picture is left out, so the key is never sent to another address. OctoPrint has no print history in its core, so the Ready view shows no "Last:" unless the page saw the print finish itself.
 
 ### PrusaLink
 
-On the printer, open **Settings → Network → PrusaLink**: it shows the user (`maker`) and the password. Put the password in `.env` as `PRUSALINK_PASSWORD=...` and set `password: ${PRUSALINK_PASSWORD}`. If your firmware lets you set an API key instead, use `api_key:`.
+On the printer, open **Settings → Network → PrusaLink** (menu names of the Buddy firmware 8.0.2 in English; other versions or languages may differ): it shows the user (`maker`) and the password. Put the password in `.env` as `PRUSALINK_PASSWORD=...` and set `password: ${PRUSALINK_PASSWORD}`. If your firmware lets you set an API key instead, use `api_key:`.
 
 When a print has finished, the printer forgets the job. The page therefore remembers the last job it saw while printing (file name, duration, picture) and shows it on **Finished**; the duration can be up to one refresh short. After a restart of the server at that moment, **Finished** shows without a file name.
 
@@ -214,7 +214,7 @@ As of 2026-11-25. Nothing below has run against a printer, a simulator or a Home
 | --- | --- | --- |
 | Moonraker directly | only with rebuilt answers (fixtures) from Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 and Fluidd 8509fc70; test on a real printer pending | 2026-11-25 |
 | Moonraker simulator (virtual-klipper-printer) | not run yet | 2026-11-25 |
-| OctoPrint directly | only fixtures from the documentation and source code of OctoPrint 2.0.2 and PrusaSlicer Thumbnails 1.2.4 | 2026-11-25 |
+| OctoPrint directly | only fixtures from the documentation and source code of OctoPrint 2.0.2 and the Slicer Thumbnails plugin (OctoPrint-PrusaSlicerThumbnails) 1.2.4 | 2026-11-25 |
 | OctoPrint simulator (Virtual Printer, 1.11.8) | not run yet | 2026-11-25 |
 | PrusaLink directly | only fixtures from the documentation and source code of Prusa-Firmware-Buddy v8.0.2 and the Prusa-Link-Web OpenAPI description | 2026-11-25 |
 | Home Assistant `moonraker` | only fixtures from the documentation and source code of moonraker-home-assistant v1.14.0 | 2026-11-25 |
@@ -233,7 +233,7 @@ As of 2026-11-25. Nothing below has run against a printer, a simulator or a Home
 - **`Entity missing: sensor.…`:** the state entity of the preset does not exist. Check `device:` against the entity list in Home Assistant (see [Setup](#home-assistant)) and the `integration:`. A missing entity of another field only leaves that field out.
 - **`Unexpected answer`:** the address answers, but not like the printer API the page expects. Check `source:` and the port in `url`.
 - **A small line with an unknown word under `Ready`:** your integration reports a state word the preset does not know. Add it under `states:`, for example `states: {printing: [calibrating]}`.
-- **No preview picture:** the slicer writes none into the file (PrusaSlicer and OrcaSlicer: G-code thumbnails in the printer settings), OctoPrint 1.x has no "PrusaSlicer Thumbnails" plugin, the file was printed from the SD card, the picture is neither PNG nor JPEG (PrusaLink may send QOI) or larger than 512 KiB, or `thumbnail: false` is set. Through Home Assistant: the integration has no picture entity (OctoPrint), or gives it only while printing (Moonraker).
+- **No preview picture:** the slicer writes none into the file (PrusaSlicer: Printer Settings → General → Firmware → G-code thumbnails, visible in expert mode, for example `300x300/PNG`; OrcaSlicer: the option "G-code thumbnails" in the printer settings), OctoPrint 1.x has no "Slicer Thumbnails" plugin, the file was printed from the SD card, the picture is neither PNG nor JPEG (PrusaLink may send QOI) or larger than 512 KiB, or `thumbnail: false` is set. Through Home Assistant: the integration has no picture entity (OctoPrint), or gives it only while printing (Moonraker).
 - **No time left:** the source has none at that moment (Moonraker without a slicer estimate only from 1 % progress on), the Home Assistant sensor has no unit (`s`, `min`, `h`, `d`) or is disabled, or the finish time lies in the past.
 - **No temperatures:** PrusaLink through Home Assistant: enable the temperature sensors (see [Setup](#home-assistant)).
 - **"Finished" stays too long or not long enough:** set `finished_for` (minutes; `0` never shows "Finished").

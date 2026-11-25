@@ -34,7 +34,7 @@ Grenzen:
 - Kein Webcam-Bild, nur das Slicer-Vorschaubild der Datei.
 - Die Seite liest nur. Sie kann einen Druck nicht pausieren oder abbrechen.
 - Bambu Lab und Creality nur über Home Assistant, nicht direkt.
-- OctoPrint und PrusaLink liefern keine Schicht. OctoPrint 1.x liefert ein Vorschaubild nur mit dem Plugin [PrusaSlicer Thumbnails](https://plugins.octoprint.org/plugins/prusaslicerthumbnails/).
+- OctoPrint und PrusaLink liefern keine Schicht. OctoPrint 1.x liefert ein Vorschaubild nur mit dem Plugin [Slicer Thumbnails](https://plugins.octoprint.org/plugins/prusaslicerthumbnails/) (Repository OctoPrint-PrusaSlicerThumbnails).
 - Elegoo, Anycubic, Snapmaker, Duet und andere haben keine Vorlage: nimm Home Assistant mit `integration: custom` und deinen eigenen Entitäten.
 
 ## Was du brauchst
@@ -181,13 +181,13 @@ Restzeit, Schicht und Vorschaubild liest die Seite aus den Metadaten der Datei, 
 
 ### OctoPrint
 
-Leg in OctoPrint unter **Settings → Application Keys** einen Anwendungsschlüssel an, trag ihn als `OCTOPRINT_KEY=...` in die `.env` ein und setz `api_key: ${OCTOPRINT_KEY}`.
+Leg in OctoPrint einen Anwendungsschlüssel an: **Settings → Application Keys** (oder derselbe Abschnitt in deinen Benutzereinstellungen), „Manually generate an application key“, einen Namen wie `glancebox` eintragen und **Generate** klicken. Trag ihn als `OCTOPRINT_KEY=...` in die `.env` ein und setz `api_key: ${OCTOPRINT_KEY}`.
 
-Zum Vorschaubild: OctoPrint 2.x hat eigene Vorschaubilder; OctoPrint 1.x nur mit dem Plugin „PrusaSlicer Thumbnails“. Ein Bild gibt es nur für Dateien, die auf OctoPrint liegen, nicht für Drucke von der SD-Karte des Druckers. Hinter einem Reverse Proxy, der OctoPrint unter einem anderen Hostnamen oder Schema als `url` ausliefert, fällt das Bild weg, damit der Key nie an eine andere Adresse geht. OctoPrint hat im Kern keine Druck-History; die Ansicht Bereit zeigt deshalb nur dann „Zuletzt:“, wenn die Seite das Ende des Drucks selbst gesehen hat.
+Zum Vorschaubild: OctoPrint 2.x hat eigene Vorschaubilder; OctoPrint 1.x nur mit dem Plugin „Slicer Thumbnails“. Ein Bild gibt es nur für Dateien, die auf OctoPrint liegen, nicht für Drucke von der SD-Karte des Druckers. Hinter einem Reverse Proxy, der OctoPrint unter einem anderen Hostnamen oder Schema als `url` ausliefert, fällt das Bild weg, damit der Key nie an eine andere Adresse geht. OctoPrint hat im Kern keine Druck-History; die Ansicht Bereit zeigt deshalb nur dann „Zuletzt:“, wenn die Seite das Ende des Drucks selbst gesehen hat.
 
 ### PrusaLink
 
-Am Drucker unter **Einstellungen → Netzwerk → PrusaLink** stehen Benutzer (`maker`) und Passwort. Trag das Passwort als `PRUSALINK_PASSWORD=...` in die `.env` ein und setz `password: ${PRUSALINK_PASSWORD}`. Lässt deine Firmware stattdessen einen API-Key zu, nimm `api_key:`.
+Am Drucker unter **Settings → Network → PrusaLink** (englische Menünamen der Buddy-Firmware 8.0.2; auf einem deutsch eingestellten Drucker übersetzt, in anderen Versionen eventuell anders) stehen Benutzer (`maker`) und Passwort. Trag das Passwort als `PRUSALINK_PASSWORD=...` in die `.env` ein und setz `password: ${PRUSALINK_PASSWORD}`. Lässt deine Firmware stattdessen einen API-Key zu, nimm `api_key:`.
 
 Ist ein Druck fertig, vergisst der Drucker den Job. Die Seite merkt sich deshalb den letzten Job, den sie während des Drucks gesehen hat (Dateiname, Dauer, Bild), und zeigt ihn bei **Fertig**; die Dauer kann bis zu einen Refresh zu kurz sein. Startet der Server genau dann neu, zeigt **Fertig** keinen Dateinamen.
 
@@ -214,7 +214,7 @@ Stand 2026-11-25. Nichts davon lief bisher gegen einen Drucker, einen Simulator 
 | --- | --- | --- |
 | Moonraker direkt | nur mit nachgebauten Antworten (Fixtures) aus Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 und Fluidd 8509fc70; Gerätetest steht aus | 2026-11-25 |
 | Moonraker-Simulator (virtual-klipper-printer) | noch nicht gelaufen | 2026-11-25 |
-| OctoPrint direkt | nur Fixtures aus Doku und Quellcode von OctoPrint 2.0.2 und PrusaSlicer Thumbnails 1.2.4 | 2026-11-25 |
+| OctoPrint direkt | nur Fixtures aus Doku und Quellcode von OctoPrint 2.0.2 und dem Plugin Slicer Thumbnails (OctoPrint-PrusaSlicerThumbnails) 1.2.4 | 2026-11-25 |
 | OctoPrint-Simulator (Virtual Printer, 1.11.8) | noch nicht gelaufen | 2026-11-25 |
 | PrusaLink direkt | nur Fixtures aus Doku und Quellcode von Prusa-Firmware-Buddy v8.0.2 und der OpenAPI-Beschreibung von Prusa-Link-Web | 2026-11-25 |
 | Home Assistant `moonraker` | nur Fixtures aus Doku und Quellcode von moonraker-home-assistant v1.14.0 | 2026-11-25 |
@@ -233,7 +233,7 @@ Stand 2026-11-25. Nichts davon lief bisher gegen einen Drucker, einen Simulator 
 - **`Entität fehlt: sensor.…`:** die Zustands-Entität der Vorlage gibt es nicht. Prüfe `device:` gegen die Entitätenliste in Home Assistant (siehe [Einrichtung](#home-assistant)) und die `integration:`. Fehlt die Entität eines anderen Felds, fällt nur dieses Feld weg.
 - **`Antwort nicht lesbar`:** unter der Adresse antwortet etwas, aber nicht die Drucker-API, die die Seite erwartet. Prüfe `source:` und den Port in `url`.
 - **Eine kleine Zeile mit unbekanntem Wort unter `Bereit`:** deine Integration meldet ein Zustandswort, das die Vorlage nicht kennt. Trag es unter `states:` ein, zum Beispiel `states: {printing: [calibrating]}`.
-- **Kein Vorschaubild:** der Slicer schreibt keins in die Datei (PrusaSlicer und OrcaSlicer: G-Code-Vorschaubilder in den Druckereinstellungen), OctoPrint 1.x hat das Plugin „PrusaSlicer Thumbnails“ nicht, die Datei wurde von der SD-Karte gedruckt, das Bild ist weder PNG noch JPEG (PrusaLink schickt eventuell QOI) oder größer als 512 KiB, oder `thumbnail: false` ist gesetzt. Über Home Assistant: die Integration hat keine Bild-Entität (OctoPrint) oder liefert sie nur während des Drucks (Moonraker).
+- **Kein Vorschaubild:** der Slicer schreibt keins in die Datei (PrusaSlicer: Printer Settings → General → Firmware → G-code thumbnails, sichtbar im Expertenmodus, zum Beispiel `300x300/PNG`; OrcaSlicer: die Option „G-code thumbnails“ in den Druckereinstellungen), OctoPrint 1.x hat das Plugin „Slicer Thumbnails“ nicht, die Datei wurde von der SD-Karte gedruckt, das Bild ist weder PNG noch JPEG (PrusaLink schickt eventuell QOI) oder größer als 512 KiB, oder `thumbnail: false` ist gesetzt. Über Home Assistant: die Integration hat keine Bild-Entität (OctoPrint) oder liefert sie nur während des Drucks (Moonraker).
 - **Keine Restzeit:** die Quelle hat in dem Moment keine (Moonraker ohne Slicer-Schätzung erst ab 1 % Fortschritt), der Home-Assistant-Sensor hat keine Einheit (`s`, `min`, `h`, `d`) oder ist deaktiviert, oder die Fertig-Uhrzeit liegt in der Vergangenheit.
 - **Keine Temperaturen:** PrusaLink über Home Assistant: die Temperatursensoren aktivieren (siehe [Einrichtung](#home-assistant)).
 - **„Fertig“ bleibt zu lange oder zu kurz:** setz `finished_for` (Minuten; `0` zeigt nie „Fertig“).
