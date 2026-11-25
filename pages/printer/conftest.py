@@ -28,11 +28,14 @@ def _clear_module_state():
     common = sys.modules.get("glancebox_pages.printer.providers._common")
     if common is not None:
         common._thumbs.clear()
+    moonraker = sys.modules.get("glancebox_pages.printer.providers.moonraker")
+    if moonraker is not None:
+        moonraker._jobs.clear()
 
 
 @pytest.fixture(autouse=True)
 def _fresh_state():
-    """Every test starts and ends with empty page memory and thumbnail cache.
+    """Every test starts and ends with empty page memory, thumbnail cache and source caches.
 
     load_page_types re-executes page.py, so a new module normally starts empty anyway; this
     keeps tests independent of that and of their order.

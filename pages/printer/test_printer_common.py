@@ -2,7 +2,9 @@
 
 import base64
 import io
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 import requests
@@ -191,3 +193,20 @@ def test_source_error_keeps_a_source_error(common):
     err = common.SourceError("config", "Entität fehlt: sensor.x")
     assert common.source_error(err, URL, direct=True) is err
     assert err.detail == "Entität fehlt: sensor.x" and err.url is None
+
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+ALLOWED_HOSTS = {"drucker.local", "homeassistant.lan"}
+
+
+def test_every_fixture_is_listed_and_anonymous():
+    readme = (FIXTURES / "README.md").read_text(encoding="utf-8")
+    files = sorted(FIXTURES.glob("*.json"))
+    assert files
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        assert f"`{path.name}`" in readme, f"{path.name} missing from fixtures/README.md"
+        assert not re.search(r"\b\d{1,3}(\.\d{1,3}){3}\b", text), path.name
+        assert not re.search(r"@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+", text), path.name
+        hosts = set(re.findall(r"[a-z][a-z0-9+.-]*://([^/:?#\s\"']+)", text, re.IGNORECASE))
+        assert hosts <= ALLOWED_HOSTS, (path.name, hosts - ALLOWED_HOSTS)

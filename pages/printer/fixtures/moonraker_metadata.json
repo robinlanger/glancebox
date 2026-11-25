@@ -1,0 +1,27 @@
+{
+  "result": {
+    "size": 210000,
+    "modified": 1795530000.0,
+    "uuid": "0b6f2c1e-6a3e-4c55-9d1a-3f2b8e7c4a10",
+    "slicer": "PrusaSlicer",
+    "slicer_version": "2.9.2",
+    "gcode_start_byte": 1000,
+    "gcode_end_byte": 201000,
+    "layer_height": 0.2,
+    "first_layer_height": 0.2,
+    "object_height": 48.0,
+    "filament_total": 3840.2,
+    "estimated_time": 10000,
+    "thumbnails": [
+      {"width": 32, "height": 32, "size": 2100,
+       "relative_path": ".thumbs/benchy_0.2mm_PLA-32x32.png"},
+      {"width": 300, "height": 300, "size": 48000,
+       "relative_path": ".thumbs/benchy_0.2mm_PLA-300x300.png"},
+      {"width": 400, "height": 300, "size": 61000,
+       "relative_path": ".thumbs/benchy_0.2mm_PLA-400x300.png"}
+    ],
+    "print_start_time": 1795620475.0,
+    "job_id": "00000B",
+    "filename": "benchy_0.2mm_PLA.gcode"
+  }
+}
