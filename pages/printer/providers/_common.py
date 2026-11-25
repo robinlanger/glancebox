@@ -40,6 +40,7 @@ _WEEKDAYS = {"de": ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),
              "en": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")}
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+_LOST_MCU = "lost communication with mcu"
 _EXTENSION = re.compile(r"\.(gcode|bgcode|3mf)$", re.IGNORECASE)
 
 
@@ -148,6 +149,21 @@ def temp(actual: object, target: object) -> tuple[float, float | None] | None:
         return None
     goal = number(target)
     return current, (goal if goal is not None and goal > 0 else None)
+
+
+def klipper_lost_mcu(message: object) -> bool:
+    """Klipper's shutdown message says the printer (its MCU) is gone: it is switched off.
+
+    Klipper 7558e8c2 klippy/mcu.py (check_timeout): "Lost communication with MCU '<name>'".
+    """
+    return isinstance(message, str) and _LOST_MCU in message.lower()
+
+
+def first_line(message: object) -> str | None:
+    """The first non-empty line, stripped: Klipper puts the cause there, then instructions."""
+    if not isinstance(message, str):
+        return None
+    return next((line.strip() for line in message.splitlines() if line.strip()), None)
 
 
 # --- texts --------------------------------------------------------------------

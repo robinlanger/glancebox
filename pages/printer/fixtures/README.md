@@ -6,7 +6,9 @@ documentation and source code named below with invented values (file names such 
 virtual-klipper-printer" are answers of the Moonraker simulator, anonymised (the file name is our
 own probe file); the `moonraker_device_*.json` rows are answers of a real Klipper printer,
 anonymised (file name, filament and printer name and file uuid replaced; numbers, shapes and
-Klipper's messages kept).
+Klipper's messages kept); `hass_moonraker_device_shutdown.json` is the answer of a real Home
+Assistant instance for the same printer, anonymised (file name replaced, image entities and
+their access tokens and the `context` ids left out).
 
 | File | Derived from | Captured |
 |---|---|---|
@@ -24,6 +26,7 @@ Klipper's messages kept).
 | `prusalink_status_printing.json` | Prusa-Firmware-Buddy v8.0.2 `lib/WUI/nhttp/status_renderer.cpp` and `src/state/printer_state.cpp`; Prusa-Link-Web `spec/openapi.yaml`: `GET /api/v1/status` while printing, `job` (`id`, `progress`, `time_remaining`, `time_printing`; only present while the firmware has a job), `storage`, `printer` (`state`, temperatures, `axis_z`, `flow`, `speed`, fans) | not captured from a device |
 | `prusalink_job_printing.json` | Prusa-Firmware-Buddy v8.0.2 `lib/WUI/link_content/basic_gets.cpp` (`get_job_v1`): `GET /api/v1/job`, `file.name` the 8.3 name, `display_name` the long name, `path` the folder, `refs.icon`/`thumbnail` `/thumb/s`/`/thumb/l` + path, `refs.download`; 204 without a job | not captured from a device |
 | `hass_moonraker.json` | moonraker-home-assistant v1.14.0 (source code): `/api/states/<id>` of a running print, device `voron` | not captured from a Home Assistant instance |
+| `hass_moonraker_device_shutdown.json` | `GET /api/states/<id>` of all 49 non-image entities of device `ender5` (moonraker-home-assistant 1.14.0) while the printer is switched off and its Klipper host keeps running: `sensor.ender5_printer_state` `shutdown`, `sensor.ender5_printer_message` Klipper's "Lost communication with MCU 'mcu'" with its restart instructions, `sensor.ender5_current_print_state` still `complete`, `sensor.ender5_progress` `0.0`, `sensor.ender5_print_time_left` `0.0` h, `sensor.ender5_print_eta` `unknown`, temperatures frozen; `camera.ender5_thumbnail` existed but is not in the file | captured from a Home Assistant instance (moonraker-home-assistant 1.14.0, HA 2026.11.2) on 2026-11-25, anonymised |
 | `hass_octoprint.json` | Home Assistant core dev `homeassistant/components/octoprint` 5f380806 (`sensor.py`, `strings.json`): default prefix `octoprint` | not captured from a Home Assistant instance |
 | `hass_prusalink.json` | Home Assistant core dev `homeassistant/components/prusalink` 8dbdb49d (source code): device `mk4`; the temperature sensors are disabled by default in HA and enabled here | not captured from a Home Assistant instance |
 | `hass_bambu_lab.json` | ha-bambulab v2.4.1 (source code): device `x1c` (in HA the prefix usually carries the serial number) | not captured from a Home Assistant instance |

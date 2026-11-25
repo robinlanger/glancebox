@@ -45,7 +45,8 @@ with OctoPrint not a print from the SD card or a reverse proxy.
   down and embedded in the page; an unreadable image only leaves the picture out. A refused key
   or password shows "Access denied", a switched-off printer "Printer not reachable" in grey;
   a Klipper printer switched off while its host runs ("Lost communication with MCU") shows
-  "Printer off" in grey with the last print, without the frozen temperatures.
+  "Printer off" in grey with the last print, without the frozen temperatures, directly and
+  through the Home Assistant Moonraker integration (which also passes on Klipper's message).
   In the add-on, `source: hass` needs neither `url` nor `token`. Docs: `printer` in the
   template catalog, with an honest "Tested with" table.
 - `glancebox.http.get_bytes(url, max_bytes=...)` for your own pages: fetches an image and

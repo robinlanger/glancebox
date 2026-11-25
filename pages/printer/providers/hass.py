@@ -15,12 +15,20 @@ ha_creality_ws v0.9.10.
   moonraker-home-assistant serves the thumbnail only while printing; OctoPrint's camera is
   the webcam, so its preset has no thumbnail.
 - PrusaLink's temperature sensors are disabled by default (404 until enabled).
+- moonraker-home-assistant also has sensor.{d}_printer_message (Klipper's state_message) and
+  sensor.{d}_current_print_message (print_stats.message); the first is read only when
+  sensor.{d}_printer_state is shutdown/error, the second only for a print error. A printer
+  switched off while its Klipper host runs ("Lost communication with MCU") is "Printer off",
+  as with the direct source. sensor.{d}_progress is 0.0 outside a print (seen while Klipper
+  itself reported 1.0), so it counts only while printing or paused.
 
 `device` is the entity prefix ({d} below); for octoprint it replaces the prefix "octoprint"
 (a second instance is "octoprint_2"). `entities:` replaces single fields of the preset, a
 value "sensor.x#attr" reads an attribute; `states:` maps raw words on top of the preset.
 
-Derived from the integrations' source code; not checked against a Home Assistant instance.
+Derived from the integrations' source code. The moonraker preset was read on 2026-11-25 from a
+Home Assistant instance (HA 2026.11.2, moonraker-home-assistant 1.14.0) with the printer
+switched off only; the other presets are not checked against a Home Assistant instance.
 """
 
 from __future__ import annotations
@@ -48,6 +56,8 @@ from ._common import (
     Thumbnail,
     clamp_progress,
     clean_filename,
+    first_line,
+    klipper_lost_mcu,
     number,
     source_error,
     temp,
@@ -76,6 +86,9 @@ class Preset:
     states: dict[str, tuple[str, ...]]   # schema state -> raw words
     default_device: str | None = None    # "octoprint" for the octoprint preset
     klippy: str | None = None            # moonraker only: "sensor.{d}_printer_state"
+    klippy_message: str | None = None    # moonraker: Klipper's state_message (optional)
+    print_message: str | None = None     # moonraker: print_stats.message (optional)
+    progress_while_printing: bool = False  # moonraker: the sensor says 0.0 outside a print
     finished_at_100: bool = False        # octoprint: operational + progress >= 100
 
 
@@ -90,7 +103,8 @@ PRESETS: dict[str, Preset] = {
             "layer_total": "sensor.{d}_total_layer", "thumbnail": "camera.{d}_thumbnail"},
         states={"printing": ("printing",), "paused": ("paused",), "finished": ("complete",),
                 "error": ("error",), "idle": ("standby", "cancelled")},
-        klippy="sensor.{d}_printer_state"),
+        klippy="sensor.{d}_printer_state", klippy_message="sensor.{d}_printer_message",
+        print_message="sensor.{d}_current_print_message", progress_while_printing=True),
     "octoprint": Preset(
         entities={
             "state": "sensor.{d}_current_state", "progress": "sensor.{d}_job_percentage",
@@ -170,11 +184,15 @@ def refs(options: dict) -> dict[str, Ref]:
     return {field: out[field] for field in FIELDS if field in out}
 
 
-def _klippy(options: dict) -> str | None:
+def _preset_entity(options: dict, name: str) -> str | None:
+    """The preset's extra entity ``name`` ("klippy", "klippy_message", "print_message")."""
     preset = PRESETS.get(options.get("integration"))
-    if preset is None or preset.klippy is None:
-        return None
-    return preset.klippy.format(d=_device(options, preset))
+    value = getattr(preset, name) if preset is not None else None
+    return value.format(d=_device(options, preset)) if value else None
+
+
+def _klippy(options: dict) -> str | None:
+    return _preset_entity(options, "klippy")
 
 
 def _word(value: str) -> str:
@@ -263,6 +281,31 @@ def _layer(current: object, total: object) -> tuple[int, int | None] | None:
     return (min(now, top) if top is not None else now), top
 
 
+def _klippy_word(states: dict, options: dict) -> str | None:
+    """Klippy's state (ready | startup | shutdown | error), lower case; None without one."""
+    entity = _klippy(options)
+    value = _value(states, Ref(entity, None)) if entity else None
+    return _word(value) if isinstance(value, str) else None
+
+
+def _job_word(states: dict, options: dict) -> str | None:
+    """The schema state of the state entity's raw word; None when it has none."""
+    raw = _value(states, refs(options)["state"])
+    return words(options).get(_word(str(raw))) if raw is not None else None
+
+
+def _messages(states: dict, options: dict) -> list[str]:
+    """The message entities worth reading once state and Klippy state are known."""
+    klippy = _klippy_word(states, options)
+    if klippy in ("shutdown", "error"):
+        entity = _preset_entity(options, "klippy_message")
+    elif klippy in (None, "ready") and _job_word(states, options) == "error":
+        entity = _preset_entity(options, "print_message")
+    else:
+        entity = None
+    return [entity] if entity else []
+
+
 def status_from(states: dict[str, dict | None], options: dict, now: datetime) -> PrinterStatus:
     """The status from the /api/states answers by entity id (None or absent = 404)."""
     ref = refs(options)
@@ -292,18 +335,26 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
     if preset and preset.finished_at_100 and word == "operational" \
             and progress is not None and progress >= 100:
         state = "finished"
-    klippy_entity = _klippy(options)
-    klippy = _value(states, Ref(klippy_entity, None)) if klippy_entity else None
-    heaters = True
-    if isinstance(klippy, str):
-        klippy = _word(klippy)
-        heaters = klippy == "ready"          # else Klipper's heater values are frozen
-        if klippy == "startup":
-            return PrinterStatus("offline", message=_TEXT[lang]["startup"])
-        if klippy in ("shutdown", "error"):
-            state, message = "error", None
+    klippy = _klippy_word(states, options)
+    heaters = klippy in (None, "ready")      # else Klipper's heater values are frozen
+    if klippy == "startup":
+        return PrinterStatus("offline", message=_TEXT[lang]["startup"])
+    if klippy in ("shutdown", "error"):
+        # Klipper's own message, as the direct source reads it (moonraker.py)
+        entity = _preset_entity(options, "klippy_message")
+        text = _value(states, Ref(entity, None)) if entity else None
+        if klipper_lost_mcu(text):
+            filename = get("filename") if state == "finished" else None
+            name = clean_filename(filename) if isinstance(filename, str) else None
+            return PrinterStatus("offline", powered_off=True,
+                                 last_job=(name, None) if name else None)
+        return PrinterStatus("error", message=first_line(text))
     if state == "offline":
         return PrinterStatus("offline")
+    if state == "error" and (entity := _preset_entity(options, "print_message")):
+        message = first_line(_value(states, Ref(entity, None)))
+    if preset and preset.progress_while_printing and state not in ("printing", "paused"):
+        progress = None
 
     remaining = number(get("remaining"))
     eta = _time(get("eta"), now)
@@ -352,32 +403,39 @@ def _thumbnail(options: dict, entity: str, filename: str | None, budget: Budget,
 def fetch(options: dict, ctx) -> PrinterStatus:
     ref = refs(options)
     state_entity = ref["state"].entity
-    wanted = [state_entity]
+    first = [state_entity]
     if klippy := _klippy(options):
-        wanted.append(klippy)
-    for field in FIELDS:
-        if field not in ("state", "thumbnail") and field in ref \
-                and ref[field].entity not in wanted:
-            wanted.append(ref[field].entity)
+        first.append(klippy)
+    rest = [ref[field].entity for field in FIELDS
+            if field not in ("state", "thumbnail") and field in ref]
 
     token = options["token"]
     budget = Budget(clock=time.monotonic)
     states: dict[str, dict | None] = {}
-    for entity in wanted:
-        url = hass.state_url(options["url"], entity)
-        timeout = budget.timeout()
-        try:
-            states[entity] = hass.get_state(url, token, timeout)
-        except (requests.RequestException, ValueError, TypeError) as e:
-            if hass.status_of(e) != 404:
-                raise source_error(e, url, direct=False) from e
-            if entity == state_entity:
-                missing = _TEXT[options.get("lang", "de")]["missing"]
-                raise SourceError("config", f"{missing}: {entity}", url=url) from e
-            states[entity] = None
+
+    def read(entities: list[str]) -> None:
+        for entity in entities:
+            if entity in states:
+                continue
+            url = hass.state_url(options["url"], entity)
+            timeout = budget.timeout()
+            try:
+                states[entity] = hass.get_state(url, token, timeout)
+            except (requests.RequestException, ValueError, TypeError) as e:
+                if hass.status_of(e) != 404:
+                    raise source_error(e, url, direct=False) from e
+                if entity == state_entity:
+                    missing = _TEXT[options.get("lang", "de")]["missing"]
+                    raise SourceError("config", f"{missing}: {entity}", url=url) from e
+                states[entity] = None
+
+    read(first)
+    read(_messages(states, options))      # only what the state and Klippy's state call for
+    read(rest)
 
     status = status_from(states, options, ctx.now)
     if (options.get("thumbnail", True) and status.state in _JOB_STATES and "thumbnail" in ref
+            and _klippy_word(states, options) in (None, "ready")
             and budget.left() >= IMAGE_MIN_LEFT_S):
         headers = {"Authorization": f"Bearer {token}"}
         thumb = _thumbnail(options, ref["thumbnail"].entity, status.filename, budget, headers)

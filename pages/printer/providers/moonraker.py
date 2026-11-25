@@ -56,6 +56,8 @@ from ._common import (
     Thumbnail,
     clamp_progress,
     clean_filename,
+    first_line,
+    klipper_lost_mcu,
     number,
     source_error,
     temp,
@@ -70,7 +72,6 @@ FILE_ESTIMATE_FROM = 1.0          # % progress before the file-based estimate co
 _STATES = {"standby": "idle", "printing": "printing", "paused": "paused",
            "complete": "finished", "cancelled": "idle", "error": "error"}
 _JOB_STATES = ("printing", "paused", "complete", "error")      # with a file worth showing
-POWERED_OFF = "lost communication with mcu"     # in state_message, any case: printer is off
 _TEXT = {"de": {"startup": "Klipper startet", "disconnected": "Klipper nicht verbunden"},
          "en": {"startup": "Klipper is starting", "disconnected": "Klipper not connected"}}
 
@@ -314,13 +315,10 @@ def fetch(options: dict, ctx) -> PrinterStatus:
         return PrinterStatus("offline", message=_TEXT[lang]["startup"])
     if klippy != "ready":
         message = hooks.get("state_message")
-        message = message if isinstance(message, str) else ""
-        if POWERED_OFF in message.lower():
+        if klipper_lost_mcu(message):
             return PrinterStatus("offline", powered_off=True,
                                  last_job=_last_completed(base, budget, headers, ctx))
-        # Klippy puts the cause in the first line, then its restart instructions
-        lines = [line.strip() for line in message.splitlines() if line.strip()]
-        return PrinterStatus("error", message=lines[0] if lines else str(klippy))
+        return PrinterStatus("error", message=first_line(message) or str(klippy))
     nozzle = temp(_obj(status, "extruder").get("temperature"),
                   _obj(status, "extruder").get("target"))
     bed = temp(_obj(status, "heater_bed").get("temperature"),

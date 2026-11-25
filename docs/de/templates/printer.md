@@ -22,7 +22,7 @@ Die Bilder rendert der Server mit Beispieldaten (auf Englisch); das Slicer-Vorsc
 - **Fehler** (roter Kopf): Fortschritt in Rot und die Meldung des Druckers in bis zu drei Zeilen, wo die Quelle eine liefert.
 - **Bereit**: `Bereit` groß, `Zuletzt: <Datei>` und `fertig <Zeit>`, wenn der letzte Druck bekannt ist.
 - **Drucker nicht erreichbar** (grau, kein Alarm): ein ausgeschalteter Drucker ist normal.
-- **Drucker aus** (grau, kein Alarm): Moonraker läuft, aber Klipper hat die Druckerplatine verloren („Lost communication with MCU“); das meldet Klipper, wenn der Drucker ausgeschaltet ist und sein Rechner weiterläuft. Darunter `Zuletzt: <Datei>`, wenn der letzte Druck bekannt ist. Klipper aktualisiert die Temperaturen dann nicht mehr, deshalb stehen keine da.
+- **Drucker aus** (grau, kein Alarm): Moonraker läuft (direkt oder über die Moonraker-Integration von Home Assistant), aber Klipper hat die Druckerplatine verloren („Lost communication with MCU“); das meldet Klipper, wenn der Drucker ausgeschaltet ist und sein Rechner weiterläuft. Darunter `Zuletzt: <Datei>`, wenn der letzte Druck bekannt ist. Klipper aktualisiert die Temperaturen dann nicht mehr, deshalb stehen keine da.
 - Unten Düse und Bett: Symbol orange und `214°/215`, solange die Heizung an ist, grau und nur der Ist-Wert, wenn sie aus ist; `Düse heizt`, solange sie mehr als 5 °C unter ihrem Ziel liegt.
 
 **Fertig** bleibt `finished_for` Minuten (Standard 120) nach dem Ende des Drucks stehen, danach zeigt die Seite **Bereit** mit dem Druck als `Zuletzt:`. Klipper bleibt auf `complete` und Bambu Lab auf `finish`, bis der nächste Druck beginnt; sonst stünde tagelang „Fertig“ da. Wo die Quelle nicht sagt, wann der Druck geendet hat (OctoPrint, PrusaLink, Moonraker ohne seine History-Komponente), zählt die Seite ab dem Moment, an dem sie „Fertig“ zuerst gesehen hat; nach einem Neustart des Servers beginnt diese Frist neu.
@@ -203,7 +203,7 @@ Ist ein Druck fertig, vergisst der Drucker den Job. Die Seite merkt sich deshalb
 3. PrusaLink: die vier Temperatursensoren sind ab Werk **deaktiviert**. Aktiviere sie auf der Geräteseite unter Entitäten, sonst fehlt die Temperaturzeile.
 4. Docker: `HA_URL` und `HA_TOKEN` in die `.env` eintragen wie bei der [Seite homeassistant](homeassistant.md#was-du-brauchst). Add-on: `url` und `token` weglassen.
 
-Hinweise: Die Moonraker-Integration liefert ein Vorschaubild nur während des Drucks. Ein Klipper-Shutdown über Home Assistant zeigt **Fehler** ohne Meldung (die Integration gibt die Ursache nicht weiter, ein ausgeschalteter Drucker sieht also genauso aus) und ohne Temperaturen.
+Hinweise: Die Moonraker-Integration liefert ein Vorschaubild nur während des Drucks. Die Integration gibt Klippers Meldung (`sensor.<device>_printer_message`) und die Meldung eines fehlgeschlagenen Drucks (`sensor.<device>_current_print_message`) weiter; über Home Assistant zeigt ein ausgeschalteter Drucker deshalb ebenfalls **Drucker aus**, mit `Zuletzt: <Datei>`, solange die Integration den letzten Druck noch als fertig meldet; jeder andere Klipper-Shutdown zeigt rot **Fehler** mit seiner Ursache und ohne Temperaturen. Außerhalb eines Drucks meldet die Integration 0 % Fortschritt; die Seite zeigt eine Prozentzahl daraus deshalb nur beim Drucken oder Pausieren.
 
 Docker und Namen auf `.local`: ein Docker-Container löst sie oft nicht auf. Sagt die Seite **Drucker nicht erreichbar**, obwohl der Drucker an ist, trag stattdessen die Adresse ein, zum Beispiel `http://192.168.x.x:7125`.
 

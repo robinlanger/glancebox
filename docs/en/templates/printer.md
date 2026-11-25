@@ -22,7 +22,7 @@ The pictures are rendered by the server with sample data; the slicer preview in 
 - **Error** (red header): progress in red and the printer's message in up to three lines, where the source gives one.
 - **Ready**: `Ready` large, `Last: <file>` and `done <time>` when the last print is known.
 - **Printer not reachable** (grey, no alarm): a printer that is switched off is normal.
-- **Printer off** (grey, no alarm): Moonraker runs, but Klipper has lost its printer board ("Lost communication with MCU"), which is what Klipper reports when the printer is switched off and its host keeps running. Below it `Last: <file>` when the last print is known. Klipper no longer updates the temperatures then, so none are shown.
+- **Printer off** (grey, no alarm): Moonraker runs (directly or through the Home Assistant Moonraker integration), but Klipper has lost its printer board ("Lost communication with MCU"), which is what Klipper reports when the printer is switched off and its host keeps running. Below it `Last: <file>` when the last print is known. Klipper no longer updates the temperatures then, so none are shown.
 - At the bottom nozzle and bed: icon orange and `214°/215` while the heater is on, grey with only the current value when it is off; `Nozzle heating` while it is more than 5 °C below its target.
 
 **Finished** stays for `finished_for` minutes (default 120) after the end of the print, then the page shows **Ready** with the print as `Last:`. Klipper stays at `complete` and Bambu Lab at `finish` until the next print starts, so the page would otherwise show "Finished" for days. Where the source does not tell when the print ended (OctoPrint, PrusaLink, Moonraker without its history component), the page counts from when it first saw "Finished"; after a restart of the server that period starts again.
@@ -203,7 +203,7 @@ When a print has finished, the printer forgets the job. The page therefore remem
 3. PrusaLink: the four temperature sensors are **disabled** by default. Enable them on the device page under Entities, otherwise the temperature line is missing.
 4. Docker: put `HA_URL` and `HA_TOKEN` in `.env` as for the [homeassistant page](homeassistant.md#what-you-need). Add-on: leave out `url` and `token`.
 
-Notes: the Moonraker integration gives a preview picture only while printing. A Klipper shutdown seen through Home Assistant shows **Error** without a message (the integration does not pass on the cause, so a switched-off printer looks the same) and without temperatures.
+Notes: the Moonraker integration gives a preview picture only while printing. The integration passes on Klipper's message (`sensor.<device>_printer_message`) and the message of a failed print (`sensor.<device>_current_print_message`), so through Home Assistant a switched-off printer shows **Printer off** as well, with `Last: <file>` while the integration still reports the last print as complete; any other Klipper shutdown shows **Error** in red with its cause and without temperatures. Outside a print the integration reports 0 % progress, so the page shows a percentage from it only while printing or paused.
 
 Docker and names ending in `.local`: a Docker container often cannot resolve them. If the page says **Printer not reachable** while the printer is on, enter the address instead, for example `http://192.168.x.x:7125`.
 

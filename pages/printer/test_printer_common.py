@@ -26,6 +26,25 @@ def test_clean_filename_takes_windows_paths(common):
     assert common.clean_filename("C:\\Drucke\\deckel.gcode") == "deckel"
 
 
+@pytest.mark.parametrize(("message", "off"), [
+    ("Lost communication with MCU 'mcu'\nOnce the underlying issue is corrected, use the\n", True),
+    ("lost communication with mcu 'toolhead'", True), ("LOST COMMUNICATION WITH MCU", True),
+    ("MCU 'mcu' shutdown: Timer too close", False), ("", False), (None, False), (42, False),
+])
+def test_klipper_lost_mcu(common, message, off):
+    assert common.klipper_lost_mcu(message) is off
+
+
+@pytest.mark.parametrize(("message", "line"), [
+    ("Lost communication with MCU 'mcu'\nOnce the underlying issue\nPrinter is shutdown\n",
+     "Lost communication with MCU 'mcu'"),
+    ("\n  Move out of range: 0.000 400.000 0.200 [0.000]  \n", "Move out of range: 0.000 400.000 0.200 [0.000]"),
+    ("", None), ("  \n ", None), (None, None), (3, None),
+])
+def test_first_line(common, message, line):
+    assert common.first_line(message) == line
+
+
 @pytest.mark.parametrize(("seconds", "de", "en"), [
     (0, "noch <1 min", "<1 min left"), (59, "noch <1 min", "<1 min left"),
     (1380, "noch 23 min", "23 min left"), (3599, "noch 59 min", "59 min left"),

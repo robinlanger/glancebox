@@ -235,6 +235,101 @@ def test_moonraker_klippy_startup_says_so(ha, load):
     assert ha.status_from(data, {**MOON, "lang": "en"}, NOW).message == "Klipper is starting"
 
 
+# --- moonraker: Klipper's messages (real answer of HA 2026.11.2, moonraker-home-assistant
+# 1.14.0, printer switched off while its Klipper host runs; 2026-11-25) ---------------------
+
+ENDER = {**OPT, "integration": "moonraker", "device": "ender5"}
+OFF_MESSAGE = ("Lost communication with MCU 'mcu'\nOnce the underlying issue is corrected, use "
+               "the\n\"FIRMWARE_RESTART\" command to reset the firmware, reload the\nconfig, "
+               "and restart the host software.\nPrinter is shutdown\n")
+
+
+def device(load, **changes):
+    """The captured switched-off answer of device ender5; changes as in states()."""
+    data = copy.deepcopy(load("hass_moonraker_device_shutdown"))
+    for key, value in changes.items():
+        eid = key.replace("__", ".")
+        data[eid] = None if value is None else {**data[eid], "state": value}
+    return data
+
+
+def test_device_answer_has_what_the_preset_reads(ha, load):
+    data = load("hass_moonraker_device_shutdown")
+    wanted = {r.entity for r in ha.refs(ENDER).values()} - {"camera.ender5_thumbnail"}
+    assert wanted | {"sensor.ender5_printer_state", "sensor.ender5_printer_message",
+                     "sensor.ender5_current_print_message"} <= set(data)
+    assert data["sensor.ender5_printer_message"]["state"] == OFF_MESSAGE
+    assert data["sensor.ender5_print_time_left"]["attributes"]["unit_of_measurement"] == "h"
+
+
+def test_switched_off_printer_is_printer_off_with_the_last_job(ha, load):
+    status = ha.status_from(load("hass_moonraker_device_shutdown"), ENDER, NOW)
+    assert (status.state, status.powered_off, status.message) == ("offline", True, None)
+    assert status.last_job == ("calibration_cube_0.2mm", None)
+    assert (status.nozzle, status.bed, status.progress, status.filename) == (None,) * 4
+
+
+@pytest.mark.parametrize("job", ["standby", "cancelled", "printing", "error", "unavailable"])
+def test_switched_off_names_the_last_job_only_when_complete(ha, load, job):
+    status = ha.status_from(device(load, sensor__ender5_current_print_state=job), ENDER, NOW)
+    if job == "unavailable":                      # no job state at all: offline as before
+        assert (status.state, status.powered_off) == ("offline", False)
+        return
+    assert (status.state, status.powered_off, status.last_job) == ("offline", True, None)
+
+
+@pytest.mark.parametrize(("klippy", "message"), [
+    ("error", "lost communication with mcu 'toolhead'"), (" Shutdown ", OFF_MESSAGE.upper())])
+def test_lost_mcu_in_any_case_is_printer_off(ha, load, klippy, message):
+    data = device(load, sensor__ender5_printer_state=klippy,
+                  sensor__ender5_printer_message=message)
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.state, status.powered_off) == ("offline", True)
+
+
+@pytest.mark.parametrize("klippy", ["shutdown", "error"])
+def test_other_klippy_shutdown_is_an_error_with_its_first_line(ha, load, klippy):
+    message = "MCU 'mcu' shutdown: Timer too close\nThis often indicates a host error\n"
+    data = device(load, sensor__ender5_printer_state=klippy,
+                  sensor__ender5_printer_message=message)
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.state, status.powered_off, status.message) == \
+        ("error", False, "MCU 'mcu' shutdown: Timer too close")
+    assert (status.progress, status.filename, status.nozzle, status.bed, status.layer) == \
+        (None,) * 5
+
+
+@pytest.mark.parametrize("message", [None, "unavailable", "unknown", ""])
+def test_klippy_shutdown_without_message_is_an_error(ha, load, message):
+    data = device(load, sensor__ender5_printer_message=message)
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.state, status.powered_off, status.message) == ("error", False, None)
+
+
+def test_print_error_shows_the_first_line_of_the_print_message(ha, load):
+    data = device(load, sensor__ender5_printer_state="ready",
+                  sensor__ender5_current_print_state="error",
+                  sensor__ender5_current_print_message="Move out of range: 0.0 400.0 0.2\nx\n")
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.state, status.message) == ("error", "Move out of range: 0.0 400.0 0.2")
+    assert status.filename == "calibration_cube_0.2mm" and status.nozzle == (171.55, None)
+    data = set_state(data, "sensor.ender5_current_print_message", None)
+    assert ha.status_from(data, ENDER, NOW).message is None
+
+
+@pytest.mark.parametrize(("job", "progress"), [
+    ("printing", 0.0), ("paused", 0.0), ("error", None), ("complete", None), ("standby", None),
+    ("cancelled", None)])
+def test_moonraker_progress_counts_only_while_printing(ha, load, job, progress):
+    # The integration reports 0.0 % outside a print (Klipper itself said 100 % for the same
+    # finished print), so a value outside printing/paused is not the job's progress.
+    data = device(load, sensor__ender5_printer_state="ready",
+                  sensor__ender5_current_print_state=job)
+    assert ha.status_from(data, ENDER, NOW).progress == progress
+    data = set_state(states(load, "moonraker"), "sensor.voron_current_print_state", job)
+    assert ha.status_from(data, MOON, NOW).progress == (47.0 if progress is not None else None)
+
+
 @pytest.mark.parametrize("integration", list(STATE))
 @pytest.mark.parametrize("word", ["unavailable", "unknown", "Unavailable "])
 def test_unavailable_and_unknown_state_is_offline(ha, load, integration, word):
@@ -543,6 +638,75 @@ def test_page_shows_the_print(mod, load, route):
     assert (data["view"], data["label"], data["big"]) == ("job", "Druckt", "47")
     assert data["main"] == "noch 1:22 h" and data["filename"] == "benchy_0.2mm_PLA"
     assert data["thumb"].startswith("data:image/png;base64,")
+
+
+def served_device(load, **changes):
+    return {f"/api/states/{eid}": 404 if answer is None else answer
+            for eid, answer in device(load, **changes).items()}
+
+
+def _reads(calls):
+    return [c.url.removeprefix(HA + "/api/states/") for c in calls if c.kind == "json"]
+
+
+def test_fetch_switched_off_reads_the_klippy_message_and_no_image(ha, load, route):
+    calls = route(served_device(load))
+    status = ha.fetch({**ENDER, "lang": "de"}, ctx())
+    assert (status.state, status.powered_off) == ("offline", True)
+    assert _reads(calls)[:3] == ["sensor.ender5_current_print_state",
+                                 "sensor.ender5_printer_state", "sensor.ender5_printer_message"]
+    assert len(calls) == 13 and all(c.kind == "json" for c in calls)
+    assert "sensor.ender5_current_print_message" not in _reads(calls)
+
+
+def test_fetch_reads_the_print_message_only_for_a_print_error(ha, load, route):
+    calls = route(served_device(load, sensor__ender5_printer_state="ready",
+                                sensor__ender5_current_print_state="error",
+                                sensor__ender5_current_print_message="Heater not heating"))
+    status = ha.fetch({**ENDER, "lang": "de", "thumbnail": False}, ctx())
+    assert (status.state, status.message) == ("error", "Heater not heating")
+    assert _reads(calls)[:3] == ["sensor.ender5_current_print_state",
+                                 "sensor.ender5_printer_state",
+                                 "sensor.ender5_current_print_message"]
+    assert len(calls) == 13
+
+
+@pytest.mark.parametrize("entity", ["sensor.ender5_printer_message",
+                                    "sensor.ender5_current_print_message"])
+def test_fetch_missing_message_entities_are_optional(ha, load, route, entity):
+    answers = served_device(load, sensor__ender5_current_print_state="error")
+    answers[f"/api/states/{entity}"] = 404
+    route(answers)
+    status = ha.fetch({**ENDER, "lang": "de", "thumbnail": False}, ctx())
+    want = ("error", False) if entity.endswith("printer_message") else ("offline", True)
+    assert (status.state, status.powered_off) == want
+
+
+def test_fetch_klippy_error_loads_no_image(ha, load, route):
+    calls = route(served_device(load, sensor__ender5_printer_message="Timer too close"))
+    status = ha.fetch({**ENDER, "lang": "de"}, ctx())
+    assert (status.state, status.message) == ("error", "Timer too close")
+    assert all(c.kind == "json" for c in calls)
+
+
+@pytest.mark.parametrize(("lang", "message", "sub"), [
+    ("de", "Drucker aus", "Zuletzt: calibration_cube_0.2mm"),
+    ("en", "Printer off", "Last: calibration_cube_0.2mm")])
+def test_page_says_printer_off_through_home_assistant(mod, load, route, lang, message, sub):
+    route(served_device(load))
+    data = mod.fetch({**ENDER, "lang": lang}, ctx())
+    assert (data["view"], data["tone"], data["alert"]) == ("notice", "muted", False)
+    assert data["notice"] == {"message": message, "sub": sub, "tone": "muted"}
+    assert data["big"] is None and data["bar"] is None and data["temps"] == []
+
+
+def test_page_print_error_shows_no_zero_percent(mod, load, route):
+    route(served_device(load, sensor__ender5_printer_state="ready",
+                        sensor__ender5_current_print_state="error",
+                        sensor__ender5_current_print_message="Heater not heating"))
+    data = mod.fetch({**ENDER, "thumbnail": False}, ctx())
+    assert (data["label"], data["message"]) == ("Fehler", "Heater not heating")
+    assert (data["big"], data["bar"]) == (None, None)
 
 
 def _timed(monkeypatch, ha, responses, step):
