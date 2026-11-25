@@ -264,6 +264,14 @@ def test_klippy_not_ready(mk, load, route, webhooks, state, de, en):
     assert mk.fetch({**OPTS, "lang": "en"}, ctx("en")).message == (en or de)
 
 
+def test_klippy_shutdown_shows_the_first_line_of_its_message(mk, load, route):
+    # Simulator after /printer/emergency_stop: the cause, then Klipper's restart boilerplate.
+    route({Q: load("moonraker_query_shutdown")})
+    s = mk.fetch(OPTS, ctx())
+    assert (s.state, s.message) == ("error", "Shutdown due to webhooks request")
+    assert s.nozzle is not None and s.bed is not None
+
+
 def test_klippy_host_not_connected_is_offline(mk, route):
     route({Q: 503})                      # Moonraker: ServerError("Klippy Host not connected", 503)
     s = mk.fetch(OPTS, ctx())

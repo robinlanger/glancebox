@@ -296,10 +296,12 @@ def fetch(options: dict, ctx) -> PrinterStatus:
     if klippy == "startup":
         return PrinterStatus("offline", message=_TEXT[lang]["startup"])
     if klippy != "ready":
+        # Klippy puts the cause in the first line, then its restart instructions
         message = hooks.get("state_message")
+        lines = [line.strip() for line in message.splitlines() if line.strip()] \
+            if isinstance(message, str) else []
         return PrinterStatus("error", nozzle=nozzle, bed=bed,
-                             message=message if isinstance(message, str) and message
-                             else str(klippy))
+                             message=lines[0] if lines else str(klippy))
 
     stats = _obj(status, "print_stats")
     raw = stats.get("state")
