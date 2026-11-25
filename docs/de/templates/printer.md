@@ -3,7 +3,7 @@
 ![Vorschau der Drucker-Seite: druckt bei 47 % mit Slicer-Vorschaubild, Restzeit und Temperaturen](../../img/templates/printer-printing.png)
 
 !!! warning "Noch nicht an einem echten Drucker geprüft"
-    Stand 2026-11-25 lief diese Seite nur gegen Antworten, die aus Doku und Quellcode des jeweiligen Systems nachgebaut sind (Fixtures). Gegen einen Drucker, einen Simulator oder eine Home-Assistant-Instanz lief sie noch nicht. Siehe [Getestet mit](#getestet-mit). Wenn du sie mit deinem Drucker nutzt, schreib bitte in einem [GitHub-Issue](https://github.com/robinlanger/glancebox/issues), was geht und was nicht.
+    Stand 2026-11-25 lief diese Seite nur gegen Antworten, die aus Doku und Quellcode des jeweiligen Systems nachgebaut sind (Fixtures). Von den Quellen lief nur Moonraker gegen einen Simulator (virtual-klipper-printer); gegen einen echten Drucker oder eine Home-Assistant-Instanz lief noch keine. Siehe [Getestet mit](#getestet-mit). Wenn du sie mit deinem Drucker nutzt, schreib bitte in einem [GitHub-Issue](https://github.com/robinlanger/glancebox/issues), was geht und was nicht.
 
 ## Was sie zeigt
 
@@ -208,12 +208,12 @@ Docker und Namen auf `.local`: ein Docker-Container löst sie oft nicht auf. Sag
 
 ## Getestet mit
 
-Stand 2026-11-25. Nichts davon lief bisher gegen einen Drucker, einen Simulator oder eine Home-Assistant-Instanz.
+Stand 2026-11-25. Nichts davon lief bisher gegen einen echten Drucker oder eine Home-Assistant-Instanz; nur Moonraker lief gegen einen Simulator.
 
 | Quelle | Wie geprüft | Stand |
 | --- | --- | --- |
 | Moonraker direkt | nur mit nachgebauten Antworten (Fixtures) aus Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 und Fluidd 8509fc70; Gerätetest steht aus | 2026-11-25 |
-| Moonraker-Simulator (virtual-klipper-printer) | noch nicht gelaufen | 2026-11-25 |
+| Moonraker-Simulator (virtual-klipper-printer) | per Docker auf einem Mac gegen virtual-klipper-printer e272bcd (Image `sha256:84da96e5`, Moonraker b559b9a, Klipper v0.14.0, simulierte AVR-MCU) mit einer Probedatei im PrusaSlicer-Format. Geprüft: Druckt (Prozent steigt, Restzeit, Fertig-Uhrzeit, Schicht aus Metadaten und Z, Dateiname, Vorschaubild aus `.thumbs`, Temperaturen), pausiert und fortgesetzt, Fertig mit Ende-Uhrzeit und Dauer, `Bereit` mit `Zuletzt:` nach `finished_for` (laufender Server), abgebrochen → `Bereit`, Klippy-Shutdown (Not-Aus; MCU `Timer too close`) → rot mit der Ursache, Druckfehler (`Must home axis first`) → rot mit Fortschritt und Meldung, Klippy startet → `Klipper startet`, Moonraker gestoppt → `Drucker nicht erreichbar` mit einer Logzeile. Daraus kamen zwei Korrekturen: keine Datei-Schätzung der Restzeit vor der ersten Extrusion, und von Klippys Shutdown-Meldung nur die erste Zeile. Gesehen: Während Moonraker selbst startet, antwortet es etwa eine Sekunde lang mit 404; ein Abruf in dem Moment zeigt einmal `Antwort nicht lesbar`. Nicht geprüft: echte Heizkurven (der Simulator misst konstant 103 °C, Sollwerte bleiben 0), der API-Key (der Simulator vertraut jedem Client), eine Schicht aus `SET_PRINT_STATS_INFO`, JPEG-Vorschaubilder, Moonraker ohne History-Komponente, die Antwort 503 (`Klipper nicht verbunden`), eine neu geslicte Datei gleichen Namens bei laufendem Server | 2026-11-25 |
 | OctoPrint direkt | nur Fixtures aus Doku und Quellcode von OctoPrint 2.0.2 und dem Plugin Slicer Thumbnails (OctoPrint-PrusaSlicerThumbnails) 1.2.4 | 2026-11-25 |
 | OctoPrint-Simulator (Virtual Printer, 1.11.8) | noch nicht gelaufen | 2026-11-25 |
 | PrusaLink direkt | nur Fixtures aus Doku und Quellcode von Prusa-Firmware-Buddy v8.0.2 und der OpenAPI-Beschreibung von Prusa-Link-Web | 2026-11-25 |
@@ -234,7 +234,7 @@ Stand 2026-11-25. Nichts davon lief bisher gegen einen Drucker, einen Simulator 
 - **`Antwort nicht lesbar`:** unter der Adresse antwortet etwas, aber nicht die Drucker-API, die die Seite erwartet. Prüfe `source:` und den Port in `url`.
 - **Eine kleine Zeile mit unbekanntem Wort unter `Bereit`:** deine Integration meldet ein Zustandswort, das die Vorlage nicht kennt. Trag es unter `states:` ein, zum Beispiel `states: {printing: [calibrating]}`.
 - **Kein Vorschaubild:** der Slicer schreibt keins in die Datei (PrusaSlicer: Printer Settings → General → Firmware → G-code thumbnails, sichtbar im Expertenmodus, zum Beispiel `300x300/PNG`; OrcaSlicer: die Option „G-code thumbnails“ in den Druckereinstellungen), OctoPrint 1.x hat das Plugin „Slicer Thumbnails“ nicht, die Datei wurde von der SD-Karte gedruckt, das Bild ist weder PNG noch JPEG (PrusaLink schickt eventuell QOI) oder größer als 512 KiB, oder `thumbnail: false` ist gesetzt. Über Home Assistant: die Integration hat keine Bild-Entität (OctoPrint) oder liefert sie nur während des Drucks (Moonraker).
-- **Keine Restzeit:** die Quelle hat in dem Moment keine (Moonraker ohne Slicer-Schätzung erst ab 1 % Fortschritt), der Home-Assistant-Sensor hat keine Einheit (`s`, `min`, `h`, `d`) oder ist deaktiviert, oder die Fertig-Uhrzeit liegt in der Vergangenheit.
+- **Keine Restzeit:** die Quelle hat in dem Moment keine (Moonraker ohne Slicer-Schätzung erst ab 1 % Fortschritt und der ersten Extrusion), der Home-Assistant-Sensor hat keine Einheit (`s`, `min`, `h`, `d`) oder ist deaktiviert, oder die Fertig-Uhrzeit liegt in der Vergangenheit.
 - **Keine Temperaturen:** PrusaLink über Home Assistant: die Temperatursensoren aktivieren (siehe [Einrichtung](#home-assistant)).
 - **„Fertig“ bleibt zu lange oder zu kurz:** setz `finished_for` (Minuten; `0` zeigt nie „Fertig“).
 - **Der Server startet nicht und nennt eine Option dieser Seite:** die Meldung nennt die Stelle und was falsch ist, zum Beispiel ein Schlüssel einer anderen Quelle, fehlendes `api_key` bei OctoPrint, `password` und `api_key` zugleich bei PrusaLink, fehlendes `device` bei `hass` oder `refresh` unter 5.

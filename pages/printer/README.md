@@ -78,7 +78,7 @@ Source → `get_bytes` (at most 512 KiB, only `image/png`/`image/jpeg`, no redir
 
 ## moonraker
 
-`providers/moonraker.py`, the printer directly through Moonraker (Klipper). Derived from Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 and Fluidd 8509fc70 (documentation and source code); **not yet checked against a device**. Optional `api_key:` is sent as `X-Api-Key` on every request; without it Moonraker must list this server under `trusted_clients`.
+`providers/moonraker.py`, the printer directly through Moonraker (Klipper). Derived from Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 and Fluidd 8509fc70 (documentation and source code); run on 2026-11-25 against the simulator virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0, simulated MCU), **not yet against a real printer**. Optional `api_key:` is sent as `X-Api-Key` on every request; without it Moonraker must list this server under `trusted_clients`.
 
 Requests (each within the fetch's `Budget`):
 
@@ -92,7 +92,7 @@ Metadata, image and history are optional: when they fail, or the budget is used 
 Formulas (as Mainsail/Fluidd):
 
 - **Progress:** `(file_position − gcode_start_byte) / (gcode_end_byte − gcode_start_byte)`, clamped to 0–1, when both bytes are known and end > start; else `display_status.progress`; else `virtual_sdcard.progress`.
-- **Remaining:** slicer `estimated_time − print_duration` (when `estimated_time` > 0) and file `print_duration / progress − print_duration` (only from 1 % progress); each at least 0, the mean of those present, rounded.
+- **Remaining:** slicer `estimated_time − print_duration` (when `estimated_time` > 0) and file `print_duration / progress − print_duration` (only from 1 % progress and when `print_duration` > 0: Klipper counts it from the first extrusion, before that it is 0 or, after a pause, `-2.8e-14`); each at least 0, the mean of those present, rounded.
 - **Layer total:** `info.total_layer`, else `layer_count`, else `ceil((object_height − first_layer_height) / layer_height + 1)`.
 - **Layer current:** `info.current_layer`, else (only when `print_duration` > 0) `ceil((z − first_layer_height) / layer_height + 1)` from `gcode_move.gcode_position`, limited to 0…total. The quotient is rounded to 4 decimals before `ceil` (`22.2 / 0.2` is `110.99999999999999`).
 
@@ -103,9 +103,9 @@ States:
 | no connection, timeout | `offline` (SourceError) |
 | HTTP 401/403 | `auth` |
 | HTTP 503 (Moonraker runs, Klippy not connected) | `offline`, "Klipper nicht verbunden" / "Klipper not connected" |
-| other HTTP error, no `result.status`, no `print_stats.state` | `data` |
+| other HTTP error, no `result.status`, no `print_stats.state` | `data` (seen in the simulator: Moonraker answers 404 for about a second while it starts) |
 | `webhooks.state` `startup` | `offline`, "Klipper startet" / "Klipper is starting" |
-| `webhooks.state` `shutdown`, `error` | `error` with `webhooks.state_message` |
+| `webhooks.state` `shutdown`, `error` | `error` with the first line of `webhooks.state_message` (the cause; Klipper's restart instructions follow) |
 | `print_stats.state` `printing` / `paused` | `printing` / `paused` with progress, remaining time, layer |
 | `complete` | `finished`: `duration_s` from `print_stats.total_duration`, `ended_at` from the newest history job if it is the same file |
 | `standby`, `cancelled` | `idle`; `last_job` from the newest history job if its `status` is `completed` |

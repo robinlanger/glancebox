@@ -17,10 +17,15 @@ source code of Moonraker master b559b9a8 (with Klipper 7558e8c2, Mainsail ce96e4
 (OctoPrint-PrusaSlicerThumbnails) 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
 for Home Assistant, moonraker-home-assistant v1.14.0, the core integrations OctoPrint and
 PrusaLink (dev), ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; the layout in the browser
-render tests.
-Not checked: any real printer (the test on a Moonraker printer is pending), the Moonraker and
-OctoPrint simulators, any Home Assistant instance, the display itself, and the Home Assistant
-add-on.
+render tests. The Moonraker source also ran against the simulator virtual-klipper-printer
+e272bcd (Moonraker b559b9a, Klipper v0.14.0) in Docker: printing with preview picture, time
+left and layer, paused, finished, ready with the last print, cancelled, Klippy shutdown, print
+error, Klippy starting and Moonraker stopped; two fixes came from it (time left before the
+first extrusion, only the cause of a shutdown message).
+Not checked: any real printer (the test on a Moonraker printer is pending), the OctoPrint
+simulator, any Home Assistant instance, the display itself, and the Home Assistant add-on; in
+the Moonraker simulator not real heating curves, the API key, JPEG previews, Moonraker without
+history and its 503 answer.
 
 ### Added
 - Page `printer` with `source: moonraker | octoprint | prusalink | hass`. With `hass`,

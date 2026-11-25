@@ -24,7 +24,9 @@ and Fluidd 8509fc70 (progress, remaining time and layer formulas).
 Metadata and the thumbnail are fetched once per file and url and dropped when the file name
 changes or a new print starts; the history is read only when nothing is printing.
 
-Derived from documentation and source code; not yet checked against a device.
+Derived from documentation and source code; run on 2026-11-25 against the simulator
+virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0), not yet against a
+real printer.
 """
 
 from __future__ import annotations
