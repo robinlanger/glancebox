@@ -114,6 +114,38 @@ States:
 
 Kept in memory per `url` (module-level `_jobs`): the current file name, its metadata and the last `print_stats.state`. Metadata is dropped when the file name changes or a new print starts (`printing` after anything but `printing`/`paused`), so a file sliced again under the same name is read anew; failed metadata is tried again on the next fetch. The thumbnail lives in the shared cache of `_common` under `(moonraker, url, file, relative_path, print number)`.
 
+## octoprint
+
+`providers/octoprint.py`, the printer directly through the OctoPrint REST API. Derived from OctoPrint 2.0.2 (documentation and source code) and the PrusaSlicer Thumbnails plugin 1.2.4; **not yet run against OctoPrint**. `api_key:` is required (OctoPrint: Settings → Application Keys, or the global API key) and sent as `X-Api-Key` on every request, also for the thumbnail. No `X-OctoPrint-Api-Version` header is sent, so OctoPrint 2.x answers in the pre-2.0 shape that 1.x also uses.
+
+Requests (each within the fetch's `Budget`):
+
+1. `GET /api/printer?exclude=sd`, every fetch: `state.flags` (required) and `temperature.tool0`/`bed`.
+2. `GET /api/job`, every fetch: `job.file` (`name`, `path`, `origin`, `date`), `progress.completion`/`printTime`/`printTimeLeft`, `state`, `error`. After a 409 from step 1 it only tells "offline" from "error".
+3. `GET /api/files/local/<path>`, every path part percent-encoded, once per file path and upload time (`job.file.date`) while a job is shown and only for `origin: local`: the thumbnail reference is `refs.thumbnail` (OctoPrint 2.x core, an absolute address `…/downloads/thumbs/local/<path>?_cb=…`), else the top-level `thumbnail` of the PrusaSlicer Thumbnails plugin (`plugin/prusaslicerthumbnails/thumbnail/<path>.png?<timestamp>`, relative to `url`).
+4. The thumbnail itself, through the shared cache under `(octoprint, url, address)`.
+
+`same_host_url()` (`_common.py`) resolves the reference: a relative path is appended to `url` (one starting with `/` to its host), an absolute address is only used with the same scheme, host and port as `url` and without a user part; `//host/…` and anything else gives no thumbnail, so the API key never goes to another host. A file without a reference, a 404 for the file, or a failing image leaves only the thumbnail out; a failed file request other than 404 is tried again on the next fetch.
+
+States (`state_of(flags, completion, has_file)`, the first matching row wins):
+
+| OctoPrint | Page |
+|---|---|
+| no connection, timeout | `offline` (SourceError) |
+| HTTP 401/403 | `auth` |
+| other HTTP error, no JSON object, no `state.flags` | `data` |
+| `/api/printer` 409 ("Printer is not operational") and `/api/job` `state` `Error` or `Offline after error` | `error` with `/api/job` `error` |
+| `/api/printer` 409 otherwise (nothing connected, connecting) | `offline` |
+| flag `error` or `closedOrError` | `error` with `/api/job` `error` |
+| `paused` or `pausing` | `paused` |
+| `cancelling` | `idle` |
+| `printing`, `finishing` or `resuming` | `printing`: progress from `completion`, remaining time from `printTimeLeft`, no layer (OctoPrint core has none) |
+| `operational`, `completion` ≥ 100 and a file | `finished`: `duration_s` from `printTime`; no end time (the page remembers when it first saw it) |
+| `operational` or `ready` | `idle` (OctoPrint has no print history in its core, so no "Zuletzt") |
+| no flag set | `offline` |
+
+Kept in memory per `url` (module-level `_files`): the path and upload time of the last file asked for and its thumbnail address (or that it has none).
+
 ## hass
 
 `providers/hass.py`, the printer through Home Assistant entities. Derived from the source code of Home Assistant core dev `components/octoprint` 5f380806 and `components/prusalink` 8dbdb49d, moonraker-home-assistant v1.14.0, ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; **not checked against a Home Assistant instance**. `url` and `token` work as on `energy` (long-lived access token; in the add-on both are filled in when the page sets neither).

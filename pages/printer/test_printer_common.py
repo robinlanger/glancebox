@@ -195,6 +195,31 @@ def test_source_error_keeps_a_source_error(common):
     assert err.detail == "Entität fehlt: sensor.x" and err.url is None
 
 
+@pytest.mark.parametrize(("base", "ref", "address"), [
+    ("http://drucker.local", "plugin/x/thumbnail/a.png?1", "http://drucker.local/plugin/x/thumbnail/a.png?1"),
+    ("http://drucker.local/", "plugin/a.png", "http://drucker.local/plugin/a.png"),
+    ("http://drucker.local/octoprint/", "plugin/a.png", "http://drucker.local/octoprint/plugin/a.png"),
+    ("http://drucker.local/octoprint", "/downloads/a.png", "http://drucker.local/downloads/a.png"),
+    ("http://drucker.local", "http://drucker.local/d/a.png?_cb=1", "http://drucker.local/d/a.png?_cb=1"),
+    ("http://drucker.local", "HTTP://Drucker.local:80/a.png", "HTTP://Drucker.local:80/a.png"),
+    ("https://drucker.local:8443", "https://drucker.local:8443/a.png", "https://drucker.local:8443/a.png"),
+    ("http://drucker.local", "http://example.org/x.png", None),
+    ("http://drucker.local", "//example.org/x.png", None),
+    ("http://drucker.local", "//drucker.local/x.png", None),
+    ("http://drucker.local", "https://drucker.local/x.png", None),
+    ("http://drucker.local", "http://drucker.local:8080/x.png", None),
+    ("http://drucker.local", "http://user@drucker.local/x.png", None),
+    ("http://drucker.local", "http:example.org/x.png", None),
+    ("http://drucker.local", "javascript:alert(1)", None),
+    ("http://drucker.local", "http://drucker.local:99999/x.png", None),
+    ("http://drucker.local", "", None),
+    ("http://drucker.local", None, None),
+    ("http://drucker.local", 5, None),
+])
+def test_same_host_url(common, base, ref, address):
+    assert common.same_host_url(base, ref) == address
+
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 ALLOWED_HOSTS = {"drucker.local", "homeassistant.lan"}
 

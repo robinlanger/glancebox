@@ -17,6 +17,7 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from urllib.parse import SplitResult, urlsplit
 
 import requests
 from PIL import Image
@@ -223,6 +224,37 @@ def data_uri(thumb: Thumbnail | None) -> str | None:
     except Exception:  # noqa: BLE001 - any Pillow failure only means: no image
         return None
     return "data:image/png;base64," + base64.b64encode(out.getvalue()).decode("ascii")
+
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(parts: SplitResult) -> tuple[str, str | None, int | None]:
+    scheme = parts.scheme.lower()
+    return scheme, parts.hostname, parts.port or _DEFAULT_PORTS.get(scheme)
+
+
+def same_host_url(base: str, ref: object) -> str | None:
+    """The address of an image reference the printer gave, or None if it leaves the printer.
+
+    A relative path is appended to ``base`` (a path starting with "/" to its host); an absolute
+    address only counts with the same scheme, host and port as ``base`` and no user part.
+    "//host/…" and every other form give None, so a reference never sends the key elsewhere.
+    """
+    if not isinstance(ref, str) or not ref:
+        return None
+    try:
+        parts, home = urlsplit(ref), urlsplit(base)
+        if not parts.scheme and not parts.netloc:
+            if ref.startswith("/"):
+                return f"{home.scheme}://{home.netloc}{ref}"
+            return f"{base.rstrip('/')}/{ref}"
+        if (parts.scheme and parts.netloc and parts.username is None
+                and parts.password is None and _origin(parts) == _origin(home)):
+            return ref
+    except ValueError:                      # a port that is no number or out of range
+        return None
+    return None
 
 
 _thumbs: OrderedDict[tuple, Thumbnail] = OrderedDict()

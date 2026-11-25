@@ -1,0 +1,16 @@
+{
+  "name": "benchy_0.2mm_PLA.gcode",
+  "display": "benchy_0.2mm_PLA.gcode",
+  "path": "Teile/benchy_0.2mm_PLA.gcode",
+  "origin": "local",
+  "type": "machinecode",
+  "typePath": ["machinecode", "gcode"],
+  "size": 2010000,
+  "date": 1795536300,
+  "refs": {
+    "resource": "http://drucker.local/api/files/local/Teile/benchy_0.2mm_PLA.gcode",
+    "download": "http://drucker.local/downloads/files/local/Teile/benchy_0.2mm_PLA.gcode"
+  },
+  "thumbnail": "plugin/prusaslicerthumbnails/thumbnail/Teile/benchy_0.2mm_PLA.png?20261125140500",
+  "thumbnail_src": "prusaslicerthumbnails"
+}
