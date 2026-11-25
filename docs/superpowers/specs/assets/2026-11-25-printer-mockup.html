@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Drucker-Seite Mockups</title>
+<style>
+@font-face{font-family:'DejaVu Sans';src:url('../../../../server/glancebox/fonts/DejaVuSans.ttf');}
+@font-face{font-family:'DejaVu Sans';font-weight:700;src:url('../../../../server/glancebox/fonts/DejaVuSans-Bold.ttf');}
+.scr{--fg:rgb(235,238,242);--muted:rgb(140,148,160);--divider:rgb(38,42,50);--orange:rgb(255,170,40);--red:rgb(240,70,60);--green:rgb(60,200,110);--blue:rgb(90,160,255);}
+body{margin:0;}
+.grid{display:flex;flex-wrap:wrap;gap:22px;}
+figure{margin:0}
+figcaption{font-size:13px;margin-top:6px;color:var(--muted-foreground,#99a);max-width:336px}
+.scr{width:240px;height:240px;zoom:1.4;position:relative;overflow:hidden;background:#080a0e;color:var(--fg);font-family:'DejaVu Sans',sans-serif;border-radius:2px;}
+.hdr{position:absolute;left:0;top:0;width:240px;height:34px;background:rgb(0,55,110);display:flex;align-items:center;padding:0 7px;box-sizing:border-box;}
+.hdr.alert{background:rgb(150,25,25)}
+.hdr .t{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:14px}
+.hdr .c{font-weight:700;font-size:18px}
+.a{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumb{position:absolute;left:8px;top:42px;width:100px;height:100px;border-radius:6px;background:#141922;overflow:hidden}
+.lbl{font-size:13px;font-weight:700}
+.big{font-weight:700;font-size:34px;line-height:38px}
+.mid{font-weight:700;font-size:16px}
+.sm{font-size:12px;color:var(--muted)}
+.bar{position:absolute;left:8px;top:150px;width:224px;height:8px;border-radius:4px;background:var(--divider);overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.div{position:absolute;left:8px;width:224px;top:184px;height:1px;background:var(--divider)}
+.temp{position:absolute;top:192px;width:112px;height:42px}
+.temp svg{position:absolute;left:0;top:9px;width:22px;height:22px}
+.temp .v{position:absolute;left:28px;top:4px;font-weight:700;font-size:22px}
+.temp .v span{font-size:13px;color:var(--muted);font-weight:700}
+.temp .k{position:absolute;left:28px;top:30px;font-size:10px;color:var(--muted)}
+.notice{position:absolute;left:0;top:34px;width:240px;height:198px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.notice h1{margin:0;font-size:17px;color:var(--orange)} .notice p{margin:8px 0 0;font-size:13px;color:var(--muted)}
+</style></head><body>
+<div class="grid">
+
+<!-- reusable pieces as inline SVG -->
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="noz" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h12v6H6zM8 9h8l-2 6h-4zM12 15v3"/><path d="M9 21h6"/></g></symbol>
+<symbol id="bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17h18"/><path d="M7 13c1-1.5-1-2.5 0-4M12 13c1-1.5-1-2.5 0-4M17 13c1-1.5-1-2.5 0-4"/></g></symbol>
+<symbol id="thumbimg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#141922"/>
+<path d="M22 70 L50 82 L80 68 L80 44 L52 32 L22 46 Z" fill="#d9822b"/><path d="M22 46 L52 32 L80 44 L50 57 Z" fill="#f2a24a"/><path d="M50 57 L50 82 L80 68 L80 44 Z" fill="#b8661c"/>
+<path d="M40 40 L40 22 L58 16 L58 36" fill="#f2a24a" stroke="#b8661c" stroke-width="2"/><circle cx="49" cy="26" r="4" fill="#141922"/></symbol>
+</defs></svg>
+
+<figure><div class="scr">
+<div class="hdr"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="thumb"><svg width="100" height="100"><use href="#thumbimg"/></svg></div>
+<div class="a lbl" style="left:118px;top:42px;color:var(--green)">Druckt</div>
+<div class="a big" style="left:116px;top:58px">47<span style="font-size:20px"> %</span></div>
+<div class="a mid" style="left:118px;top:98px">noch 1:23 h</div>
+<div class="a sm" style="left:118px;top:118px;width:114px">fertig 15:55</div>
+<div class="a sm" style="left:118px;top:133px;width:114px">Schicht 112/240</div>
+<div class="bar"><i style="width:47%;background:var(--green)"></i></div>
+<div class="a sm" style="left:8px;top:164px;width:224px;color:var(--fg)">benchy_0.2mm_PLA_MK4</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--orange)"><svg><use href="#noz"/></svg><div class="v">214°<span>/215</span></div><div class="k">Düse</div></div>
+<div class="temp" style="left:124px;color:var(--orange)"><svg><use href="#bed"/></svg><div class="v">60°<span>/60</span></div><div class="k">Bett</div></div>
+</div><figcaption><b>1 · Druckt, mit Vorschaubild.</b> Fortschritt, Restzeit, Fertig-Uhrzeit, Schicht (falls bekannt), Dateiname ohne Endung, Düse und Bett Ist/Soll. Icons orange = Heizung an.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="a lbl" style="left:8px;top:42px;color:var(--green)">Druckt</div>
+<div class="a" style="left:6px;top:56px;font-weight:700;font-size:52px;line-height:58px">47<span style="font-size:26px"> %</span></div>
+<div class="a mid" style="left:132px;top:62px;width:100px;text-align:right">noch 1:23 h</div>
+<div class="a sm" style="left:132px;top:84px;width:100px;text-align:right">fertig 15:55</div>
+<div class="a sm" style="left:8px;top:124px;width:224px">Schicht 112/240</div>
+<div class="bar"><i style="width:47%;background:var(--green)"></i></div>
+<div class="a sm" style="left:8px;top:164px;width:224px;color:var(--fg)">benchy_0.2mm_PLA_MK4</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--orange)"><svg><use href="#noz"/></svg><div class="v">214°<span>/215</span></div><div class="k">Düse</div></div>
+<div class="temp" style="left:124px;color:var(--orange)"><svg><use href="#bed"/></svg><div class="v">60°<span>/60</span></div><div class="k">Bett</div></div>
+</div><figcaption><b>2 · Druckt, ohne Vorschaubild</b> (Slicer schreibt keins, OctoPrint 1.x ohne Plugin, <code>thumbnail: false</code>): die Prozentzahl wird groß.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="thumb"><svg width="100" height="100"><use href="#thumbimg"/></svg></div>
+<div class="a lbl" style="left:118px;top:42px;color:var(--orange)">Pausiert</div>
+<div class="a big" style="left:116px;top:58px;color:var(--orange)">47<span style="font-size:20px"> %</span></div>
+<div class="a mid" style="left:118px;top:98px;color:var(--muted)">noch 1:23 h</div>
+<div class="a sm" style="left:118px;top:118px;width:114px">seit 14:05</div>
+<div class="a sm" style="left:118px;top:133px;width:114px">Schicht 112/240</div>
+<div class="bar"><i style="width:47%;background:var(--orange)"></i></div>
+<div class="a sm" style="left:8px;top:164px;width:224px;color:var(--fg)">benchy_0.2mm_PLA_MK4</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--orange)"><svg><use href="#noz"/></svg><div class="v">170°<span>/170</span></div><div class="k">Düse</div></div>
+<div class="temp" style="left:124px;color:var(--orange)"><svg><use href="#bed"/></svg><div class="v">60°<span>/60</span></div><div class="k">Bett</div></div>
+</div><figcaption><b>3 · Pausiert</b> (auch Filamentwechsel): alles orange, die Restzeit grau, weil sie steht. „seit 14:05“ nur, wo die Quelle das hergibt, sonst leer.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr"><span class="t">Drucker</span><span class="c">16:02</span></div>
+<div class="thumb"><svg width="100" height="100"><use href="#thumbimg"/></svg></div>
+<div class="a lbl" style="left:118px;top:42px;color:var(--green)">Fertig</div>
+<div class="a" style="left:116px;top:60px;font-weight:700;font-size:30px;line-height:36px;color:var(--green)">15:58</div>
+<div class="a mid" style="left:118px;top:98px">Dauer 3:12 h</div>
+<div class="a sm" style="left:118px;top:118px;width:114px">vor 4 min</div>
+<div class="bar"><i style="width:100%;background:var(--green)"></i></div>
+<div class="a sm" style="left:8px;top:164px;width:224px;color:var(--fg)">benchy_0.2mm_PLA_MK4</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--muted)"><svg><use href="#noz"/></svg><div class="v" style="color:var(--fg)">48°</div><div class="k">Düse</div></div>
+<div class="temp" style="left:124px;color:var(--muted)"><svg><use href="#bed"/></svg><div class="v" style="color:var(--fg)">41°</div><div class="k">Bett</div></div>
+</div><figcaption><b>4 · Fertig.</b> Uhrzeit des Endes groß, Druckdauer; Heizungen aus → nur Ist-Wert, Icons grau. Bleibt stehen, bis der Drucker selbst auf „bereit“ wechselt.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr alert"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="thumb"><svg width="100" height="100"><use href="#thumbimg"/></svg></div>
+<div class="a lbl" style="left:118px;top:42px;color:var(--red)">Fehler</div>
+<div class="a big" style="left:116px;top:58px;color:var(--red)">47<span style="font-size:20px"> %</span></div>
+<div class="a sm" style="left:118px;top:100px;width:114px;color:var(--fg);white-space:normal;line-height:15px;height:45px">Heater extruder not heating at expected rate</div>
+<div class="bar"><i style="width:47%;background:var(--red)"></i></div>
+<div class="a sm" style="left:8px;top:164px;width:224px;color:var(--fg)">benchy_0.2mm_PLA_MK4</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--muted)"><svg><use href="#noz"/></svg><div class="v" style="color:var(--fg)">162°</div><div class="k">Düse</div></div>
+<div class="temp" style="left:124px;color:var(--muted)"><svg><use href="#bed"/></svg><div class="v" style="color:var(--fg)">58°</div><div class="k">Bett</div></div>
+</div><figcaption><b>5 · Fehler</b>: roter Kopf wie bei kuma, Meldung des Druckers (Moonraker <code>print_stats.message</code>, OctoPrint <code>error</code>) bis drei Zeilen, sonst nur „Fehler“.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="a" style="left:8px;top:48px;font-weight:700;font-size:30px;color:var(--fg)">Bereit</div>
+<div class="a sm" style="left:8px;top:90px;width:224px">Zuletzt: benchy_0.2mm_PLA_MK4</div>
+<div class="a sm" style="left:8px;top:106px;width:224px">fertig gestern 21:14</div>
+<div class="div"></div>
+<div class="temp" style="left:8px;color:var(--orange)"><svg><use href="#noz"/></svg><div class="v">142°<span>/215</span></div><div class="k">Düse heizt</div></div>
+<div class="temp" style="left:124px;color:var(--muted)"><svg><use href="#bed"/></svg><div class="v" style="color:var(--fg)">23°</div><div class="k">Bett</div></div>
+</div><figcaption><b>6 · Bereit (idle).</b> Groß der Zustand, darunter der letzte Druck, wenn die Quelle ihn kennt (Moonraker: <code>print_stats</code>/History; sonst weg). Unten weiter die Temperaturen, damit man Vorheizen sieht.</figcaption></figure>
+
+<figure><div class="scr">
+<div class="hdr alert"><span class="t">Drucker</span><span class="c">14:32</span></div>
+<div class="notice"><h1>Drucker nicht erreichbar</h1><p>Stand 14:32</p></div>
+</div><figcaption><b>7 · Offline / Fehler beim Abruf</b>: wie energy/homeassistant. Variante „Drucker aus“ (grau statt orange), wenn die Quelle das sauber meldet (HA <code>unavailable</code>, OctoPrint <code>Offline</code>, Klippy nicht <code>ready</code>).</figcaption></figure>
+
+</div></body></html>
