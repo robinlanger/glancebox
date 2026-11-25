@@ -109,14 +109,19 @@ def test_no_file_estimate_before_the_first_extrusion(mk, load):
     assert percent == pytest.approx(27.9, abs=0.1)
     assert mk.remaining(st, meta, percent) == 120             # slicer only, not mean with 0
     assert mk.remaining(st, None, percent) is None
+    assert mk.remaining(st, {"estimated_time": 0}, percent) is None    # not 0 - (-2.8e-14)
     st["print_stats"]["print_duration"] = 0.0
     assert mk.remaining(st, meta, percent) == 120
 
 
 def test_remaining_never_below_zero(mk, load):
+    # An exhausted slicer estimate (print_duration 4800 >= estimated_time) says nothing: it is
+    # left out instead of counting as 0 s (Mainsail averages only estimates > 0).
     st = load("moonraker_query_printing")["result"]["status"]
-    assert mk.remaining(st, {"estimated_time": 3000}, None) == 0      # slicer overrun
-    assert mk.remaining(st, None, 100.0) == 0
+    assert mk.remaining(st, {"estimated_time": 3000}, None) is None   # slicer overrun only
+    assert mk.remaining(st, {"estimated_time": 4800}, None) is None   # exactly used up
+    assert mk.remaining(st, {"estimated_time": 3000}, 47.0) == 5413   # file estimate alone
+    assert mk.remaining(st, None, 100.0) == 0                          # file estimate at the end
 
 
 def test_layer_fallback_like_mainsail(mk, load):

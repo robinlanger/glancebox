@@ -103,14 +103,18 @@ def progress(status: dict, meta: dict | None) -> float | None:
 
 
 def remaining(status: dict, meta: dict | None, percent: float | None) -> int | None:
-    """Seconds left: the mean of the slicer and the file estimate that are present."""
+    """Seconds left: the mean of the slicer and the file estimate that are present.
+
+    A slicer estimate the print has already used up carries no information and is left out
+    (Mainsail also averages only estimates > 0); with no estimate left the field falls away.
+    """
     duration = number(_obj(status, "print_stats").get("print_duration"))
     if duration is None:
         return None
     estimates = []
     estimated = _meta(meta, "estimated_time")
-    if estimated is not None and estimated > 0:
-        estimates.append(max(0.0, estimated - duration))
+    if estimated is not None and estimated > 0 and estimated - duration > 0:
+        estimates.append(estimated - duration)
     # Klipper counts print_duration from the first extrusion: 0 (or -2.8e-14 after a pause)
     # before it, which would make the file estimate 0 s (Mainsail also needs > 0).
     if percent is not None and percent >= FILE_ESTIMATE_FROM and duration > 0:

@@ -92,7 +92,7 @@ Metadata, image and history are optional: when they fail, or the budget is used 
 Formulas (as Mainsail/Fluidd):
 
 - **Progress:** `(file_position − gcode_start_byte) / (gcode_end_byte − gcode_start_byte)`, clamped to 0–1, when both bytes are known and end > start; else `display_status.progress`; else `virtual_sdcard.progress`.
-- **Remaining:** slicer `estimated_time − print_duration` (when `estimated_time` > 0) and file `print_duration / progress − print_duration` (only from 1 % progress and when `print_duration` > 0: Klipper counts it from the first extrusion, before that it is 0 or, after a pause, `-2.8e-14`); each at least 0, the mean of those present, rounded.
+- **Remaining:** slicer `estimated_time − print_duration` (only while that is > 0: a slicer estimate the print has used up says nothing and is left out, as in Mainsail's `getEstimatedTimeETA`) and file `print_duration / progress − print_duration` (only from 1 % progress and when `print_duration` > 0: Klipper counts it from the first extrusion, before that it is 0 or, after a pause, `-2.8e-14`; at least 0); the mean of those present, rounded; none present → no remaining time.
 - **Layer total:** `info.total_layer`, else `layer_count`, else `ceil((object_height − first_layer_height) / layer_height + 1)`.
 - **Layer current:** `info.current_layer`, else (only when `print_duration` > 0) `ceil((z − first_layer_height) / layer_height + 1)` from `gcode_move.gcode_position`, limited to 0…total. The quotient is rounded to 4 decimals before `ceil` (`22.2 / 0.2` is `110.99999999999999`).
 
