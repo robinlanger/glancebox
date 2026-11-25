@@ -100,6 +100,19 @@ def test_remaining_is_the_mean_of_both_estimates(mk, load):
     assert mk.remaining(st, {"estimated_time": 0}, None) is None
 
 
+def test_no_file_estimate_before_the_first_extrusion(mk, load):
+    # Simulator: Klipper counts print_duration only from the first extrusion; before it the
+    # value is 0, after pause/resume even -2.8e-14. The file estimate would then say 0 s left.
+    st = load("moonraker_query_before_extrusion")["result"]["status"]
+    meta = {"estimated_time": 120, "gcode_start_byte": 3258, "gcode_end_byte": 5602}
+    percent = mk.progress(st, meta)
+    assert percent == pytest.approx(27.9, abs=0.1)
+    assert mk.remaining(st, meta, percent) == 120             # slicer only, not mean with 0
+    assert mk.remaining(st, None, percent) is None
+    st["print_stats"]["print_duration"] = 0.0
+    assert mk.remaining(st, meta, percent) == 120
+
+
 def test_remaining_never_below_zero(mk, load):
     st = load("moonraker_query_printing")["result"]["status"]
     assert mk.remaining(st, {"estimated_time": 3000}, None) == 0      # slicer overrun

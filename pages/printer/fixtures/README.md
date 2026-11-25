@@ -1,14 +1,17 @@
 # Test fixtures of the printer page
 
 JSON has no comments, so the origin of every fixture is listed here. None of them was captured
-from a device: the shapes follow the documentation and source code named below, the values are
-invented (file names such as `benchy_0.2mm_PLA.gcode`, no host names or addresses).
+from a real printer. Most follow the documentation and source code named below with invented
+values (file names such as `benchy_0.2mm_PLA.gcode`, no host names or addresses); the rows
+marked "captured from virtual-klipper-printer" are answers of the Moonraker simulator, anonymised
+(the file name is our own probe file).
 
 | File | Derived from | Captured |
 |---|---|---|
 | `moonraker_query_printing.json` | Moonraker master b559b9a8 `docs/external_api/printer.md` (`/printer/objects/query`); Klipper 7558e8c2 `docs/Status_Reference.md` (`webhooks`, `print_stats`, `virtual_sdcard`, `display_status`, `extruder`, `heater_bed`, `gcode_move`) | not captured from a device |
 | `moonraker_metadata.json` | Moonraker master b559b9a8 `docs/external_api/file_manager.md` (`/server/files/metadata`) and `moonraker/components/file_manager/metadata.py` (thumbnails `.thumbs/<name>-<w>x<h>.png`) | not captured from a device |
 | `moonraker_history.json` | Moonraker master b559b9a8 `docs/external_api/history.md` (`/server/history/list`) | not captured from a device |
+| `moonraker_query_before_extrusion.json` | `GET /printer/objects/query?<QUERY>` while printing a file that has not extruded yet, after a pause and resume: `print_duration` is `-2.842170943040401e-14` (Klipper counts it only from the first extrusion) | captured from virtual-klipper-printer e272bcd (image `ghcr.io/mainsail-crew/virtual-klipper-printer` sha256:84da96e5, Klipper v0.14.0) on 2026-11-25, anonymised |
 | `octoprint_job_printing.json` | OctoPrint 2.0.2 `docs/api/job.rst`, `docs/api/datamodel.rst` and `src/octoprint/server/api/job.py`: `GET /api/job` in the pre-2.0 shape (no `X-OctoPrint-Api-Version` header): `job.file` (`name`, `display`, `path`, `origin`, `size`, `date`), `progress`, `state` as text, top-level `error` | not captured from a device |
 | `octoprint_printer_printing.json` | OctoPrint 2.0.2 `docs/api/printer.rst`, `src/octoprint/server/api/printer.py` and `src/octoprint/printer/standard.py` (`_get_state_flags`): `GET /api/printer?exclude=sd`, `temperature.tool0`/`bed`, `state.text`, all eleven `state.flags` | not captured from a device |
 | `octoprint_file_v1.json` | `GET /api/files/local/<path>` of OctoPrint 1.x with the PrusaSlicer Thumbnails plugin 1.2.4 (`octoprint_prusaslicerthumbnails/__init__.py`): the plugin's additional metadata `thumbnail` (`plugin/prusaslicerthumbnails/thumbnail/<path with .png>?<YYYYmmddHHMMSS>`) and `thumbnail_src` at the top level | not captured from a device |

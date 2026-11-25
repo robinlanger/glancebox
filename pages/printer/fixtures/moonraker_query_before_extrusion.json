@@ -1,0 +1,14 @@
+{
+  "result": {
+    "eventtime": 858.143169784,
+    "status": {
+      "webhooks": {"state": "ready", "state_message": "Printer is ready"},
+      "print_stats": {"filename": "glancebox_probe.gcode", "total_duration": 719.509322552, "print_duration": -2.842170943040401e-14, "filament_used": 0.0, "state": "printing", "message": "", "info": {"total_layer": null, "current_layer": null}},
+      "virtual_sdcard": {"file_path": "/home/printer/printer_data/gcodes/glancebox_probe.gcode", "progress": 0.6864362168801544, "is_active": true, "file_position": 3912, "file_size": 5699},
+      "display_status": {"progress": 0.6864362168801544, "message": "RESUME called with"},
+      "extruder": {"temperature": 103.26, "target": 0.0, "power": 0.0, "can_extrude": true, "pressure_advance": 0.1, "smooth_time": 0.01, "motion_queue": null},
+      "heater_bed": {"temperature": 103.26, "target": 0.0, "power": 0.0},
+      "gcode_move": {"speed_factor": 1.0, "speed": 1200.0, "extrude_factor": 1.0, "absolute_coordinates": true, "absolute_extrude": true, "homing_origin": [0.0, 0.0, 0.0, 0.0], "position": [150.0, 50.0, 1.2, 0.0], "gcode_position": [150.0, 50.0, 1.2, 0.0], "axis_map": {"X": 0, "Y": 1, "Z": 2, "E": 3}}
+    }
+  }
+}
