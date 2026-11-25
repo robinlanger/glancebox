@@ -1,6 +1,7 @@
 """HTTP helper for pages: timeout and User-Agent are always set."""
 
 import re
+import time
 from typing import Any
 
 import requests
@@ -14,13 +15,55 @@ _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 _SCHEMELESS_RE = re.compile(r"(\burl: /[^\s?#\"'<>]*)[?#][^\s\"'<>]*")
 _TRAILING = ".,;)]>"
 
+IMAGE_TYPES = ("image/png", "image/jpeg")
+_CHUNK_SIZE = 8192
+
 
 def get_json(url: str, *, params: dict | None = None, headers: dict | None = None,
-             timeout: float = 10) -> Any:
-    resp = requests.get(url, params=params, timeout=timeout,
+             timeout: float = 10, auth=None) -> Any:
+    """GET ``url`` and return the decoded JSON body, or ``None`` on HTTP 204."""
+    resp = requests.get(url, params=params, timeout=timeout, auth=auth,
                         headers={**(headers or {}), "User-Agent": USER_AGENT})
     resp.raise_for_status()
+    if resp.status_code == 204:
+        return None
     return resp.json()
+
+
+def get_bytes(url: str, *, headers: dict | None = None, timeout: float = 10,
+              max_bytes: int, auth=None) -> tuple[bytes, str]:
+    """GET an image and return ``(body, mime)``.
+
+    Redirects are not followed; a 3xx raises ``requests.HTTPError`` like any error status.
+    Raises ``ValueError`` if the type is not in ``IMAGE_TYPES`` ("type"), the body exceeds
+    ``max_bytes`` ("large") or the whole download takes longer than ``timeout`` ("slow").
+    """
+    start = time.monotonic()
+    resp = requests.get(url, timeout=timeout, auth=auth, stream=True, allow_redirects=False,
+                        headers={**(headers or {}), "User-Agent": USER_AGENT})
+    try:
+        if 300 <= resp.status_code < 400:
+            raise requests.HTTPError(f"{resp.status_code} redirect not followed", response=resp)
+        resp.raise_for_status()
+        mime = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        if mime not in IMAGE_TYPES:
+            raise ValueError(f"unexpected content type {mime or 'missing'!r}")
+        try:
+            declared = int(resp.headers.get("Content-Length", ""))
+        except ValueError:
+            declared = None
+        if declared is not None and declared > max_bytes:
+            raise ValueError(f"image too large: {declared} > {max_bytes} bytes")
+        body = bytearray()
+        for chunk in resp.iter_content(_CHUNK_SIZE):
+            body += chunk
+            if len(body) > max_bytes:
+                raise ValueError(f"image too large: more than {max_bytes} bytes")
+            if time.monotonic() - start > timeout:
+                raise ValueError(f"image download too slow: over {timeout} s")
+        return bytes(body), mime
+    finally:
+        resp.close()
 
 
 def _split_trailing(text: str) -> tuple[str, str]:
