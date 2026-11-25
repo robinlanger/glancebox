@@ -116,7 +116,7 @@ Kept in memory per `url` (module-level `_jobs`): the current file name, its meta
 
 ## octoprint
 
-`providers/octoprint.py`, the printer directly through the OctoPrint REST API. Derived from OctoPrint 2.0.2 (documentation and source code) and the PrusaSlicer Thumbnails plugin 1.2.4; **not yet run against OctoPrint**. `api_key:` is required (OctoPrint: Settings → Application Keys, or the global API key) and sent as `X-Api-Key` on every request, also for the thumbnail. No `X-OctoPrint-Api-Version` header is sent, so OctoPrint 2.x answers in the pre-2.0 shape that 1.x also uses.
+`providers/octoprint.py`, the printer directly through the OctoPrint REST API. Derived from OctoPrint 2.0.2 (documentation and source code) and the PrusaSlicer Thumbnails plugin 1.2.4; run on 2026-11-25 against OctoPrint's Virtual Printer with OctoPrint 1.11.8 (Docker image, with and without the plugin) and 2.0.2 (PyPI), **not yet against a real printer**. `api_key:` is required (OctoPrint: Settings → Application Keys, or the global API key) and sent as `X-Api-Key` on every request, also for the thumbnail. No `X-OctoPrint-Api-Version` header is sent, so OctoPrint 2.x answers in the pre-2.0 shape that 1.x also uses.
 
 Requests (each within the fetch's `Budget`):
 
@@ -134,7 +134,7 @@ States (`state_of(flags, completion, has_file)`, the first matching row wins):
 | no connection, timeout | `offline` (SourceError) |
 | HTTP 401/403 | `auth` |
 | other HTTP error, no JSON object, no `state.flags` | `data` |
-| `/api/printer` 409 ("Printer is not operational") and `/api/job` `state` `Error` or `Offline after error` | `error` with `/api/job` `error` |
+| `/api/printer` 409 ("Printer is not operational") and `/api/job` `state` `Error` or `Offline after error` | `error` with `/api/job` `error` (seen in the Virtual Printer: 1.11.8 keeps the error text, 2.0.2 answers `error: null` once it has closed the connection) |
 | `/api/printer` 409 otherwise (nothing connected, connecting) | `offline` |
 | flag `error` or `closedOrError` | `error` with `/api/job` `error` |
 | `paused` or `pausing` | `paused` |

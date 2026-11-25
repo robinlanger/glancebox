@@ -21,11 +21,18 @@ render tests. The Moonraker source also ran against the simulator virtual-klippe
 e272bcd (Moonraker b559b9a, Klipper v0.14.0) in Docker: printing with preview picture, time
 left and layer, paused, finished, ready with the last print, cancelled, Klippy shutdown, print
 error, Klippy starting and Moonraker stopped; two fixes came from it (time left before the
-first extrusion, only the cause of a shutdown message).
-Not checked: any real printer (the test on a Moonraker printer is pending), the OctoPrint
-simulator, any Home Assistant instance, the display itself, and the Home Assistant add-on; in
-the Moonraker simulator not real heating curves, the API key, JPEG previews, Moonraker without
-history and its 503 answer.
+first extrusion, only the cause of a shutdown message). The OctoPrint source ran against
+OctoPrint's Virtual Printer, in Docker with OctoPrint 1.11.8 and from PyPI with OctoPrint 2.0.2:
+not connected, ready, printing, paused, resumed, finished, ready with the last print (1.11.8),
+cancelled, firmware error, disconnected and a wrong key; the preview picture with the Slicer
+Thumbnails plugin 1.2.4 on 1.11.8 (installed with `--no-deps`, its Pillow 13 needs Python 3.11)
+and from OctoPrint's own thumbnails on 2.0.2; no fix was needed. OctoPrint 2.0.2 drops the
+error text once it closes the connection after a firmware error, so the page shows "Error"
+without the cause there.
+Not checked: any real printer (the test on a Moonraker printer is pending), any Home Assistant
+instance, the display itself, and the Home Assistant add-on; in the Moonraker simulator not
+real heating curves, the API key, JPEG previews, Moonraker without history and its 503 answer;
+with OctoPrint not a print from the SD card or a reverse proxy.
 
 ### Added
 - Page `printer` with `source: moonraker | octoprint | prusalink | hass`. With `hass`,

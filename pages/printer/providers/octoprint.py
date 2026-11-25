@@ -20,7 +20,12 @@ PrusaSlicer Thumbnails plugin 1.2.4 (octoprint_prusaslicerthumbnails/__init__.py
 
 The file's thumbnail address is looked up once per url, path and upload time.
 
-Derived from the documentation; not yet run against OctoPrint.
+Run on 2026-11-25 against OctoPrint's Virtual Printer: 1.11.8 (Docker image, with and without
+the Slicer Thumbnails plugin 1.2.4) and 2.0.2 (PyPI). The answers matched the shapes above; seen
+there: after a firmware error 1.11.8 first answers /api/printer with 200 and the error flags,
+a few seconds later with 409 and /api/job state "Offline after error" (2.0.2 already 0.2 s
+after the error); 1.11.8 keeps the error text in /api/job error, 2.0.2 answers error null
+once it has closed the connection. Not yet run against a real printer.
 """
 
 from __future__ import annotations
