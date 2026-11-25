@@ -146,6 +146,36 @@ States (`state_of(flags, completion, has_file)`, the first matching row wins):
 
 Kept in memory per `url` (module-level `_files`): the path and upload time of the last file asked for and its thumbnail address (or that it has none).
 
+## prusalink
+
+`providers/prusalink.py`, the printer directly through the PrusaLink API v1 of the Prusa Buddy firmware (MK4, XL, Mini, MK3.9, Core One). Derived from Prusa-Firmware-Buddy v8.0.2 (source code) and the Prusa-Link-Web OpenAPI description; **never run against a printer** (there is no usable simulator). Authentication on every request, the thumbnail included:
+
+- `password:` (the PrusaLink password from the printer's menu) with HTTP Digest auth, user `user:` (default `maker`); a new `HTTPDigestAuth` per fetch, as it keeps the handshake state;
+- or `api_key:` instead, sent as `X-Api-Key`. Exactly one of the two; `user:` only together with `password:`.
+
+Requests (each within the fetch's `Budget`):
+
+1. `GET /api/v1/status`, every fetch: `printer.state` (required) and the temperatures; `job` (`id`, `progress`, `time_remaining`, `time_printing`) only while the firmware has a job.
+2. `GET /api/v1/job`, only in the states `printing`, `paused`, `finished`, `error`, at most once per fetch: `file.display_name` (else the 8.3 `name` without `.GCO`/`.BGC`) and `file.refs.thumbnail`. 204 (no job) or any failure only leaves the file out. Progress and times come from step 1, from this answer only when step 1 has no `job`.
+3. The thumbnail: only the address in `refs.thumbnail` (`/thumb/l/<path>`), resolved by `same_host_url()`; it is never built from the file name. Cached in `_common` under `(prusalink, url, address, job id)`, so a new print of the same file loads it anew. A type other than PNG/JPEG (the firmware may send QOI), a 404 or any other failure only leaves the image out.
+
+States (`STATE_MAP`, `printer.state` compared in upper case):
+
+| PrusaLink | Page |
+|---|---|
+| no connection, timeout | `offline` (SourceError) |
+| HTTP 401/403 | `auth`: "Passwort prüfen", or "API-Key prüfen" with `api_key` |
+| other HTTP error, no JSON object, no `printer.state` text | `data` |
+| `PRINTING` | `printing` with progress and remaining time; no layer (PrusaLink has none) |
+| `PAUSED` | `paused` |
+| `ATTENTION` | `paused` with "Eingriff nötig" / "Attention needed" |
+| `FINISHED` | `finished`: `duration_s` from `time_printing`; no end time (the page remembers when it first saw it) |
+| `ERROR` | `error` (PrusaLink gives no error text) |
+| `IDLE`, `READY`, `BUSY`, `STOPPED` | `idle` (no "Zuletzt" of its own) |
+| anything else (e.g. `UNKNOWN`) | `idle` with the raw word as `message`, one log warning per word until restart |
+
+At `FINISHED` the Buddy firmware has no job any more: status has no `job` and `/api/v1/job` answers 204. So the last job seen while printing (file name, `time_printing`, image address, job id) is kept in memory per `url` (module-level `_jobs`) and fills in file, duration (as of the last fetch while printing) and image of the finished view; it is dropped as soon as the printer is idle. After a restart of this server during a print's end, "Fertig" shows without a file name.
+
 ## hass
 
 `providers/hass.py`, the printer through Home Assistant entities. Derived from the source code of Home Assistant core dev `components/octoprint` 5f380806 and `components/prusalink` 8dbdb49d, moonraker-home-assistant v1.14.0, ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; **not checked against a Home Assistant instance**. `url` and `token` work as on `energy` (long-lived access token; in the add-on both are filled in when the page sets neither).

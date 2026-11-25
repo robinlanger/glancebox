@@ -1,0 +1,19 @@
+{
+  "id": 12,
+  "state": "PRINTING",
+  "progress": 47.0,
+  "time_remaining": 4980,
+  "time_printing": 4800,
+  "file": {
+    "refs": {
+      "icon": "/thumb/s/usb/BENCHY~1.BGC",
+      "thumbnail": "/thumb/l/usb/BENCHY~1.BGC",
+      "download": "/usb/BENCHY~1.BGC"
+    },
+    "name": "BENCHY~1.BGC",
+    "display_name": "benchy_0.2mm_PLA.bgcode",
+    "path": "/usb",
+    "size": 1843210,
+    "m_timestamp": 1795536300
+  }
+}

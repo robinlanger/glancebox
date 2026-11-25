@@ -21,7 +21,7 @@ import requests
 from glancebox import hass
 
 from .providers import hass as hass_source
-from .providers import moonraker, octoprint
+from .providers import moonraker, octoprint, prusalink
 from .providers._common import (
     LANGS,
     PrinterStatus,
@@ -44,6 +44,7 @@ COMMON_KEYS = ("source", "url", "title", "lang", "thumbnail", "finished_for")
 PROVIDERS: dict[str, ModuleType] = {     # the source modules, in the spec's order
     "moonraker": moonraker,
     "octoprint": octoprint,
+    "prusalink": prusalink,
     "hass": hass_source,
 }
 DEFAULT_TITLE = {"de": "Drucker", "en": "Printer"}

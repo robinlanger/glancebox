@@ -34,6 +34,10 @@ def _clear_module_state():
     octoprint = sys.modules.get("glancebox_pages.printer.providers.octoprint")
     if octoprint is not None:
         octoprint._files.clear()
+    prusalink = sys.modules.get("glancebox_pages.printer.providers.prusalink")
+    if prusalink is not None:
+        prusalink._jobs.clear()
+        prusalink._warned.clear()
     hass = sys.modules.get("glancebox_pages.printer.providers.hass")
     if hass is not None:
         hass._warned.clear()
