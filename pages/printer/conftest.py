@@ -21,6 +21,27 @@ PAGES_DIR = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
+def _clear_module_state():
+    page = sys.modules.get("glancebox_pages.printer")
+    if page is not None and hasattr(page, "_memory"):
+        page._memory.clear()
+    common = sys.modules.get("glancebox_pages.printer.providers._common")
+    if common is not None:
+        common._thumbs.clear()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_state():
+    """Every test starts and ends with empty page memory and thumbnail cache.
+
+    load_page_types re-executes page.py, so a new module normally starts empty anyway; this
+    keeps tests independent of that and of their order.
+    """
+    _clear_module_state()
+    yield
+    _clear_module_state()
+
+
 @pytest.fixture
 def printer():
     return load_page_types([PAGES_DIR])["printer"]
