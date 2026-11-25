@@ -31,6 +31,9 @@ def _clear_module_state():
     moonraker = sys.modules.get("glancebox_pages.printer.providers.moonraker")
     if moonraker is not None:
         moonraker._jobs.clear()
+    hass = sys.modules.get("glancebox_pages.printer.providers.hass")
+    if hass is not None:
+        hass._warned.clear()
 
 
 @pytest.fixture(autouse=True)

@@ -20,6 +20,7 @@ import requests
 
 from glancebox import hass
 
+from .providers import hass as hass_source
 from .providers import moonraker
 from .providers._common import (
     LANGS,
@@ -42,6 +43,7 @@ DEFAULT_FINISHED_FOR = 120
 COMMON_KEYS = ("source", "url", "title", "lang", "thumbnail", "finished_for")
 PROVIDERS: dict[str, ModuleType] = {     # the source modules, in the spec's order
     "moonraker": moonraker,
+    "hass": hass_source,
 }
 DEFAULT_TITLE = {"de": "Drucker", "en": "Printer"}
 HEATING_GAP = 5.0                         # °C below the target that still counts as heating

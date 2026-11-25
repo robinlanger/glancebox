@@ -113,3 +113,65 @@ States:
 | anything else | `idle` with the raw word as `message` |
 
 Kept in memory per `url` (module-level `_jobs`): the current file name, its metadata and the last `print_stats.state`. Metadata is dropped when the file name changes or a new print starts (`printing` after anything but `printing`/`paused`), so a file sliced again under the same name is read anew; failed metadata is tried again on the next fetch. The thumbnail lives in the shared cache of `_common` under `(moonraker, url, file, relative_path, print number)`.
+
+## hass
+
+`providers/hass.py`, the printer through Home Assistant entities. Derived from the source code of Home Assistant core dev `components/octoprint` 5f380806 and `components/prusalink` 8dbdb49d, moonraker-home-assistant v1.14.0, ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; **not checked against a Home Assistant instance**. `url` and `token` work as on `energy` (long-lived access token; in the add-on both are filled in when the page sets neither).
+
+```yaml
+- type: printer
+  source: hass
+  integration: moonraker      # moonraker | octoprint | prusalink | bambu_lab | creality | custom
+  device: voron               # entity prefix; optional for octoprint, no effect with custom
+  # entities:                 # replace single fields; custom: at least state
+  #   nozzle_target: sensor.voron_ziel#temperature
+  # states:                   # raw words on top of the preset
+  #   printing: [calibrating_extrusion]
+```
+
+### Presets
+
+`<d>` is `device`. For `octoprint` the prefix itself is `device` (default `octoprint`; a second OctoPrint instance in HA is `device: octoprint_2`). `#name` reads the attribute `name` of the entity instead of its state.
+
+| Field | moonraker | octoprint | prusalink | bambu_lab | creality |
+|---|---|---|---|---|---|
+| `state` | `sensor.<d>_current_print_state` | `sensor.<d>_current_state` | `sensor.<d>` | `sensor.<d>_print_status` | `sensor.<d>_print_status` |
+| `progress` | `sensor.<d>_progress` | `sensor.<d>_job_percentage` | `sensor.<d>_progress` | `sensor.<d>_print_progress` | `sensor.<d>_print_progress` |
+| `remaining` | `sensor.<d>_print_time_left` | – | – | `sensor.<d>_remaining_time` | `sensor.<d>_print_time_left` |
+| `eta` | `sensor.<d>_print_eta` | `sensor.<d>_estimated_finish_time` | `sensor.<d>_print_finish` | `sensor.<d>_end_time` | – |
+| `filename` | `sensor.<d>_filename` | `sensor.<d>_current_file` | `sensor.<d>_filename` | `sensor.<d>_task_name` | `sensor.<d>_print_status#file` |
+| `nozzle` | `sensor.<d>_extruder_temperature` | `sensor.<d>_actual_tool0_temp` | `sensor.<d>_nozzle_temperature` | `sensor.<d>_nozzle_temperature` | `sensor.<d>_nozzle_temperature` |
+| `nozzle_target` | `number.<d>_extruder_target` | `sensor.<d>_target_tool0_temp` | `sensor.<d>_nozzle_target_temperature` | `sensor.<d>_nozzle_target_temperature` | `sensor.<d>_nozzle_temperature#target` |
+| `bed` | `sensor.<d>_bed_temperature` | `sensor.<d>_actual_bed_temp` | `sensor.<d>_heatbed_temperature` | `sensor.<d>_bed_temperature` | `sensor.<d>_bed_temperature` |
+| `bed_target` | `number.<d>_bed_target` | `sensor.<d>_target_bed_temp` | `sensor.<d>_heatbed_target_temperature` | `sensor.<d>_bed_target_temperature` | `sensor.<d>_bed_temperature#target` |
+| `layer` | `sensor.<d>_current_layer` | – | – | `sensor.<d>_current_layer` | `sensor.<d>_working_layer` |
+| `layer_total` | `sensor.<d>_total_layer` | – | – | `sensor.<d>_total_layer_count` | `sensor.<d>_total_layers` |
+| `thumbnail` | `camera.<d>_thumbnail` | – (only the webcam) | `camera.<d>_preview` | `image.<d>_cover_image` | `image.<d>_current_print_preview` |
+| also read | `sensor.<d>_printer_state` (Klippy) | | | | |
+
+Notes from the sources: the prefix is the slugified device name in HA and can be renamed there. ha-bambulab names the device after type and serial number, so its prefix is usually longer than `x1c`; ha_creality_ws uses the host name or "<model> (Creality)". PrusaLink's four temperature sensors are disabled by default in HA (enable them under the device's entities); while they are off, the temperature line is missing. moonraker-home-assistant serves the thumbnail only while printing.
+
+### State words
+
+Raw words are compared stripped and in lower case. The schema words (`printing`, `paused`, `finished`, `error`, `idle`, `offline`) always count as themselves; the preset's table comes on top, `states:` on top of that (word by word, `states:` wins). With `integration: custom` only schema words and `states:` count.
+
+| Schema | moonraker | octoprint | prusalink | bambu_lab | creality |
+|---|---|---|---|---|---|
+| printing | printing | printing, printing_sd, printing_streaming, starting, starting_sd, starting_streaming, resuming, finishing | printing | running, prepare, slicing, init | printing, processing, self-testing |
+| paused | paused | paused, pausing | paused, attention | pause | paused |
+| finished | complete | `operational` with progress ≥ 100 | finished | finish | completed |
+| error | error; Klippy `shutdown`/`error` | error, offline_after_error | error | failed | error |
+| idle | standby, cancelled | operational, cancelling, transferring_file | idle, ready, stopped, busy | idle | idle, stopped |
+| offline | Klippy `startup` ("Klipper startet") | offline, open_serial, detect_serial, connecting | – | offline | off |
+
+`unavailable` or `unknown` at the state entity is `offline` for every integration (Bambu's own word `unknown` too). Any other word is `idle` with the raw word as the small line, and one log warning per word (until restart). OctoPrint in HA before the ENUM sensor (PR #157213, December 2025) reported free text ("Operational", "Printing"); those single words still match, longer texts ("Printing from SD") show as an unknown word.
+
+### Reading
+
+- One `GET /api/states/<id>` per distinct entity with `Authorization: Bearer <token>`: state first, then the Klippy sensor (moonraker), then the other fields in the order of `FIELDS`; an entity that several fields share (Creality) is read once. Up to 12 calls, the image is the 13th.
+- 404 at the state entity: orange "Entität fehlt: sensor.…" / "Entity missing: …". 404, `unavailable` or `unknown` at any other field only leaves that field out.
+- 401/403: "Token abgelehnt" as on `energy`; no connection, a timeout, any other HTTP error or a body that is not an object: "Keine Verbindung zu Home Assistant". The fetch shares one budget of 15 s (5 s per call); used up before the last entity, it is "Keine Verbindung" as well.
+- Remaining time uses the entity's `unit_of_measurement`: `s`, `min`, `h` or `d`; without a known unit (or read from an attribute, which has none) it is not used. A negative value is dropped.
+- ETA: ISO 8601; a time without zone counts as local time; an ETA before now (HA keeps the last value after a print) or a text that is not a time is dropped.
+- `state_since` is `last_changed` of the state entity, so "Fertig" counts from when HA saw the state change.
+- Image: only for `printing`, `paused`, `finished` and `error`, with `thumbnail` not `false` and at least 2 s of budget left: `GET /api/camera_proxy/<camera.x>` or `/api/image_proxy/<image.x>` with the same header (other domains give no image). Cached in `_common` under `(hass, url, entity, file name)`; without a file name it is loaded on every fetch. Any failure only leaves the image out.

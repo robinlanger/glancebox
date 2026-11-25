@@ -1,0 +1,102 @@
+{
+  "sensor.octoprint_current_state": {
+    "entity_id": "sensor.octoprint_current_state",
+    "state": "printing",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "open_serial",
+        "detect_serial",
+        "connecting",
+        "operational",
+        "starting_sd",
+        "starting_streaming",
+        "starting",
+        "printing_sd",
+        "printing_streaming",
+        "printing",
+        "cancelling",
+        "pausing",
+        "paused",
+        "resuming",
+        "finishing",
+        "offline",
+        "error",
+        "offline_after_error",
+        "transferring_file"
+      ],
+      "friendly_name": "OctoPrint Current State"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_job_percentage": {
+    "entity_id": "sensor.octoprint_job_percentage",
+    "state": "47.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "friendly_name": "OctoPrint Job Percentage"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_estimated_finish_time": {
+    "entity_id": "sensor.octoprint_estimated_finish_time",
+    "state": "2026-11-25T14:55:00+00:00",
+    "attributes": {
+      "device_class": "timestamp",
+      "friendly_name": "OctoPrint Estimated Finish Time"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_current_file": {
+    "entity_id": "sensor.octoprint_current_file",
+    "state": "benchy_0.2mm_PLA.gcode",
+    "attributes": {
+      "friendly_name": "OctoPrint Current File"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_actual_tool0_temp": {
+    "entity_id": "sensor.octoprint_actual_tool0_temp",
+    "state": "214.2",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "OctoPrint actual tool0 temp"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_target_tool0_temp": {
+    "entity_id": "sensor.octoprint_target_tool0_temp",
+    "state": "215.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "OctoPrint target tool0 temp"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_actual_bed_temp": {
+    "entity_id": "sensor.octoprint_actual_bed_temp",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "OctoPrint actual bed temp"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.octoprint_target_bed_temp": {
+    "entity_id": "sensor.octoprint_target_bed_temp",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "OctoPrint target bed temp"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  }
+}

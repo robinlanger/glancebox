@@ -1,0 +1,92 @@
+{
+  "sensor.mk4": {
+    "entity_id": "sensor.mk4",
+    "state": "printing",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "idle",
+        "busy",
+        "printing",
+        "paused",
+        "finished",
+        "stopped",
+        "error",
+        "attention",
+        "ready"
+      ],
+      "friendly_name": "MK4"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_progress": {
+    "entity_id": "sensor.mk4_progress",
+    "state": "47.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "friendly_name": "MK4 Progress"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_print_finish": {
+    "entity_id": "sensor.mk4_print_finish",
+    "state": "2026-11-25T14:55:00+00:00",
+    "attributes": {
+      "device_class": "timestamp",
+      "friendly_name": "MK4 Print finish"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_filename": {
+    "entity_id": "sensor.mk4_filename",
+    "state": "benchy_0.2mm_PLA.gcode",
+    "attributes": {
+      "friendly_name": "MK4 Filename"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_nozzle_temperature": {
+    "entity_id": "sensor.mk4_nozzle_temperature",
+    "state": "214.2",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "MK4 Nozzle temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_nozzle_target_temperature": {
+    "entity_id": "sensor.mk4_nozzle_target_temperature",
+    "state": "215.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "MK4 Nozzle target temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_heatbed_temperature": {
+    "entity_id": "sensor.mk4_heatbed_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "MK4 Heatbed temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.mk4_heatbed_target_temperature": {
+    "entity_id": "sensor.mk4_heatbed_target_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "MK4 Heatbed target temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  }
+}
