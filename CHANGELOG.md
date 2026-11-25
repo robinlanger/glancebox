@@ -43,7 +43,9 @@ with OctoPrint not a print from the SD card or a reverse proxy.
   `thumbnail`, `finished_for` (minutes "Finished" stays, default 120, 0 = never) and `refresh`
   (default 10 s, at least 5). The slicer preview (at most 512 KiB, PNG or JPEG) is scaled
   down and embedded in the page; an unreadable image only leaves the picture out. A refused key
-  or password shows "Access denied", a switched-off printer "Printer not reachable" in grey.
+  or password shows "Access denied", a switched-off printer "Printer not reachable" in grey;
+  a Klipper printer switched off while its host runs ("Lost communication with MCU") shows
+  "Printer off" in grey with the last print, without the frozen temperatures.
   In the add-on, `source: hass` needs neither `url` nor `token`. Docs: `printer` in the
   template catalog, with an honest "Tested with" table.
 - `glancebox.http.get_bytes(url, max_bytes=...)` for your own pages: fetches an image and

@@ -3,7 +3,8 @@
 {#- Measurements from docs/superpowers/specs/assets/2026-11-25-printer-mockup.html (240×240).
     view "job": picture 100×100 at (8, 42) and the texts in the right column (.col, x >= 116),
     or without a picture the percentage large on the left; bar, file name, temperatures below.
-    view "idle": "Bereit" large, the last print, temperatures. view "notice": ui.notice.
+    view "idle": "Bereit" large, the last print, temperatures. view "notice": ui.notice, its
+    small line ("Zuletzt: <file name>") wraps anywhere.
     Font sizes step down with the length of a text so the widest values still fit their box
     (test_texts_fit_without_ellipsis); only the file name and the title are cut with "…". -#}
 {%- set color = {"green": "var(--green)", "orange": "var(--orange)", "red": "var(--red)",
@@ -33,6 +34,7 @@
 .temp .ic{position:absolute;left:0;top:9px;width:22px;height:22px;}
 .temp .v{position:absolute;left:26px;top:4px;width:86px;font-weight:700;font-size:20px;line-height:26px;white-space:nowrap;overflow:hidden;color:var(--fg);}
 .temp .v span{font-size:13px;color:var(--muted);}
+.ui-notice p{overflow-wrap:anywhere;}
 .temp .k{position:absolute;left:26px;top:30px;width:86px;font-size:10px;line-height:12px;color:var(--muted);white-space:nowrap;overflow:hidden;}
 </style>
 {% endblock %}

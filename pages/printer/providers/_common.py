@@ -65,6 +65,7 @@ class PrinterStatus:
     state_since: datetime | None = None
     thumbnail: Thumbnail | None = None
     last_job: tuple[str, datetime | None] | None = None
+    powered_off: bool = False                          # offline: the printer itself is off
 
 
 class SourceError(Exception):

@@ -294,8 +294,10 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
         state = "finished"
     klippy_entity = _klippy(options)
     klippy = _value(states, Ref(klippy_entity, None)) if klippy_entity else None
+    heaters = True
     if isinstance(klippy, str):
         klippy = _word(klippy)
+        heaters = klippy == "ready"          # else Klipper's heater values are frozen
         if klippy == "startup":
             return PrinterStatus("offline", message=_TEXT[lang]["startup"])
         if klippy in ("shutdown", "error"):
@@ -312,8 +314,8 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
                                                            _unit(states, ref.get("remaining"))),
         eta=eta if eta is not None and eta >= now else None,
         filename=clean_filename(filename) if isinstance(filename, str) else None,
-        nozzle=temp(get("nozzle"), get("nozzle_target")),
-        bed=temp(get("bed"), get("bed_target")),
+        nozzle=temp(get("nozzle"), get("nozzle_target")) if heaters else None,
+        bed=temp(get("bed"), get("bed_target")) if heaters else None,
         layer=_layer(get("layer"), get("layer_total")),
         message=message,
         state_since=_time(answer.get("last_changed"), now))

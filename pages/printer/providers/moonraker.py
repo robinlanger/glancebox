@@ -20,13 +20,17 @@ and Fluidd 8509fc70 (progress, remaining time and layer formulas).
 - GET /server/history/list?limit=1&order=desc -> {"result": {"count", "jobs": [{filename,
   status, end_time, total_duration, ...}]}}; 404 when the history component is off.
 - Auth: none for trusted_clients, else header X-Api-Key (key from /access/api_key).
+- Printer switched off while the host runs: Klipper (7558e8c2 klippy/mcu.py, check_timeout)
+  shuts down with "Lost communication with MCU '<name>'"; webhooks.state is "shutdown",
+  print_stats keeps its last state and extruder/heater_bed their last values (seen on a
+  device, 2026-11-25). Whenever webhooks.state is not "ready" no temperatures are shown.
 
 Metadata and the thumbnail are fetched once per file and url and dropped when the file name
 changes or a new print starts; the history is read only when nothing is printing.
 
 Derived from documentation and source code; run on 2026-11-25 against the simulator
-virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0), not yet against a
-real printer.
+virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0); a real printer read
+only switched off so far (2026-11-25).
 """
 
 from __future__ import annotations
@@ -66,6 +70,7 @@ FILE_ESTIMATE_FROM = 1.0          # % progress before the file-based estimate co
 _STATES = {"standby": "idle", "printing": "printing", "paused": "paused",
            "complete": "finished", "cancelled": "idle", "error": "error"}
 _JOB_STATES = ("printing", "paused", "complete", "error")      # with a file worth showing
+POWERED_OFF = "lost communication with mcu"     # in state_message, any case: printer is off
 _TEXT = {"de": {"startup": "Klipper startet", "disconnected": "Klipper nicht verbunden"},
          "en": {"startup": "Klipper is starting", "disconnected": "Klipper not connected"}}
 
@@ -267,6 +272,15 @@ def _last_job(base: str, budget: Budget, headers: dict, ctx) -> dict | None:
     return {"filename": job.get("filename"), "status": job.get("status"), "ended_at": ended}
 
 
+def _last_completed(base: str, budget: Budget, headers: dict, ctx):
+    """(name, ended_at) of the newest history job if it completed, else None."""
+    last = _last_job(base, budget, headers, ctx)
+    if not last or last["status"] != "completed" or not isinstance(last["filename"], str):
+        return None
+    name = clean_filename(last["filename"])
+    return (name, last["ended_at"]) if name else None
+
+
 def _thumbnail(base: str, url: str, job: _Job, budget: Budget, headers: dict) -> Thumbnail | None:
     path = pick_thumbnail(job.meta)
     if path is None or not job.filename:
@@ -292,22 +306,25 @@ def fetch(options: dict, ctx) -> PrinterStatus:
     status = _query(base, budget, headers)
     if status is None:
         return PrinterStatus("offline", message=_TEXT[lang]["disconnected"])
-    nozzle = temp(_obj(status, "extruder").get("temperature"),
-                  _obj(status, "extruder").get("target"))
-    bed = temp(_obj(status, "heater_bed").get("temperature"),
-               _obj(status, "heater_bed").get("target"))
 
+    # Unless Klippy is ready the heater values are frozen: no temperatures then.
     hooks = _obj(status, "webhooks")
     klippy = hooks.get("state", "ready")
     if klippy == "startup":
         return PrinterStatus("offline", message=_TEXT[lang]["startup"])
     if klippy != "ready":
-        # Klippy puts the cause in the first line, then its restart instructions
         message = hooks.get("state_message")
-        lines = [line.strip() for line in message.splitlines() if line.strip()] \
-            if isinstance(message, str) else []
-        return PrinterStatus("error", nozzle=nozzle, bed=bed,
-                             message=lines[0] if lines else str(klippy))
+        message = message if isinstance(message, str) else ""
+        if POWERED_OFF in message.lower():
+            return PrinterStatus("offline", powered_off=True,
+                                 last_job=_last_completed(base, budget, headers, ctx))
+        # Klippy puts the cause in the first line, then its restart instructions
+        lines = [line.strip() for line in message.splitlines() if line.strip()]
+        return PrinterStatus("error", message=lines[0] if lines else str(klippy))
+    nozzle = temp(_obj(status, "extruder").get("temperature"),
+                  _obj(status, "extruder").get("target"))
+    bed = temp(_obj(status, "heater_bed").get("temperature"),
+               _obj(status, "heater_bed").get("target"))
 
     stats = _obj(status, "print_stats")
     raw = stats.get("state")
@@ -319,11 +336,7 @@ def fetch(options: dict, ctx) -> PrinterStatus:
     job = _job(url, filename, raw)
 
     if state == "idle":
-        last = _last_job(base, budget, headers, ctx)
-        last_job = None
-        if last and last["status"] == "completed" and (name := clean_filename(
-                last["filename"] if isinstance(last["filename"], str) else None)):
-            last_job = (name, last["ended_at"])
+        last_job = _last_completed(base, budget, headers, ctx)
         return PrinterStatus("idle", nozzle=nozzle, bed=bed, last_job=last_job,
                              message=None if raw in _STATES else raw)
 

@@ -22,6 +22,7 @@ The pictures are rendered by the server with sample data; the slicer preview in 
 - **Error** (red header): progress in red and the printer's message in up to three lines, where the source gives one.
 - **Ready**: `Ready` large, `Last: <file>` and `done <time>` when the last print is known.
 - **Printer not reachable** (grey, no alarm): a printer that is switched off is normal.
+- **Printer off** (grey, no alarm): Moonraker runs, but Klipper has lost its printer board ("Lost communication with MCU"), which is what Klipper reports when the printer is switched off and its host keeps running. Below it `Last: <file>` when the last print is known. Klipper no longer updates the temperatures then, so none are shown.
 - At the bottom nozzle and bed: icon orange and `214°/215` while the heater is on, grey with only the current value when it is off; `Nozzle heating` while it is more than 5 °C below its target.
 
 **Finished** stays for `finished_for` minutes (default 120) after the end of the print, then the page shows **Ready** with the print as `Last:`. Klipper stays at `complete` and Bambu Lab at `finish` until the next print starts, so the page would otherwise show "Finished" for days. Where the source does not tell when the print ended (OctoPrint, PrusaLink, Moonraker without its history component), the page counts from when it first saw "Finished"; after a restart of the server that period starts again.
@@ -177,7 +178,7 @@ Another brand through Home Assistant, with `integration: custom`:
 
 Moonraker accepts the server if its address is in `trusted_clients` in the `[authorization]` section of `moonraker.conf`, for example the network `192.168.x.0/24`. Then you need no `api_key`. Otherwise read Moonraker's API key, for example with `curl http://drucker.local:7125/access/api_key` from a trusted computer, put it in `.env` as `MOONRAKER_KEY=...` and set `api_key: ${MOONRAKER_KEY}`.
 
-The page reads the time left, layer and preview picture from the file's metadata, as Mainsail and Fluidd do. The layer needs layer information in that metadata or `SET_PRINT_STATS_INFO` in the G-code; the preview needs a slicer that embeds a thumbnail (PNG, or JPEG if there is no PNG). "Last:" and the end time after a print come from Moonraker's history (`[history]` in `moonraker.conf`). If Moonraker runs but Klipper is not connected, the page shows **Printer not reachable** with "Klipper not connected".
+The page reads the time left, layer and preview picture from the file's metadata, as Mainsail and Fluidd do. The layer needs layer information in that metadata or `SET_PRINT_STATS_INFO` in the G-code; the preview needs a slicer that embeds a thumbnail (PNG, or JPEG if there is no PNG). "Last:" and the end time after a print come from Moonraker's history (`[history]` in `moonraker.conf`). If Moonraker runs but Klipper is not connected, the page shows **Printer not reachable** with "Klipper not connected". If Klipper runs but has lost its printer board (printer switched off), it shows **Printer off**; any other Klipper shutdown shows **Error** in red with its cause.
 
 ### OctoPrint
 
@@ -202,7 +203,7 @@ When a print has finished, the printer forgets the job. The page therefore remem
 3. PrusaLink: the four temperature sensors are **disabled** by default. Enable them on the device page under Entities, otherwise the temperature line is missing.
 4. Docker: put `HA_URL` and `HA_TOKEN` in `.env` as for the [homeassistant page](homeassistant.md#what-you-need). Add-on: leave out `url` and `token`.
 
-Notes: the Moonraker integration gives a preview picture only while printing. A Klipper shutdown seen through Home Assistant shows **Error** without a message.
+Notes: the Moonraker integration gives a preview picture only while printing. A Klipper shutdown seen through Home Assistant shows **Error** without a message (the integration does not pass on the cause, so a switched-off printer looks the same) and without temperatures.
 
 Docker and names ending in `.local`: a Docker container often cannot resolve them. If the page says **Printer not reachable** while the printer is on, enter the address instead, for example `http://192.168.x.x:7125`.
 
@@ -230,6 +231,7 @@ As of 2026-11-25. Nothing below has run against a real printer or a Home Assista
 ## When something is wrong
 
 - **`Printer not reachable`:** the printer or its host is off, the address or port is wrong, or the container cannot resolve a `.local` name (enter the address `http://192.168.x.x:7125` instead). For Moonraker with "Klipper not connected": Moonraker runs, but Klipper does not; check Klipper in Mainsail or Fluidd.
+- **`Printer off` although the printer is on:** Klipper has lost the connection to the printer board (USB cable, power of the board). Once the printer is on, run `FIRMWARE_RESTART` in Mainsail or Fluidd; the page follows on its next refresh.
 - **`Access denied`** with `Check the API key` or `Check the password`: the printer refused the key or password. Moonraker: is the server's address in `trusted_clients`, or is the key current? OctoPrint: is the application key still there? PrusaLink: password and user from the printer's menu.
 - **`Token rejected`, `Cannot reach Home Assistant`:** the same causes and fixes as on the [homeassistant page](homeassistant.md#when-something-is-wrong).
 - **`Entity missing: sensor.…`:** the state entity of the preset does not exist. Check `device:` against the entity list in Home Assistant (see [Setup](#home-assistant)) and the `integration:`. A missing entity of another field only leaves that field out.

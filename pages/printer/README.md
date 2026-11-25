@@ -45,7 +45,8 @@ Each module in `providers/` is registered in `PROVIDERS` by `page.py` and has:
 | `message` | str | error text, or the small note of `paused`/`idle` |
 | `duration_s`, `ended_at`, `state_since` | int, datetime, datetime | for "Fertig", "seit HH:MM" |
 | `thumbnail` | `Thumbnail(data, mime)` | raw bytes as the source sent them |
-| `last_job` | `(filename, ended_at or None)` | "Zuletzt: …" in the idle view |
+| `last_job` | `(filename, ended_at or None)` | "Zuletzt: …" in the idle view, and as the small line of "Drucker aus" |
+| `powered_off` | bool, default `False` | with `offline`: the source knows the printer itself is switched off; grey "Drucker aus" / "Printer off" instead of "Drucker nicht erreichbar" |
 
 ## State rules
 
@@ -53,6 +54,7 @@ Each module in `providers/` is registered in `PROVIDERS` by `page.py` and has:
 
 - `finished` turns `idle` (with this print as `last_job`) once more than `finished_for` minutes have passed since its end; `finished_for: 0` never shows "Fertig". The end is `ended_at`, else `state_since`, else the moment this server first saw `finished`.
 - That moment and the last finished print live in memory only, per `(source, url, integration, device)`. After a restart the period starts again and "Zuletzt" is empty until the source reports a last job itself.
+- `idle` and `offline` with `powered_off` without a `last_job` of their own get that remembered last finished print.
 
 ## Errors
 
@@ -105,7 +107,9 @@ States:
 | HTTP 503 (Moonraker runs, Klippy not connected) | `offline`, "Klipper nicht verbunden" / "Klipper not connected" |
 | other HTTP error, no `result.status`, no `print_stats.state` | `data` (seen in the simulator: Moonraker answers 404 for about a second while it starts) |
 | `webhooks.state` `startup` | `offline`, "Klipper startet" / "Klipper is starting" |
-| `webhooks.state` `shutdown`, `error` | `error` with the first line of `webhooks.state_message` (the cause; Klipper's restart instructions follow) |
+| `webhooks.state` `shutdown`, `error` with "Lost communication with MCU" in `state_message` (any case; Klipper 7558e8c2 `klippy/mcu.py` `check_timeout`: the printer is switched off while its host runs) | `offline` with `powered_off`: grey "Drucker aus" / "Printer off", small line "Zuletzt: <file>" from the newest history job if its `status` is `completed` (else the last finished print this page saw) |
+| `webhooks.state` `shutdown`, `error`, any other message | `error` with the first line of `webhooks.state_message` (the cause; Klipper's restart instructions follow) |
+| `webhooks.state` anything but `ready` | no temperatures: Klippy no longer updates `extruder`/`heater_bed`, they keep their last values (seen on a device, 2026-11-25) |
 | `print_stats.state` `printing` / `paused` | `printing` / `paused` with progress, remaining time, layer |
 | `complete` | `finished`: `duration_s` from `print_stats.total_duration`, `ended_at` from the newest history job if it is the same file |
 | `standby`, `cancelled` | `idle`; `last_job` from the newest history job if its `status` is `completed` |
@@ -222,7 +226,7 @@ Raw words are compared stripped and in lower case. The schema words (`printing`,
 | printing | printing | printing, printing_sd, printing_streaming, starting, starting_sd, starting_streaming, resuming, finishing | printing | running, prepare, slicing, init | printing, processing, self-testing |
 | paused | paused | paused, pausing | paused, attention | pause | paused |
 | finished | complete | `operational` with progress ≥ 100 | finished | finish | completed |
-| error | error; Klippy `shutdown`/`error` | error, offline_after_error | error | failed | error |
+| error | error; Klippy `shutdown`/`error` (no temperatures while Klippy is not `ready`) | error, offline_after_error | error | failed | error |
 | idle | standby, cancelled | operational, cancelling, transferring_file | idle, ready, stopped, busy | idle | idle, stopped |
 | offline | Klippy `startup` ("Klipper startet") | offline, open_serial, detect_serial, connecting | – | offline | off |
 

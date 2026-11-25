@@ -52,7 +52,8 @@ HEATING_GAP = 5.0                         # °C below the target that still coun
 
 TEXT = {
     "de": {"printing": "Druckt", "paused": "Pausiert", "finished": "Fertig", "error": "Fehler",
-           "ready": "Bereit", "offline": "Drucker nicht erreichbar", "done": "fertig",
+           "ready": "Bereit", "offline": "Drucker nicht erreichbar", "off": "Drucker aus",
+           "done": "fertig",
            "layer": "Schicht", "last": "Zuletzt", "since": "seit", "nozzle": "Düse",
            "bed": "Bett", "heating": "heizt", "auth": "Zugang abgelehnt",
            "auth_key": "API-Key prüfen", "auth_password": "Passwort prüfen",
@@ -60,7 +61,8 @@ TEXT = {
            "unreachable": "Keine Verbindung zu Home Assistant",
            "data": "Antwort nicht lesbar", "asof": "Stand"},
     "en": {"printing": "Printing", "paused": "Paused", "finished": "Finished", "error": "Error",
-           "ready": "Ready", "offline": "Printer not reachable", "done": "done",
+           "ready": "Ready", "offline": "Printer not reachable", "off": "Printer off",
+           "done": "done",
            "layer": "Layer", "last": "Last", "since": "since", "nozzle": "Nozzle",
            "bed": "Bed", "heating": "heating", "auth": "Access denied",
            "auth_key": "Check the API key", "auth_password": "Check the password",
@@ -125,13 +127,14 @@ def settle(status: PrinterStatus, key: tuple, finished_for: int, now: datetime) 
 
     The end of a print is ``ended_at``, else ``state_since``, else when this page first saw
     `finished` (in memory only). The last finished print is kept for "Last: …" once the source
-    itself reports idle without a last job of its own.
+    itself reports idle (or the printer switched off) without a last job of its own.
     """
     with _memory_lock:
         mem = _memory.setdefault(key, _Memory())
         if status.state != "finished":
             mem.finished_seen = None
-            if status.state == "idle" and status.last_job is None and mem.last_job:
+            shows_last = status.state == "idle" or status.powered_off
+            if shows_last and status.last_job is None and mem.last_job:
                 return dataclasses.replace(status, last_job=mem.last_job)
             return status
         end = status.ended_at or status.state_since
@@ -200,7 +203,10 @@ def build(status: PrinterStatus, options: dict, lang: str, now: datetime) -> dic
     texts = TEXT[lang]
     state = status.state
     if state == "offline":
-        return _offline(options, lang, now, status.message)
+        sub = status.message
+        if sub is None and status.last_job:
+            sub = f"{texts['last']}: {status.last_job[0]}"
+        return _offline(options, lang, now, sub, off=status.powered_off)
     temps = _temps(status, lang)
     if state == "idle":
         lines = []
@@ -242,9 +248,12 @@ def build(status: PrinterStatus, options: dict, lang: str, now: datetime) -> dic
                  bar=percent, filename=status.filename, thumb=thumb, temps=temps)
 
 
-def _offline(options: dict, lang: str, now: datetime, sub: str | None) -> dict:
+def _offline(options: dict, lang: str, now: datetime, sub: str | None,
+             off: bool = False) -> dict:
+    """Grey notice: "Printer off" when the source knows the printer itself is switched off."""
+    message = TEXT[lang]["off" if off else "offline"]
     return _base(options, lang, now, "notice", "muted",
-                 notice={"message": TEXT[lang]["offline"], "sub": sub, "tone": "muted"})
+                 notice={"message": message, "sub": sub, "tone": "muted"})
 
 
 def notice(options: dict, lang: str, now: datetime, err: SourceError) -> dict:

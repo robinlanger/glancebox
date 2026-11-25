@@ -22,6 +22,7 @@ Die Bilder rendert der Server mit Beispieldaten (auf Englisch); das Slicer-Vorsc
 - **Fehler** (roter Kopf): Fortschritt in Rot und die Meldung des Druckers in bis zu drei Zeilen, wo die Quelle eine liefert.
 - **Bereit**: `Bereit` groß, `Zuletzt: <Datei>` und `fertig <Zeit>`, wenn der letzte Druck bekannt ist.
 - **Drucker nicht erreichbar** (grau, kein Alarm): ein ausgeschalteter Drucker ist normal.
+- **Drucker aus** (grau, kein Alarm): Moonraker läuft, aber Klipper hat die Druckerplatine verloren („Lost communication with MCU“); das meldet Klipper, wenn der Drucker ausgeschaltet ist und sein Rechner weiterläuft. Darunter `Zuletzt: <Datei>`, wenn der letzte Druck bekannt ist. Klipper aktualisiert die Temperaturen dann nicht mehr, deshalb stehen keine da.
 - Unten Düse und Bett: Symbol orange und `214°/215`, solange die Heizung an ist, grau und nur der Ist-Wert, wenn sie aus ist; `Düse heizt`, solange sie mehr als 5 °C unter ihrem Ziel liegt.
 
 **Fertig** bleibt `finished_for` Minuten (Standard 120) nach dem Ende des Drucks stehen, danach zeigt die Seite **Bereit** mit dem Druck als `Zuletzt:`. Klipper bleibt auf `complete` und Bambu Lab auf `finish`, bis der nächste Druck beginnt; sonst stünde tagelang „Fertig“ da. Wo die Quelle nicht sagt, wann der Druck geendet hat (OctoPrint, PrusaLink, Moonraker ohne seine History-Komponente), zählt die Seite ab dem Moment, an dem sie „Fertig“ zuerst gesehen hat; nach einem Neustart des Servers beginnt diese Frist neu.
@@ -177,7 +178,7 @@ Eine andere Marke über Home Assistant, mit `integration: custom`:
 
 Moonraker lässt den Server ohne Key zu, wenn seine Adresse unter `trusted_clients` im Abschnitt `[authorization]` der `moonraker.conf` steht, zum Beispiel das Netz `192.168.x.0/24`. Dann brauchst du kein `api_key`. Sonst lies den API-Key von Moonraker aus, zum Beispiel mit `curl http://drucker.local:7125/access/api_key` von einem vertrauten Rechner, trag ihn als `MOONRAKER_KEY=...` in die `.env` ein und setz `api_key: ${MOONRAKER_KEY}`.
 
-Restzeit, Schicht und Vorschaubild liest die Seite aus den Metadaten der Datei, wie Mainsail und Fluidd. Die Schicht braucht Schicht-Angaben in diesen Metadaten oder `SET_PRINT_STATS_INFO` im G-Code; das Vorschaubild braucht einen Slicer, der eins einbettet (PNG, oder JPEG, wenn es kein PNG gibt). „Zuletzt:“ und die End-Uhrzeit nach einem Druck kommen aus der History von Moonraker (`[history]` in der `moonraker.conf`). Läuft Moonraker, aber Klipper ist nicht verbunden, zeigt die Seite **Drucker nicht erreichbar** mit „Klipper nicht verbunden“.
+Restzeit, Schicht und Vorschaubild liest die Seite aus den Metadaten der Datei, wie Mainsail und Fluidd. Die Schicht braucht Schicht-Angaben in diesen Metadaten oder `SET_PRINT_STATS_INFO` im G-Code; das Vorschaubild braucht einen Slicer, der eins einbettet (PNG, oder JPEG, wenn es kein PNG gibt). „Zuletzt:“ und die End-Uhrzeit nach einem Druck kommen aus der History von Moonraker (`[history]` in der `moonraker.conf`). Läuft Moonraker, aber Klipper ist nicht verbunden, zeigt die Seite **Drucker nicht erreichbar** mit „Klipper nicht verbunden“. Läuft Klipper, hat aber die Druckerplatine verloren (Drucker ausgeschaltet), zeigt sie **Drucker aus**; jeder andere Klipper-Shutdown zeigt rot **Fehler** mit seiner Ursache.
 
 ### OctoPrint
 
@@ -202,7 +203,7 @@ Ist ein Druck fertig, vergisst der Drucker den Job. Die Seite merkt sich deshalb
 3. PrusaLink: die vier Temperatursensoren sind ab Werk **deaktiviert**. Aktiviere sie auf der Geräteseite unter Entitäten, sonst fehlt die Temperaturzeile.
 4. Docker: `HA_URL` und `HA_TOKEN` in die `.env` eintragen wie bei der [Seite homeassistant](homeassistant.md#was-du-brauchst). Add-on: `url` und `token` weglassen.
 
-Hinweise: Die Moonraker-Integration liefert ein Vorschaubild nur während des Drucks. Ein Klipper-Shutdown über Home Assistant zeigt **Fehler** ohne Meldung.
+Hinweise: Die Moonraker-Integration liefert ein Vorschaubild nur während des Drucks. Ein Klipper-Shutdown über Home Assistant zeigt **Fehler** ohne Meldung (die Integration gibt die Ursache nicht weiter, ein ausgeschalteter Drucker sieht also genauso aus) und ohne Temperaturen.
 
 Docker und Namen auf `.local`: ein Docker-Container löst sie oft nicht auf. Sagt die Seite **Drucker nicht erreichbar**, obwohl der Drucker an ist, trag stattdessen die Adresse ein, zum Beispiel `http://192.168.x.x:7125`.
 
@@ -230,6 +231,7 @@ Stand 2026-11-25. Nichts davon lief bisher gegen einen echten Drucker oder eine 
 ## Wenn etwas nicht stimmt
 
 - **`Drucker nicht erreichbar`:** Drucker oder sein Rechner ist aus, Adresse oder Port stimmen nicht, oder der Container löst einen Namen auf `.local` nicht auf (trag stattdessen die Adresse `http://192.168.x.x:7125` ein). Bei Moonraker mit „Klipper nicht verbunden“: Moonraker läuft, Klipper nicht; prüfe Klipper in Mainsail oder Fluidd.
+- **`Drucker aus`, obwohl der Drucker an ist:** Klipper hat die Verbindung zur Druckerplatine verloren (USB-Kabel, Strom der Platine). Ist der Drucker an, führ in Mainsail oder Fluidd `FIRMWARE_RESTART` aus; die Seite folgt beim nächsten Abruf.
 - **`Zugang abgelehnt`** mit `API-Key prüfen` oder `Passwort prüfen`: der Drucker hat Key oder Passwort abgelehnt. Moonraker: steht die Adresse des Servers unter `trusted_clients`, oder ist der Key aktuell? OctoPrint: gibt es den Anwendungsschlüssel noch? PrusaLink: Passwort und Benutzer aus dem Menü des Druckers.
 - **`Token abgelehnt`, `Keine Verbindung zu Home Assistant`:** dieselben Ursachen und Abhilfen wie bei der [Seite homeassistant](homeassistant.md#wenn-etwas-nicht-stimmt).
 - **`Entität fehlt: sensor.…`:** die Zustands-Entität der Vorlage gibt es nicht. Prüfe `device:` gegen die Entitätenliste in Home Assistant (siehe [Einrichtung](#home-assistant)) und die `integration:`. Fehlt die Entität eines anderen Felds, fällt nur dieses Feld weg.

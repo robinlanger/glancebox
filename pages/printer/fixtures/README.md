@@ -1,10 +1,12 @@
 # Test fixtures of the printer page
 
-JSON has no comments, so the origin of every fixture is listed here. None of them was captured
-from a real printer. Most follow the documentation and source code named below with invented
-values (file names such as `benchy_0.2mm_PLA.gcode`, no host names or addresses); the rows
-marked "captured from virtual-klipper-printer" are answers of the Moonraker simulator, anonymised
-(the file name is our own probe file).
+JSON has no comments, so the origin of every fixture is listed here. Most follow the
+documentation and source code named below with invented values (file names such as
+`benchy_0.2mm_PLA.gcode`, no host names or addresses); the rows marked "captured from
+virtual-klipper-printer" are answers of the Moonraker simulator, anonymised (the file name is our
+own probe file); the `moonraker_device_*.json` rows are answers of a real Klipper printer,
+anonymised (file name, filament and printer name and file uuid replaced; numbers, shapes and
+Klipper's messages kept).
 
 | File | Derived from | Captured |
 |---|---|---|
@@ -13,6 +15,8 @@ marked "captured from virtual-klipper-printer" are answers of the Moonraker simu
 | `moonraker_history.json` | Moonraker master b559b9a8 `docs/external_api/history.md` (`/server/history/list`) | not captured from a device |
 | `moonraker_query_before_extrusion.json` | `GET /printer/objects/query?<QUERY>` while printing a file that has not extruded yet, after a pause and resume: `print_duration` is `-2.842170943040401e-14` (Klipper counts it only from the first extrusion) | captured from virtual-klipper-printer e272bcd (image `ghcr.io/mainsail-crew/virtual-klipper-printer` sha256:84da96e5, Klipper v0.14.0) on 2026-11-25, anonymised |
 | `moonraker_query_shutdown.json` | `GET /printer/objects/query?<QUERY>` right after `POST /printer/emergency_stop`: `webhooks.state` `shutdown`, `state_message` the cause in the first line followed by Klipper's restart instructions | captured from virtual-klipper-printer e272bcd (image `ghcr.io/mainsail-crew/virtual-klipper-printer` sha256:84da96e5, Klipper v0.14.0) on 2026-11-25, anonymised |
+| `moonraker_device_query_shutdown.json` | `GET /printer/objects/query?<QUERY>` of a real Klipper printer switched off while its host keeps running: `webhooks.state` `shutdown`, `state_message` "Lost communication with MCU 'mcu'" (Klipper `klippy/mcu.py` `check_timeout`), `print_stats.state` still `complete` from the last print, `extruder`/`heater_bed` the frozen last values | captured from a device on 2026-11-25, anonymised |
+| `moonraker_device_history.json` | `GET /server/history/list?limit=1&order=desc` of the same printer: the last print, `status` `completed`, with Moonraker's full `metadata` | captured from a device on 2026-11-25, anonymised |
 | `octoprint_job_printing.json` | OctoPrint 2.0.2 `docs/api/job.rst`, `docs/api/datamodel.rst` and `src/octoprint/server/api/job.py`: `GET /api/job` in the pre-2.0 shape (no `X-OctoPrint-Api-Version` header): `job.file` (`name`, `display`, `path`, `origin`, `size`, `date`), `progress`, `state` as text, top-level `error` | not captured from a device |
 | `octoprint_printer_printing.json` | OctoPrint 2.0.2 `docs/api/printer.rst`, `src/octoprint/server/api/printer.py` and `src/octoprint/printer/standard.py` (`_get_state_flags`): `GET /api/printer?exclude=sd`, `temperature.tool0`/`bed`, `state.text`, all eleven `state.flags` | not captured from a device |
 | `octoprint_file_v1.json` | `GET /api/files/local/<path>` of OctoPrint 1.x with the PrusaSlicer Thumbnails plugin 1.2.4 (`octoprint_prusaslicerthumbnails/__init__.py`): the plugin's additional metadata `thumbnail` (`plugin/prusaslicerthumbnails/thumbnail/<path with .png>?<YYYYmmddHHMMSS>`) and `thumbnail_src` at the top level | not captured from a device |

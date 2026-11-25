@@ -266,6 +266,7 @@ def test_klippy_not_ready(mk, load, route, webhooks, state, de, en):
     route({Q: query(load, webhooks=hooks)})
     s = mk.fetch(OPTS, ctx())
     assert (s.state, s.message) == (state, de)
+    assert (s.nozzle, s.bed, s.powered_off) == (None, None, False)
     assert mk.fetch({**OPTS, "lang": "en"}, ctx("en")).message == (en or de)
 
 
@@ -274,7 +275,53 @@ def test_klippy_shutdown_shows_the_first_line_of_its_message(mk, load, route):
     route({Q: load("moonraker_query_shutdown")})
     s = mk.fetch(OPTS, ctx())
     assert (s.state, s.message) == ("error", "Shutdown due to webhooks request")
-    assert s.nozzle is not None and s.bed is not None
+    assert (s.nozzle, s.bed) == (None, None)         # Klippy no longer updates them
+
+
+DEVICE_END = datetime.fromtimestamp(1795203197.9235892, NOW.tzinfo)
+
+
+def test_printer_switched_off_is_powered_off_with_the_last_job(mk, load, route):
+    # A real Klipper printer switched off while its host keeps running (device, 2026-11-25):
+    # "Lost communication with MCU 'mcu'", print_stats still "complete", frozen temperatures.
+    calls = route({Q: load("moonraker_device_query_shutdown"),
+                   HIST: load("moonraker_device_history")})
+    s = mk.fetch(OPTS, ctx())
+    assert (s.state, s.powered_off, s.message) == ("offline", True, None)
+    assert s.last_job == ("calibration_cube_0.2mm", DEVICE_END)
+    assert (s.nozzle, s.bed, s.filename, s.thumbnail) == (None, None, None, None)
+    assert paths(calls) == [Q, HIST]
+
+
+@pytest.mark.parametrize(("klippy", "message"), [
+    ("shutdown", "Lost communication with MCU 'mcu'\nPrinter is shutdown\n"),
+    ("error", "lost communication with mcu 'toolhead'"),
+])
+def test_lost_mcu_communication_is_powered_off(mk, load, route, klippy, message):
+    hooks = {"state": klippy, "state_message": message}
+    route({Q: query(load, webhooks=hooks), HIST: history(load, status="cancelled")})
+    s = mk.fetch(OPTS, ctx())
+    assert (s.state, s.powered_off, s.last_job, s.nozzle) == ("offline", True, None, None)
+    route({Q: query(load, webhooks=hooks), HIST: 404})
+    assert mk.fetch(OPTS, ctx()).state == "offline"
+
+
+def test_page_says_printer_off_with_the_last_job(mod, load, route):
+    route({Q: load("moonraker_device_query_shutdown"), HIST: load("moonraker_device_history")})
+    for lang, message, sub in (("de", "Drucker aus", "Zuletzt: calibration_cube_0.2mm"),
+                               ("en", "Printer off", "Last: calibration_cube_0.2mm")):
+        d = mod.fetch({"source": "moonraker", "url": BASE, "lang": lang}, ctx(lang))
+        assert (d["view"], d["alert"], d["temps"]) == ("notice", False, [])
+        assert d["notice"] == {"message": message, "sub": sub, "tone": "muted"}
+
+
+def test_printer_off_without_history_names_the_print_this_page_saw(mod, load, route):
+    route(answers(load, q=query(load, state="complete"), hist=404))
+    assert mod.fetch({"source": "moonraker", "url": BASE}, ctx())["view"] == "job"
+    route({Q: load("moonraker_device_query_shutdown"), HIST: 404})
+    d = mod.fetch({"source": "moonraker", "url": BASE}, ctx())
+    assert d["notice"] == {"message": "Drucker aus", "sub": "Zuletzt: benchy_0.2mm_PLA",
+                           "tone": "muted"}
 
 
 def test_klippy_host_not_connected_is_offline(mk, route):

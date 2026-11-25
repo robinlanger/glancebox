@@ -172,6 +172,26 @@ def test_build_offline(mod, common):
     assert d["notice"]["message"] == "Printer not reachable"
 
 
+def test_build_powered_off(mod, common):
+    S = common.PrinterStatus
+    d = mod.build(S("offline", powered_off=True, last_job=("benchy_0.2mm_PLA", NOW)), {},
+                  "de", NOW)
+    assert (d["view"], d["alert"], d["temps"]) == ("notice", False, [])
+    assert d["notice"] == {"message": "Drucker aus", "sub": "Zuletzt: benchy_0.2mm_PLA",
+                           "tone": "muted"}
+    d = mod.build(S("offline", powered_off=True), {}, "en", NOW)
+    assert d["notice"] == {"message": "Printer off", "sub": None, "tone": "muted"}
+
+
+def test_settle_gives_powered_off_the_remembered_last_job(mod, common):
+    S = common.PrinterStatus
+    ended = NOW - timedelta(minutes=30)
+    mod.settle(S("finished", filename="benchy_0.2mm_PLA", ended_at=ended), KEY, 120, NOW)
+    s = mod.settle(S("offline", powered_off=True), KEY, 120, NOW)
+    assert s.last_job == ("benchy_0.2mm_PLA", ended)
+    assert mod.settle(S("offline"), KEY, 120, NOW).last_job is None
+
+
 def test_thumbnail_option(mod, common):
     S = common.PrinterStatus
     thumb = common.Thumbnail(png(), "image/png")
@@ -460,6 +480,8 @@ EDGES = {
     "finished_wide": _C.PrinterStatus(
         "finished", progress=100.0, duration_s=86399, ended_at=NOW - timedelta(minutes=4),
         nozzle=(285.0, None), bed=(110.0, None), thumbnail=_JOB["thumbnail"]),
+    "off_long_name": _C.PrinterStatus(                  # "Zuletzt: …" wraps, never overflows
+        "offline", powered_off=True, last_job=("Halterung_fuer_Kabelkanal_" * 3 + "xx", None)),
 }
 
 
@@ -658,6 +680,11 @@ async def test_offline_and_notice_states(printer, mod, common):
     assert not _any_orange(img, (0, 0, 240, 240))
     assert _any_color(img, (0, 0, 240, 240), [RED, HEADER_ALERT], tol=40) is None
     assert _near(img.load()[120, 4], HEADER)
+
+    off = _C.PrinterStatus("offline", powered_off=True, last_job=(_JOB["filename"], None))
+    img = _image(await _render(printer, _data(mod, off)))
+    assert not _any_orange(img, (0, 0, 240, 240))
+    assert _any_color(img, (0, 0, 240, 240), [RED, HEADER_ALERT], tol=40) is None
 
     data = mod.notice({"source": "moonraker"}, "de", NOW, common.SourceError("auth"))
     img = _image(await _render(printer, data))

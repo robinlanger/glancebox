@@ -218,6 +218,18 @@ def test_moonraker_klippy_overrides(ha, load, klippy, state):
     assert ha.status_from(data, MOON, NOW).state == ("paused" if state == "printing" else state)
 
 
+@pytest.mark.parametrize("klippy", ["shutdown", "error", "startup"])
+def test_moonraker_klippy_not_ready_has_no_temperatures(ha, load, klippy):
+    # Klipper keeps reporting the last values once it lost its MCU (seen on a device with
+    # Moonraker directly, 2026-11-25); the integration reads the same objects.
+    data = set_state(states(load, "moonraker"), "sensor.voron_printer_state", klippy)
+    status = ha.status_from(data, MOON, NOW)
+    assert (status.nozzle, status.bed) == (None, None)
+    data = set_state(data, "sensor.voron_printer_state", "ready")
+    status = ha.status_from(data, MOON, NOW)
+    assert status.nozzle is not None and status.bed is not None
+
+
 def test_moonraker_klippy_startup_says_so(ha, load):
     data = set_state(states(load, "moonraker"), "sensor.voron_printer_state", "startup")
     assert ha.status_from(data, {**MOON, "lang": "en"}, NOW).message == "Klipper is starting"
