@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import requests
-from conftest import NOW
 from PIL import Image
+from printer_helpers import NOW
 
 
 @pytest.mark.parametrize(("path", "name"), [

@@ -1,30 +1,24 @@
 """Shared fixtures of the printer page tests.
 
-`NOW` and `ctx` are plain names (``from conftest import NOW, ctx``); the rest are fixtures.
+NOW and ctx live in printer_helpers.py (``from printer_helpers import NOW, ctx``): never
+import from conftest, the bare name ``conftest`` may be server/tests/conftest.py.
 """
 
 import importlib
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlsplit
-from zoneinfo import ZoneInfo
 
 import pytest
 import requests
 
 import glancebox.http
-from glancebox.pages import PageContext, load_page_types
+from glancebox.pages import load_page_types
 
 PAGES_DIR = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
-NOW = datetime(2026, 11, 25, 14, 32, tzinfo=ZoneInfo("Europe/Berlin"))  # a Wednesday
-
-
-def ctx(lang="de"):
-    return PageContext(NOW, lang, "Europe/Berlin")
 
 
 @pytest.fixture
