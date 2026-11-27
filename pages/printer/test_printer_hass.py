@@ -752,15 +752,20 @@ def test_fetch_reads_the_print_message_only_for_a_print_error(ha, load, route):
     assert len(calls) == 13
 
 
-@pytest.mark.parametrize("entity", ["sensor.ender5_printer_message",
-                                    "sensor.ender5_current_print_message"])
-def test_fetch_missing_message_entities_are_optional(ha, load, route, entity):
-    answers = served_device(load, sensor__ender5_current_print_state="error")
+@pytest.mark.parametrize(("entity", "klippy", "want"), [
+    # Klippy shut down (printer switched off): without its message no "Printer off"
+    ("sensor.ender5_printer_message", "shutdown", ("error", False, None)),
+    # Klippy ready, the print failed: without the print message an error without a cause
+    ("sensor.ender5_current_print_message", "ready", ("error", False, None)),
+])
+def test_fetch_missing_message_entities_are_optional(ha, load, route, entity, klippy, want):
+    answers = served_device(load, sensor__ender5_printer_state=klippy,
+                            sensor__ender5_current_print_state="error")
     answers[f"/api/states/{entity}"] = 404
-    route(answers)
+    calls = route(answers)
     status = ha.fetch({**ENDER, "lang": "de", "thumbnail": False}, ctx())
-    want = ("error", False) if entity.endswith("printer_message") else ("offline", True)
-    assert (status.state, status.powered_off) == want
+    assert entity in _reads(calls)
+    assert (status.state, status.powered_off, status.message) == want
 
 
 def test_fetch_klippy_error_loads_no_image(ha, load, route):
