@@ -22,7 +22,7 @@ ha_creality_ws v0.9.10.
   as with the direct source. The integration empties progress, both times left and the
   layer (0) unless Klipper is printing (sensor.py empty_result_when_not_printing; seen on a
   device for a finished print and a pause), so they count only while printing. Its time left
-  is print_duration / progress - print_duration, 0.0 h while heating: below 1 % or at 0 the
+  is print_duration / progress - print_duration, 0.0 h while heating: below 1 % the
   slicer's estimate counts instead, as with the direct source.
 
 `device` is the entity prefix ({d} below); for octoprint it replaces the prefix "octoprint"
@@ -370,7 +370,7 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
     if not numbers:
         remaining_s = eta = None
     elif state == "printing" and (entity := _preset_entity(options, "slicer_remaining")) \
-            and ((progress is not None and progress < 1) or remaining_s == 0):
+            and progress is not None and progress < 1:
         # The integration's time left is print_duration / progress - print_duration: 0.0 h
         # while print_duration is 0 (heating) and noise below 1 %; there the slicer's
         # estimate counts, as in Mainsail, Fluidd and the direct source (moonraker.py). The

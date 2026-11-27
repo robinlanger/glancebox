@@ -376,7 +376,9 @@ def test_moonraker_time_left_before_one_percent_is_the_slicers(ha, load):
 
 @pytest.mark.parametrize(("progress", "left", "slicer", "remaining"), [
     ("0.5", "3.0", "1.0", 3600),       # below 1 %: the file estimate is noise (Mainsail, Fluidd)
-    ("12.0", "0.0", "1.0", 3600),      # 0.0 h mid-print: not computed (print_duration 0)
+    ("12.0", "0.0", "1.0", 0),         # from 1 %: 0.0 h is the integration's own value (with
+                                       # print_duration 0 the progress stays below 1 %)
+    ("99.9", "0.0", "0.05", 0),        # the last seconds: 0 is right, no switch to the slicer
     ("12.0", "unknown", "1.0", None),  # no time left entity value: stays unknown
     ("12.0", "2.0", "1.0", 7200),      # from 1 %: the integration's own value
     ("1.0", "2.0", "1.0", 7200),
@@ -596,6 +598,18 @@ def test_fetch_calls_each_entity_once_then_the_image(ha, load, route):
     assert [(c.kind, c.url) for c in calls[len(reads):]] == [
         ("bytes", HA + "/api/camera_proxy/camera.voron_thumbnail")]
     assert calls[-1].max_bytes == 512 * 1024
+
+
+@pytest.mark.parametrize("job", ["paused", "standby", "complete"])
+def test_fetch_reads_the_slicer_estimate_only_while_printing(ha, load, route, job):
+    key = "/api/states/sensor.voron_current_print_state"
+    answers = served(load, "moonraker")
+    answers[key] = {**answers[key], "state": job}
+    calls = route(answers)
+    ha.fetch({**MOON, "lang": "de"}, ctx())
+    urls = [c.url for c in calls if c.kind == "json"]
+    assert HA + key in urls
+    assert HA + "/api/states/sensor.voron_slicer_print_time_left_estimate" not in urls
 
 
 def test_fetch_reads_shared_entities_once(ha, load, route):
