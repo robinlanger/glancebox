@@ -25,6 +25,7 @@
 .mid{font-weight:700;font-size:16px;line-height:19px;}
 .mid.s{font-size:14px;}
 .sm{font-size:12px;line-height:15px;color:var(--muted);}
+.sm.s{font-size:11px;}  /* "Schicht 1234/1234" in the 114 px column with DejaVu Sans (CI image) */
 .msg{white-space:normal;line-height:15px;max-height:45px;color:var(--fg);}
 .bar{position:absolute;left:8px;top:150px;width:224px;height:8px;border-radius:4px;background:var(--divider);overflow:hidden;}
 .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;}
@@ -74,7 +75,7 @@
 <div class="a mid col{% if main|length > 11 %} s{% endif %}" style="left:118px;top:98px;width:114px{% if main_muted %};color:var(--muted){% endif %}">{{ main }}</div>
 {%- endif %}
 {%- for line in smalls[:2] %}
-<div class="a sm col" style="left:118px;top:{{ 118 + 15 * loop.index0 }}px;width:114px">{{ line }}</div>
+<div class="a sm col{% if line|length > 15 %} s{% endif %}" style="left:118px;top:{{ 118 + 15 * loop.index0 }}px;width:114px">{{ line }}</div>
 {%- endfor %}
 {%- endif %}
 {%- else %}
