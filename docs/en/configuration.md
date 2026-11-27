@@ -178,7 +178,7 @@ Energy flow from Home Assistant in 1 to 4 rows (`grid`, `pv`, `battery`, `gas`, 
 
 ## Page type: printer
 
-State, progress, time left and temperatures of one 3D printer, with the slicer's preview picture. `source:` says where the status comes from: `moonraker` (Klipper), `octoprint`, `prusalink` directly from the printer, or `hass` with a preset for the printer's Home Assistant integration (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` or `custom`). Without `refresh` the page uses 10 seconds, at least 5. Keys and passwords belong in `.env`, see [Secrets and environment variables](#secrets-and-environment-variables). Not yet checked against a real printer. Full description, options and setup per source: [printer](templates/printer.md).
+State, progress, time left and temperatures of one 3D printer, with the slicer's preview picture. `source:` says where the status comes from: `moonraker` (Klipper), `octoprint`, `prusalink` directly from the printer, or `hass` with a preset for the printer's Home Assistant integration (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` or `custom`). Without `refresh` the page uses 10 seconds, at least 5. Keys and passwords belong in `.env`, see [Secrets and environment variables](#secrets-and-environment-variables). Checked on a real printer only through Moonraker (Klipper). Full description, options and setup per source: [printer](templates/printer.md).
 
 ```yaml
 - type: printer

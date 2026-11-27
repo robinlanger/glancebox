@@ -42,7 +42,7 @@ Energiefluss aus Home Assistant in bis zu vier Zeilen (Netz, PV, Speicher, Gas, 
 
 ![Vorschau der Seite printer](../../img/templates/printer-printing.png)
 
-Zustand, Fortschritt, Restzeit, Fertig-Uhrzeit, Slicer-Vorschaubild und Temperaturen eines 3D-Druckers, direkt von Moonraker (Klipper), OctoPrint oder PrusaLink oder über Home Assistant (auch Bambu Lab und Creality). Noch nicht an einem echten Drucker geprüft. [Details](printer.md)
+Zustand, Fortschritt, Restzeit, Fertig-Uhrzeit, Slicer-Vorschaubild und Temperaturen eines 3D-Druckers, direkt von Moonraker (Klipper), OctoPrint oder PrusaLink oder über Home Assistant (auch Bambu Lab und Creality). An einem echten Drucker nur über Moonraker (Klipper) geprüft, direkt und über Home Assistant. [Details](printer.md)
 
 ## KI & Entwicklung
 

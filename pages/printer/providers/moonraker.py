@@ -29,8 +29,9 @@ Metadata and the thumbnail are fetched once per file and url and dropped when th
 changes or a new print starts; the history is read only when nothing is printing.
 
 Derived from documentation and source code; run on 2026-11-25 against the simulator
-virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0); a real printer read
-only switched off so far (2026-11-25).
+virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0) and on 2026-11-25/27
+against a real Klipper printer (off, print error, heating, printing, cancelled, complete);
+a real pause/resume and the 503 answer not on a device.
 """
 
 from __future__ import annotations

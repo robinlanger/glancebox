@@ -31,7 +31,8 @@ value "sensor.x#attr" reads an attribute; `states:` maps raw words on top of the
 
 Derived from the integrations' source code. The moonraker preset was read on 2026-11-25 from a
 Home Assistant instance (HA 2026.11.2, moonraker-home-assistant 1.14.0) with the printer
-switched off only; the other presets are not checked against a Home Assistant instance.
+switched off, and on 2026-11-27 through a real print (error, heating, printing, cancel,
+complete); the other presets are not checked against a Home Assistant instance.
 """
 
 from __future__ import annotations

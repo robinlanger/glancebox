@@ -61,7 +61,7 @@ Alle eingebauten Seiten:
 <td width="33%" valign="top"><b><code>energy</code>: Energiefluss</b><br><img src="docs/img/templates/energy.png" alt="Energiefluss-Seite mit Netz, PV und Speicher" width="240" height="240"><br>Netz, PV, Speicher, Gas, Wasser oder Wallbox, mit Pfeilen, die das Display in Richtung des Flusses bewegt (ab Firmware 0.7.0; hier eine feste Stellung).</td>
 </tr>
 <tr>
-<td width="33%" valign="top"><b><code>printer</code>: Druckt</b><br><img src="docs/img/templates/printer-printing.png" alt="3D-Drucker-Seite während des Drucks" width="240" height="240"><br>Fortschritt, Restzeit, Fertig-Uhrzeit, Schicht, Slicer-Vorschaubild, Düse und Bett, von Moonraker, OctoPrint, PrusaLink oder Home Assistant. Noch nicht an einem echten Drucker geprüft.</td>
+<td width="33%" valign="top"><b><code>printer</code>: Druckt</b><br><img src="docs/img/templates/printer-printing.png" alt="3D-Drucker-Seite während des Drucks" width="240" height="240"><br>Fortschritt, Restzeit, Fertig-Uhrzeit, Schicht, Slicer-Vorschaubild, Düse und Bett, von Moonraker, OctoPrint, PrusaLink oder Home Assistant. An einem echten Drucker nur über Moonraker (Klipper) geprüft.</td>
 <td width="33%" valign="top"><b><code>printer</code>: Fertig</b><br><img src="docs/img/templates/printer-finished.png" alt="3D-Drucker-Seite nach einem fertigen Druck" width="240" height="240"><br>Ende, Dauer und wie lange her; nach <code>finished_for</code> Minuten zeigt die Seite Bereit.</td>
 </tr>
 </table>

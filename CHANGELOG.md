@@ -11,7 +11,7 @@ layer, file name, the slicer's preview picture and nozzle/bed temperatures. The 
 directly from Moonraker (Klipper), OctoPrint or PrusaLink, or from the printer's entities in
 Home Assistant. Server only; no firmware change.
 
-Checked (2026-11-25): only with fixtures, answers rebuilt by hand from the documentation and
+Checked (2026-11-25) with fixtures, answers rebuilt by hand from the documentation and
 source code of Moonraker master b559b9a8 (with Klipper 7558e8c2, Mainsail ce96e4d7, Fluidd
 8509fc70), OctoPrint 2.0.2 with the Slicer Thumbnails plugin
 (OctoPrint-PrusaSlicerThumbnails) 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
@@ -29,10 +29,26 @@ Thumbnails plugin 1.2.4 on 1.11.8 (installed with `--no-deps`, its Pillow 13 nee
 and from OctoPrint's own thumbnails on 2.0.2; no fix was needed. OctoPrint 2.0.2 drops the
 error text once it closes the connection after a firmware error, so the page shows "Error"
 without the cause there.
-Not checked: any real printer (the test on a Moonraker printer is pending), any Home Assistant
-instance, the display itself, and the Home Assistant add-on; in the Moonraker simulator not
-real heating curves, the API key, JPEG previews, Moonraker without history and its 503 answer;
-with OctoPrint not a print from the SD card or a reverse proxy.
+Checked on a real printer (2026-11-25 and 2026-11-27): a Creality Ender 5 with its own Klipper
+firmware (Klipper, Moonraker and Mainsail in Docker through prind, Moonraker without API key),
+test prints from OrcaSlicer. Moonraker directly: switched off while the host runs ("Printer
+off", "Last:" only after a completed print), a print error from Klipper (red with its message
+and the preview picture), ready, heating at the start, printing (percentage, time left, finish
+time, layer, preview picture), cancelled, finished with duration, ready with the last print
+after `finished_for`. Through Home Assistant 2026.11.2 with moonraker-home-assistant 1.14.0
+(installed by hand, without HACS) the same print: switched off (about 35 s after the direct
+source), a Klipper restart ("Printer not reachable" for about 30 s), print error, heating,
+printing, cancelled, finished (without duration and picture, the integration empties them),
+ready with the last print. Four fixes came from it: a switched-off Klipper printer shows
+"Printer off" directly and through Home Assistant; through Home Assistant the slicer's estimate
+below 1 % (the integration reports 0 while heating), and progress, time left and layer only
+while printing (the integration reports 0 otherwise). Seen: through Home Assistant the layer
+can be one lower than in Mainsail at a layer change (the integration's own calculation).
+Not checked: any other real printer (OctoPrint, PrusaLink) and any other Home Assistant
+integration, the display itself, and the Home Assistant add-on; on the Klipper printer not a
+real pause and resume, "Klipper not connected", an API key, a reverse proxy, Fluidd and an
+install through HACS; in the Moonraker simulator not JPEG previews and Moonraker without
+history; with OctoPrint not a print from the SD card or a reverse proxy.
 
 ### Added
 - Page `printer` with `source: moonraker | octoprint | prusalink | hass`. With `hass`,

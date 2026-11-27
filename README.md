@@ -61,7 +61,7 @@ All built-in pages:
 <td width="33%" valign="top"><b><code>energy</code>: energy flow</b><br><img src="docs/img/templates/energy.png" alt="Energy page with grid, PV and battery" width="240" height="240"><br>Grid, PV, battery, gas, water or wallbox, with arrows the display moves in the direction of the flow (firmware 0.7.0 or newer; here one still position).</td>
 </tr>
 <tr>
-<td width="33%" valign="top"><b><code>printer</code>: printing</b><br><img src="docs/img/templates/printer-printing.png" alt="3D printer page while printing" width="240" height="240"><br>Progress, time left, finish time, layer, slicer preview, nozzle and bed, from Moonraker, OctoPrint, PrusaLink or Home Assistant. Not yet checked against a real printer.</td>
+<td width="33%" valign="top"><b><code>printer</code>: printing</b><br><img src="docs/img/templates/printer-printing.png" alt="3D printer page while printing" width="240" height="240"><br>Progress, time left, finish time, layer, slicer preview, nozzle and bed, from Moonraker, OctoPrint, PrusaLink or Home Assistant. Checked on a real printer only through Moonraker (Klipper).</td>
 <td width="33%" valign="top"><b><code>printer</code>: finished</b><br><img src="docs/img/templates/printer-finished.png" alt="3D printer page after a finished print" width="240" height="240"><br>End time, duration and how long ago; after <code>finished_for</code> minutes the page shows Ready.</td>
 </tr>
 </table>

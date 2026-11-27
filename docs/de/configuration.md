@@ -178,7 +178,7 @@ Energiefluss aus Home Assistant in 1 bis 4 Zeilen (`grid`, `pv`, `battery`, `gas
 
 ## Seitentyp: printer
 
-Zustand, Fortschritt, Restzeit und Temperaturen eines 3D-Druckers, mit dem Vorschaubild des Slicers. `source:` sagt, woher der Zustand kommt: `moonraker` (Klipper), `octoprint`, `prusalink` direkt vom Drucker oder `hass` mit einer Vorlage für die Home-Assistant-Integration des Druckers (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` oder `custom`). Ohne `refresh` gelten für diese Seite 10 Sekunden, mindestens 5. Keys und Passwörter gehören in die `.env`, siehe [Geheimnisse und Umgebungsvariablen](#geheimnisse-und-umgebungsvariablen). Noch nicht an einem echten Drucker geprüft. Ausführlich, mit Optionen und Einrichtung je Quelle: [printer](templates/printer.md).
+Zustand, Fortschritt, Restzeit und Temperaturen eines 3D-Druckers, mit dem Vorschaubild des Slicers. `source:` sagt, woher der Zustand kommt: `moonraker` (Klipper), `octoprint`, `prusalink` direkt vom Drucker oder `hass` mit einer Vorlage für die Home-Assistant-Integration des Druckers (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` oder `custom`). Ohne `refresh` gelten für diese Seite 10 Sekunden, mindestens 5. Keys und Passwörter gehören in die `.env`, siehe [Geheimnisse und Umgebungsvariablen](#geheimnisse-und-umgebungsvariablen). An einem echten Drucker nur über Moonraker (Klipper) geprüft. Ausführlich, mit Optionen und Einrichtung je Quelle: [printer](templates/printer.md).
 
 ```yaml
 - type: printer

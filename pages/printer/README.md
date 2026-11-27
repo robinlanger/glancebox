@@ -80,7 +80,7 @@ Source → `get_bytes` (at most 512 KiB, only `image/png`/`image/jpeg`, no redir
 
 ## moonraker
 
-`providers/moonraker.py`, the printer directly through Moonraker (Klipper). Derived from Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 and Fluidd 8509fc70 (documentation and source code); run on 2026-11-25 against the simulator virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0, simulated MCU), **not yet against a real printer**. Optional `api_key:` is sent as `X-Api-Key` on every request; without it Moonraker must list this server under `trusted_clients`.
+`providers/moonraker.py`, the printer directly through Moonraker (Klipper). Derived from Moonraker master b559b9a8, Klipper 7558e8c2, Mainsail ce96e4d7 and Fluidd 8509fc70 (documentation and source code); run on 2026-11-25 against the simulator virtual-klipper-printer e272bcd (Moonraker b559b9a, Klipper v0.14.0, simulated MCU) and on 2026-11-25/27 against a real Klipper printer (Creality Ender 5, Klipper/Moonraker/Mainsail via prind, no API key): switched off, print error, ready, heating, printing, cancelled, complete, ready after `finished_for`. Not run on a device: a real pause/resume, `Klipper nicht verbunden`, an API key, Fluidd. Details in the "Tested with" table of `docs/en/templates/printer.md`. Optional `api_key:` is sent as `X-Api-Key` on every request; without it Moonraker must list this server under `trusted_clients`.
 
 Requests (each within the fetch's `Budget`):
 
@@ -182,7 +182,7 @@ At `FINISHED` the Buddy firmware has no job any more: status has no `job` and `/
 
 ## hass
 
-`providers/hass.py`, the printer through Home Assistant entities. Derived from the source code of Home Assistant core dev `components/octoprint` 5f380806 and `components/prusalink` 8dbdb49d, moonraker-home-assistant v1.14.0, ha-bambulab v2.4.1 and ha_creality_ws v0.9.10. The `moonraker` preset was read on 2026-11-25 from a Home Assistant instance (HA 2026.11.2, moonraker-home-assistant 1.14.0, a real Klipper printer switched off while its host runs: all entity ids and the unit `h` of `print_time_left` match the table below; fixture `hass_moonraker_device_shutdown.json`); printing through HA and the other presets are **not checked against a Home Assistant instance**. `url` and `token` work as on `energy` (long-lived access token; in the add-on both are filled in when the page sets neither).
+`providers/hass.py`, the printer through Home Assistant entities. Derived from the source code of Home Assistant core dev `components/octoprint` 5f380806 and `components/prusalink` 8dbdb49d, moonraker-home-assistant v1.14.0, ha-bambulab v2.4.1 and ha_creality_ws v0.9.10. The `moonraker` preset was read on 2026-11-25 from a Home Assistant instance (HA 2026.11.2, moonraker-home-assistant 1.14.0, a real Klipper printer switched off while its host runs: all entity ids and the unit `h` of `print_time_left` match the table below; fixture `hass_moonraker_device_shutdown.json`); on 2026-11-27 the same instance followed a real print on that printer (switched off, Klipper restart, print error, heating, printing, cancel, complete, ready after `finished_for`; details in the "Tested with" table of `docs/en/templates/printer.md`). The other presets are **not checked against a Home Assistant instance**. `url` and `token` work as on `energy` (long-lived access token; in the add-on both are filled in when the page sets neither).
 
 ```yaml
 - type: printer
