@@ -78,7 +78,7 @@ _UNEXPECTED = (requests.RequestException, ValueError, TypeError, KeyError, Attri
 
 def validate(options: dict) -> None:
     source = options.get("source")
-    if source not in PROVIDERS:
+    if not isinstance(source, str) or source not in PROVIDERS:
         raise ValueError(f"source must be one of: {', '.join(PROVIDERS)}")
     url = options.get("url")
     if not isinstance(url, str) or not url:
@@ -127,12 +127,15 @@ def settle(status: PrinterStatus, key: tuple, finished_for: int, now: datetime) 
 
     The end of a print is ``ended_at``, else ``state_since``, else when this page first saw
     `finished` (in memory only). The last finished print is kept for "Last: …" once the source
-    itself reports idle (or the printer switched off) without a last job of its own.
+    itself reports idle (or the printer switched off) without a last job of its own, and
+    forgotten as soon as a new print starts (printing, paused or error).
     """
     with _memory_lock:
         mem = _memory.setdefault(key, _Memory())
         if status.state != "finished":
             mem.finished_seen = None
+            if status.state in ("printing", "paused", "error"):
+                mem.last_job = None             # a new print: "Last" only for a completed one
             shows_last = status.state == "idle" or status.powered_off
             if shows_last and status.last_job is None and mem.last_job:
                 return dataclasses.replace(status, last_job=mem.last_job)

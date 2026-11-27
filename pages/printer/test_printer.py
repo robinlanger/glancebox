@@ -309,6 +309,21 @@ def test_last_finished_job_survives_the_printer_going_idle(mod, common):
     assert s.last_job == own
 
 
+@pytest.mark.parametrize("next_state", ["printing", "paused", "error"])
+def test_a_new_print_forgets_the_last_finished_one(mod, common, fake, next_state):
+    # "Zuletzt:" names only a print that completed last: A completes, B starts and is
+    # cancelled or fails (the source then reports idle without a last job of its own).
+    fake.result = finished(common, filename="A", ended_at=NOW - timedelta(minutes=5))
+    assert mod.fetch(OPTS, ctx())["label"] == "Fertig"
+    fake.result = common.PrinterStatus(next_state, filename="B")
+    mod.fetch(OPTS, ctx())
+    fake.result = common.PrinterStatus("idle")
+    d = mod.fetch(OPTS, ctx())
+    assert (d["view"], d["big"], d["lines"]) == ("idle", "Bereit", [])
+    fake.result = common.PrinterStatus("offline", powered_off=True)
+    assert mod.settle(fake.result, KEY, 120, NOW).last_job is None
+
+
 def test_memory_key(mod):
     assert mod.memory_key({"source": "hass", "url": "http://homeassistant.lan:8123",
                            "integration": "moonraker", "device": "voron"}) == (
@@ -340,6 +355,8 @@ def test_validate_ok(mod, fake):
     ({**OPTS, "finished_for": "120"}, "finished_for"),
     ({**OPTS, "finish_for": 60}, "finish_for"),
     ({**OPTS, "token": "t"}, "'token'.*'fake'"),
+    ({"source": ["fake"], "url": URL}, "source must be one of"),   # unhashable: no TypeError
+    ({"source": {"fake": 1}, "url": URL}, "source must be one of"),
 ])
 def test_validate_rejects(mod, fake, options, match):
     with pytest.raises(ValueError, match=match):
