@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/). Firmware and server share one version (`VERSION`).
 
-## [Unreleased]
+## [0.8.0]
 
 New page `printer`: one 3D printer at a glance, with state, progress, time left, finish time,
 layer, file name, the slicer's preview picture and nozzle/bed temperatures. The status comes
