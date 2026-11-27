@@ -330,6 +330,54 @@ def test_moonraker_progress_counts_only_while_printing(ha, load, job, progress):
     assert ha.status_from(data, MOON, NOW).progress == (47.0 if progress is not None else None)
 
 
+def heating(load, **changes):
+    """The device's answer right after a print started (real values of 2026-11-27): the
+    integration's time left is print_duration / progress - print_duration, 0.0 h while
+    print_duration is still 0 (heating); the slicer's estimate is already there."""
+    data = device(load, sensor__ender5_printer_state="ready",
+                  sensor__ender5_current_print_state="printing",
+                  sensor__ender5_progress="0.0424377114905688",
+                  sensor__ender5_print_time_left="0.0", sensor__ender5_print_duration="0.0",
+                  sensor__ender5_slicer_print_time_left_estimate="1.27527777777778")
+    for key, value in changes.items():
+        data = set_state(data, key.replace("__", "."), value)
+    return data
+
+
+@pytest.mark.parametrize("job", ["printing", "paused"])
+def test_moonraker_time_left_before_one_percent_is_the_slicers(ha, load, job):
+    data = heating(load, sensor__ender5_current_print_state=job)
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.remaining_s, status.eta) == (4591, None)
+    # the integration's ETA comes from the same file estimate: dropped with it (the page
+    # derives the ETA from the time left)
+    data = set_state(data, "sensor.ender5_print_eta", "2026-11-25T14:51:00+00:00")
+    status = ha.status_from(data, ENDER, NOW)
+    assert (status.remaining_s, status.eta) == (4591, None)
+
+
+@pytest.mark.parametrize(("progress", "left", "slicer", "remaining"), [
+    ("0.5", "3.0", "1.0", 3600),       # below 1 %: the file estimate is noise (Mainsail, Fluidd)
+    ("12.0", "0.0", "1.0", 3600),      # 0.0 h mid-print: not computed (print_duration 0)
+    ("12.0", "unknown", "1.0", None),  # no time left entity value: stays unknown
+    ("12.0", "2.0", "1.0", 7200),      # from 1 %: the integration's own value
+    ("1.0", "2.0", "1.0", 7200),
+    ("0.0", "0.0", "0.0", None),       # slicer estimate used up or missing: unknown
+    ("0.0", "0.0", "unavailable", None),
+    ("0.0", "0.0", None, None),
+])
+def test_moonraker_time_left_falls_back_to_slicer(ha, load, progress, left, slicer, remaining):
+    data = heating(load, sensor__ender5_progress=progress, sensor__ender5_print_time_left=left,
+                   sensor__ender5_slicer_print_time_left_estimate=slicer)
+    assert ha.status_from(data, ENDER, NOW).remaining_s == remaining
+
+
+def test_slicer_time_left_only_for_the_moonraker_preset(ha, load):
+    data = states(load, "bambu_lab")
+    data["sensor.x1c_remaining_time"]["state"] = "0.0"
+    assert ha.status_from(data, options("bambu_lab"), NOW).remaining_s == 0
+
+
 @pytest.mark.parametrize("integration", list(STATE))
 @pytest.mark.parametrize("word", ["unavailable", "unknown", "Unavailable "])
 def test_unavailable_and_unknown_state_is_offline(ha, load, integration, word):
@@ -524,7 +572,8 @@ def test_fetch_calls_each_entity_once_then_the_image(ha, load, route):
         "sensor.voron_progress", "sensor.voron_print_time_left", "sensor.voron_print_eta",
         "sensor.voron_filename", "sensor.voron_extruder_temperature",
         "number.voron_extruder_target", "sensor.voron_bed_temperature",
-        "number.voron_bed_target", "sensor.voron_current_layer", "sensor.voron_total_layer"]
+        "number.voron_bed_target", "sensor.voron_current_layer", "sensor.voron_total_layer",
+        "sensor.voron_slicer_print_time_left_estimate"]
     assert all(c.headers == {"Authorization": "Bearer t0ken"} for c in calls)
     assert [(c.kind, c.url) for c in calls[len(reads):]] == [
         ("bytes", HA + "/api/camera_proxy/camera.voron_thumbnail")]
@@ -740,12 +789,12 @@ def test_budget_like_energy(ha, common, load, monkeypatch):
 
     calls = _timed(monkeypatch, ha, answers, step=1.1)
     status = ha.fetch({**MOON, "lang": "de"}, ctx())
-    assert len(calls) == 12 and all(0 < c.timeout <= 5 for c in calls)
+    assert len(calls) == 13 and all(0 < c.timeout <= 5 for c in calls)
     assert status.state == "printing" and status.thumbnail is None
 
     calls = _timed(monkeypatch, ha, answers, step=0.5)
     assert ha.fetch({**MOON, "lang": "de"}, ctx()).thumbnail is not None
-    assert len(calls) == 13
+    assert len(calls) == 14
 
 
 # --- validation and logs -----------------------------------------------------------------

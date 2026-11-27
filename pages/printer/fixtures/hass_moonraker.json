@@ -131,5 +131,15 @@
       "friendly_name": "Voron Total layer"
     },
     "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_slicer_print_time_left_estimate": {
+    "entity_id": "sensor.voron_slicer_print_time_left_estimate",
+    "state": "1.25",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "friendly_name": "Voron Slicer print time left estimate"
+    },
+    "last_changed": "2026-11-25T13:00:00+00:00"
   }
 }

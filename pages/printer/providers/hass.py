@@ -89,6 +89,7 @@ class Preset:
     klippy_message: str | None = None    # moonraker: Klipper's state_message (optional)
     print_message: str | None = None     # moonraker: print_stats.message (optional)
     progress_while_printing: bool = False  # moonraker: the sensor says 0.0 outside a print
+    slicer_remaining: str | None = None  # moonraker: time left before the file estimate counts
     finished_at_100: bool = False        # octoprint: operational + progress >= 100
 
 
@@ -104,7 +105,8 @@ PRESETS: dict[str, Preset] = {
         states={"printing": ("printing",), "paused": ("paused",), "finished": ("complete",),
                 "error": ("error",), "idle": ("standby", "cancelled")},
         klippy="sensor.{d}_printer_state", klippy_message="sensor.{d}_printer_message",
-        print_message="sensor.{d}_current_print_message", progress_while_printing=True),
+        print_message="sensor.{d}_current_print_message", progress_while_printing=True,
+        slicer_remaining="sensor.{d}_slicer_print_time_left_estimate"),
     "octoprint": Preset(
         entities={
             "state": "sensor.{d}_current_state", "progress": "sensor.{d}_job_percentage",
@@ -357,12 +359,23 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
         progress = None
 
     remaining = number(get("remaining"))
+    remaining_s = None if remaining is None else seconds(remaining,
+                                                         _unit(states, ref.get("remaining")))
     eta = _time(get("eta"), now)
+    if state in ("printing", "paused") and (entity := _preset_entity(options, "slicer_remaining")) \
+            and ((progress is not None and progress < 1) or remaining_s == 0):
+        # The integration's time left is print_duration / progress - print_duration: 0.0 h
+        # while print_duration is 0 (heating) and noise below 1 %; there the slicer's
+        # estimate counts, as in Mainsail, Fluidd and the direct source (moonraker.py). The
+        # integration's ETA comes from the same file estimate, so the page derives it instead.
+        slicer = number(_value(states, Ref(entity, None)))
+        unit = _unit(states, Ref(entity, None))
+        remaining_s = seconds(slicer, unit) if slicer is not None and slicer > 0 else None
+        eta = None
     filename = get("filename")
     return PrinterStatus(
         state, progress=progress,
-        remaining_s=None if remaining is None else seconds(remaining,
-                                                           _unit(states, ref.get("remaining"))),
+        remaining_s=remaining_s,
         eta=eta if eta is not None and eta >= now else None,
         filename=clean_filename(filename) if isinstance(filename, str) else None,
         nozzle=temp(get("nozzle"), get("nozzle_target")) if heaters else None,
@@ -432,6 +445,9 @@ def fetch(options: dict, ctx) -> PrinterStatus:
     read(first)
     read(_messages(states, options))      # only what the state and Klippy's state call for
     read(rest)
+    if (slicer := _preset_entity(options, "slicer_remaining")) \
+            and _job_word(states, options) in ("printing", "paused"):
+        read([slicer])                    # only a print has a time left
 
     status = status_from(states, options, ctx.now)
     if (options.get("thumbnail", True) and status.state in _JOB_STATES and "thumbnail" in ref
