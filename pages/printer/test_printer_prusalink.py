@@ -172,7 +172,7 @@ def test_error_keeps_the_job(pl, load, route):
 
 # --- authentication ---------------------------------------------------------------------
 
-@pytest.mark.parametrize(("extra", "user"), [({}, "maker"), ({"user": "robin"}, "robin")])
+@pytest.mark.parametrize(("extra", "user"), [({}, "maker"), ({"user": "tester"}, "tester")])
 def test_digest_auth_by_default(pl, load, route, extra, user):
     calls = route(answers(load))
     pl.fetch({**OPTS, **extra}, ctx())
@@ -286,8 +286,8 @@ def test_failed_job_call_leaves_the_file_out(pl, load, route, answer):
 @pytest.mark.parametrize(("options", "match"), [
     ({}, "password or api_key"),
     ({"password": "p", "api_key": "k"}, "not both"),
-    ({"user": "robin"}, "user"),
-    ({"user": "robin", "api_key": "k"}, "user"),
+    ({"user": "tester"}, "user"),
+    ({"user": "tester", "api_key": "k"}, "user"),
     ({"user": 5, "password": "p"}, "user"),
     ({"user": "", "password": "p"}, "user"),
     ({"password": 5}, "password"),
@@ -303,7 +303,7 @@ def test_validate(pl, mod, options, match):
 
 
 def test_validate_accepts(pl, mod):
-    for extra in ({"password": "p"}, {"user": "robin", "password": "p"}, {"api_key": "k"}):
+    for extra in ({"password": "p"}, {"user": "tester", "password": "p"}, {"api_key": "k"}):
         mod.validate({"source": "prusalink", "url": BASE, **extra})
     with pytest.raises(ValueError, match="'token'.*'prusalink'"):
         mod.validate({"source": "prusalink", "url": BASE, "password": "p", "token": "t"})
