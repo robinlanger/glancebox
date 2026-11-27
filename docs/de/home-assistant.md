@@ -41,7 +41,7 @@ Format wie die [Konfiguration](configuration.md) des Docker-Setups, mit zwei Unt
 
 - `timezone`, `lang` und der Ort einer `weather`-Seite sind optional; ohne sie gelten die Werte
   aus Home Assistant. Was du selbst einträgst, hat immer Vorrang.
-- Eine `homeassistant`- oder `energy`-Seite braucht weder `url` noch `token`; sie liest aus diesem Home Assistant.
+- Eine `homeassistant`- oder `energy`-Seite und eine `printer`-Seite mit `source: hass` brauchen weder `url` noch `token`; sie lesen aus diesem Home Assistant. Eine `printer`-Seite, die den Drucker direkt liest (Moonraker, OctoPrint, PrusaLink), braucht ihre `url`; ihren Key oder ihr Passwort trägst du unter „Weitere Geheimnisse“ ein (siehe unten).
 
 Ist der Ordner leer (das Add-on konnte die Startdatei dort nicht speichern), zeigt die Benutzeroberfläche
 des Add-ons den Startinhalt: Lege damit im File editor die `config.yaml` an.
@@ -53,7 +53,7 @@ Starte das Add-on nach dem Bearbeiten neu.
 Der Tab **Konfiguration** des Add-ons enthält nur Geheimnisse, alle optional: den Push-Key für die
 Claude-Limits (wird automatisch verwendet), die Keys für die Anbieter der `ai`-Seite (in der
 `config.yaml` als `${ANTHROPIC_ADMIN_KEY}`, `${OPENAI_ADMIN_KEY}`, `${XAI_MANAGEMENT_KEY}`,
-`${GITHUB_COPILOT_TOKEN}`) und „Weitere Geheimnisse“ für eigene Seiten (`${NAME}`). Geheimnisse
+`${GITHUB_COPILOT_TOKEN}`) und „Weitere Geheimnisse“ für eigene Seiten und für Key oder Passwort eines direkt gelesenen Druckers (`${NAME}`, zum Beispiel `${OCTOPRINT_KEY}`). Geheimnisse
 müssen nie im Klartext in der `config.yaml` stehen.
 
 ## Sicherheit

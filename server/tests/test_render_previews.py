@@ -1,4 +1,5 @@
 import importlib.util
+import io
 from pathlib import Path
 
 from PIL import Image
@@ -53,3 +54,31 @@ def test_right_arrow_points_right():
     img = _paint("r")
     cy = 67 + 15 // 2
     assert _leftmost(img, cy, 64, 82) > _leftmost(img, cy - 5, 64, 82)
+
+
+def test_sample_thumbnail_is_a_small_own_drawing():
+    png = _load().sample_thumbnail()
+    assert len(png) < 20000
+    img = Image.open(io.BytesIO(png))
+    assert img.format == "PNG"
+    assert img.size == (300, 300)
+    colors = {c for _, c in img.convert("RGB").getcolors(300 * 300)}
+    assert (0xD9, 0x82, 0x2B) in colors
+    assert (0xF2, 0xA2, 0x4A) in colors
+
+
+PRINTER_VIEWS = {"printer-printing": ("job", "Printing"), "printer-finished": ("job", "Finished"),
+                 "printer-error": ("job", "Error"), "printer-idle": ("idle", "Ready")}
+
+
+def test_printer_samples_build():
+    module = _load()
+    for name, (view, text) in PRINTER_VIEWS.items():
+        ptype, options, sample = module.SAMPLES[name]
+        assert ptype == "printer"
+        data = module._printer_data(options, sample)
+        assert data["view"] == view, name
+        assert data["clock"] == "14:32", name
+        assert text in (data["label"], data["big"]), name
+        if name != "printer-idle":
+            assert data["thumb"].startswith("data:image/png;base64,"), name

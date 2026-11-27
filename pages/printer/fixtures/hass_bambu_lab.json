@@ -1,0 +1,119 @@
+{
+  "sensor.x1c_print_status": {
+    "entity_id": "sensor.x1c_print_status",
+    "state": "running",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "failed",
+        "finish",
+        "idle",
+        "init",
+        "offline",
+        "pause",
+        "prepare",
+        "running",
+        "slicing",
+        "unknown"
+      ],
+      "friendly_name": "X1C Print status"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_print_progress": {
+    "entity_id": "sensor.x1c_print_progress",
+    "state": "47.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "friendly_name": "X1C Print progress"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_remaining_time": {
+    "entity_id": "sensor.x1c_remaining_time",
+    "state": "1.38",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "friendly_name": "X1C Remaining time"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_end_time": {
+    "entity_id": "sensor.x1c_end_time",
+    "state": "2026-11-25T14:55:00+00:00",
+    "attributes": {
+      "device_class": "timestamp",
+      "friendly_name": "X1C End time"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_task_name": {
+    "entity_id": "sensor.x1c_task_name",
+    "state": "benchy_0.2mm_PLA.gcode",
+    "attributes": {
+      "friendly_name": "X1C Task name"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_nozzle_temperature": {
+    "entity_id": "sensor.x1c_nozzle_temperature",
+    "state": "214.2",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "X1C Nozzle temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_nozzle_target_temperature": {
+    "entity_id": "sensor.x1c_nozzle_target_temperature",
+    "state": "215.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "X1C Nozzle target temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_bed_temperature": {
+    "entity_id": "sensor.x1c_bed_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "X1C Bed temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_bed_target_temperature": {
+    "entity_id": "sensor.x1c_bed_target_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "X1C Bed target temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_current_layer": {
+    "entity_id": "sensor.x1c_current_layer",
+    "state": "112",
+    "attributes": {
+      "friendly_name": "X1C Current layer"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.x1c_total_layer_count": {
+    "entity_id": "sensor.x1c_total_layer_count",
+    "state": "240",
+    "attributes": {
+      "friendly_name": "X1C Total layer count"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  }
+}

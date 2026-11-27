@@ -4,7 +4,71 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/). Firmware and server share one version (`VERSION`).
 
-## [Unreleased]
+## [0.8.0]
+
+New page `printer`: one 3D printer at a glance, with state, progress, time left, finish time,
+layer, file name, the slicer's preview picture and nozzle/bed temperatures. The status comes
+directly from Moonraker (Klipper), OctoPrint or PrusaLink, or from the printer's entities in
+Home Assistant. Server only; no firmware change.
+
+Checked (2026-11-25) with fixtures, answers rebuilt by hand from the documentation and
+source code of Moonraker master b559b9a8 (with Klipper 7558e8c2, Mainsail ce96e4d7, Fluidd
+8509fc70), OctoPrint 2.0.2 with the Slicer Thumbnails plugin
+(OctoPrint-PrusaSlicerThumbnails) 1.2.4, Prusa-Firmware-Buddy v8.0.2 and,
+for Home Assistant, moonraker-home-assistant v1.14.0, the core integrations OctoPrint and
+PrusaLink (dev), ha-bambulab v2.4.1 and ha_creality_ws v0.9.10; the layout in the browser
+render tests. The Moonraker source also ran against the simulator virtual-klipper-printer
+e272bcd (Moonraker b559b9a, Klipper v0.14.0) in Docker: printing with preview picture, time
+left and layer, paused, finished, ready with the last print, cancelled, Klippy shutdown, print
+error, Klippy starting and Moonraker stopped; two fixes came from it (time left before the
+first extrusion, only the cause of a shutdown message). The OctoPrint source ran against
+OctoPrint's Virtual Printer, in Docker with OctoPrint 1.11.8 and from PyPI with OctoPrint 2.0.2:
+not connected, ready, printing, paused, resumed, finished, ready with the last print (1.11.8),
+cancelled, firmware error, disconnected and a wrong key; the preview picture with the Slicer
+Thumbnails plugin 1.2.4 on 1.11.8 (installed with `--no-deps`, its Pillow 13 needs Python 3.11)
+and from OctoPrint's own thumbnails on 2.0.2; no fix was needed. OctoPrint 2.0.2 drops the
+error text once it closes the connection after a firmware error, so the page shows "Error"
+without the cause there.
+Checked on a real printer (2026-11-25 and 2026-11-27): a Creality Ender 5 with its own Klipper
+firmware (Klipper, Moonraker and Mainsail in Docker through prind, Moonraker without API key),
+test prints from OrcaSlicer. Moonraker directly: switched off while the host runs ("Printer
+off", "Last:" only after a completed print), a print error from Klipper (red with its message
+and the preview picture), ready, heating at the start, printing (percentage, time left, finish
+time, layer, preview picture), cancelled, finished with duration, ready with the last print
+after `finished_for`. Through Home Assistant 2026.11.2 with moonraker-home-assistant 1.14.0
+(installed by hand, without HACS) the same print: switched off (about 35 s after the direct
+source), a Klipper restart ("Printer not reachable" for about 30 s), print error, heating,
+printing, cancelled, finished (without duration and picture, the integration empties them),
+ready with the last print. Four fixes came from it: a switched-off Klipper printer shows
+"Printer off" directly and through Home Assistant; through Home Assistant the slicer's estimate
+below 1 % (the integration reports 0 while heating), and progress, time left and layer only
+while printing (the integration reports 0 otherwise). Seen: through Home Assistant the layer
+can be one lower than in Mainsail at a layer change (the integration's own calculation).
+Not checked: any other real printer (OctoPrint, PrusaLink) and any other Home Assistant
+integration, the display itself, and the Home Assistant add-on; on the Klipper printer not a
+real pause and resume, "Klipper not connected", an API key, a reverse proxy, Fluidd and an
+install through HACS; in the Moonraker simulator not JPEG previews and Moonraker without
+history; with OctoPrint not a print from the SD card or a reverse proxy.
+
+### Added
+- Page `printer` with `source: moonraker | octoprint | prusalink | hass`. With `hass`,
+  `integration:` picks a preset for `moonraker` (HACS), `octoprint`, `prusalink` (core),
+  `bambu_lab`, `creality` (HACS) or `custom`; `device:` is the entity prefix, `entities:`
+  replaces single entities (also `sensor.x#attribute`), `states:` maps extra raw state words.
+  Options `api_key`, `user`/`password` (PrusaLink, HTTP Digest), `token`, `title`,
+  `thumbnail`, `finished_for` (minutes "Finished" stays, default 120, 0 = never) and `refresh`
+  (default 10 s, at least 5). The slicer preview (at most 512 KiB, PNG or JPEG) is scaled
+  down and embedded in the page; an unreadable image only leaves the picture out. A refused key
+  or password shows "Access denied", a switched-off printer "Printer not reachable" in grey;
+  a Klipper printer switched off while its host runs ("Lost communication with MCU") shows
+  "Printer off" in grey with the last print, without the frozen temperatures, directly and
+  through the Home Assistant Moonraker integration (which also passes on Klipper's message).
+  In the add-on, `source: hass` needs neither `url` nor `token`. Docs: `printer` in the
+  template catalog, with an honest "Tested with" table.
+- `glancebox.http.get_bytes(url, max_bytes=...)` for your own pages: fetches an image and
+  returns `(bytes, mime)`, only `image/png` and `image/jpeg`, with a size limit and without
+  following redirects. `get_json` and `get_bytes` take `auth=` (for example HTTP Digest), and
+  `get_json` returns `None` on HTTP 204.
 
 ## [0.7.1]
 

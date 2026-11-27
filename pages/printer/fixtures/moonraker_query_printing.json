@@ -1,0 +1,28 @@
+{
+  "result": {
+    "eventtime": 578243.57824499,
+    "status": {
+      "webhooks": {"state": "ready", "state_message": "Printer is ready"},
+      "print_stats": {
+        "filename": "benchy_0.2mm_PLA.gcode",
+        "total_duration": 4925.0,
+        "print_duration": 4800.0,
+        "filament_used": 1830.5,
+        "state": "printing",
+        "message": "",
+        "info": {"current_layer": null, "total_layer": null}
+      },
+      "virtual_sdcard": {
+        "file_path": "/home/klipper/printer_data/gcodes/benchy_0.2mm_PLA.gcode",
+        "progress": 0.45,
+        "is_active": true,
+        "file_position": 95000,
+        "file_size": 210000
+      },
+      "display_status": {"progress": 0.46, "message": null},
+      "extruder": {"temperature": 214.2, "target": 215.0, "power": 0.42},
+      "heater_bed": {"temperature": 60.0, "target": 60.0, "power": 0.18},
+      "gcode_move": {"gcode_position": [120.0, 95.0, 22.4, 1830.5]}
+    }
+  }
+}

@@ -1,0 +1,630 @@
+{
+  "sensor.ender5_printer_state": {
+    "entity_id": "sensor.ender5_printer_state",
+    "state": "shutdown",
+    "attributes": {
+      "options": [
+        "ready",
+        "startup",
+        "shutdown",
+        "error"
+      ],
+      "device_class": "enum",
+      "friendly_name": "ender5 Printer State"
+    },
+    "last_changed": "2026-11-25T17:44:12.412585+00:00",
+    "last_reported": "2026-11-25T17:44:18.024041+00:00",
+    "last_updated": "2026-11-25T17:44:12.412585+00:00"
+  },
+  "sensor.ender5_printer_message": {
+    "entity_id": "sensor.ender5_printer_message",
+    "state": "Lost communication with MCU 'mcu'\nOnce the underlying issue is corrected, use the\n\"FIRMWARE_RESTART\" command to reset the firmware, reload the\nconfig, and restart the host software.\nPrinter is shutdown\n",
+    "attributes": {
+      "friendly_name": "ender5 Printer Message"
+    },
+    "last_changed": "2026-11-25T17:44:12.413621+00:00",
+    "last_reported": "2026-11-25T17:44:18.024264+00:00",
+    "last_updated": "2026-11-25T17:44:12.413621+00:00"
+  },
+  "sensor.ender5_current_print_state": {
+    "entity_id": "sensor.ender5_current_print_state",
+    "state": "complete",
+    "attributes": {
+      "options": [
+        "standby",
+        "printing",
+        "paused",
+        "complete",
+        "cancelled",
+        "error"
+      ],
+      "device_class": "enum",
+      "friendly_name": "ender5 Current Print State"
+    },
+    "last_changed": "2026-11-25T17:44:12.414517+00:00",
+    "last_reported": "2026-11-25T17:44:18.024398+00:00",
+    "last_updated": "2026-11-25T17:44:12.414517+00:00"
+  },
+  "sensor.ender5_current_print_message": {
+    "entity_id": "sensor.ender5_current_print_message",
+    "state": "",
+    "attributes": {
+      "friendly_name": "ender5 Current Print Message"
+    },
+    "last_changed": "2026-11-25T17:44:12.415406+00:00",
+    "last_reported": "2026-11-25T17:44:18.024574+00:00",
+    "last_updated": "2026-11-25T17:44:12.415406+00:00"
+  },
+  "sensor.ender5_idle_timeout_state": {
+    "entity_id": "sensor.ender5_idle_timeout_state",
+    "state": "Ready",
+    "attributes": {
+      "options": [
+        "Printing",
+        "Ready",
+        "Idle",
+        "Standby",
+        "Paused",
+        "Complete"
+      ],
+      "device_class": "enum",
+      "friendly_name": "ender5 Idle Timeout State"
+    },
+    "last_changed": "2026-11-25T17:44:12.416314+00:00",
+    "last_reported": "2026-11-25T17:44:18.024715+00:00",
+    "last_updated": "2026-11-25T17:44:12.416314+00:00"
+  },
+  "sensor.ender5_current_display_message": {
+    "entity_id": "sensor.ender5_current_display_message",
+    "state": "",
+    "attributes": {
+      "friendly_name": "ender5 Current Display Message"
+    },
+    "last_changed": "2026-11-25T17:44:12.418551+00:00",
+    "last_reported": "2026-11-25T17:44:18.024829+00:00",
+    "last_updated": "2026-11-25T17:44:12.418551+00:00"
+  },
+  "sensor.ender5_filename": {
+    "entity_id": "sensor.ender5_filename",
+    "state": "calibration_cube_0.2mm.gcode",
+    "attributes": {
+      "friendly_name": "ender5 Filename"
+    },
+    "last_changed": "2026-11-25T17:44:12.419463+00:00",
+    "last_reported": "2026-11-25T17:44:18.025004+00:00",
+    "last_updated": "2026-11-25T17:44:12.419463+00:00"
+  },
+  "sensor.ender5_print_projected_total_duration": {
+    "entity_id": "sensor.ender5_print_projected_total_duration",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Print Projected Total Duration"
+    },
+    "last_changed": "2026-11-25T17:44:12.421338+00:00",
+    "last_reported": "2026-11-25T17:44:18.025229+00:00",
+    "last_updated": "2026-11-25T17:44:12.421338+00:00"
+  },
+  "sensor.ender5_print_time_left": {
+    "entity_id": "sensor.ender5_print_time_left",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Print Time Left"
+    },
+    "last_changed": "2026-11-25T17:44:12.426824+00:00",
+    "last_reported": "2026-11-25T17:44:18.025405+00:00",
+    "last_updated": "2026-11-25T17:44:12.426824+00:00"
+  },
+  "sensor.ender5_print_eta": {
+    "entity_id": "sensor.ender5_print_eta",
+    "state": "unknown",
+    "attributes": {
+      "device_class": "timestamp",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Print ETA"
+    },
+    "last_changed": "2026-11-25T17:44:12.429041+00:00",
+    "last_reported": "2026-11-25T17:44:18.025577+00:00",
+    "last_updated": "2026-11-25T17:44:12.429041+00:00"
+  },
+  "sensor.ender5_slicer_print_duration_estimate": {
+    "entity_id": "sensor.ender5_slicer_print_duration_estimate",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Slicer Print Duration Estimate"
+    },
+    "last_changed": "2026-11-25T17:44:12.431703+00:00",
+    "last_reported": "2026-11-25T17:44:18.025729+00:00",
+    "last_updated": "2026-11-25T17:44:12.431703+00:00"
+  },
+  "sensor.ender5_slicer_print_time_left_estimate": {
+    "entity_id": "sensor.ender5_slicer_print_time_left_estimate",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Slicer Print Time Left Estimate"
+    },
+    "last_changed": "2026-11-25T17:44:12.434369+00:00",
+    "last_reported": "2026-11-25T17:44:18.025869+00:00",
+    "last_updated": "2026-11-25T17:44:12.434369+00:00"
+  },
+  "sensor.ender5_print_duration": {
+    "entity_id": "sensor.ender5_print_duration",
+    "state": "80.89897700635",
+    "attributes": {
+      "unit_of_measurement": "min",
+      "device_class": "duration",
+      "icon": "mdi:timer",
+      "friendly_name": "ender5 Print Duration"
+    },
+    "last_changed": "2026-11-25T17:44:12.436897+00:00",
+    "last_reported": "2026-11-25T17:44:18.026098+00:00",
+    "last_updated": "2026-11-25T17:44:12.436897+00:00"
+  },
+  "sensor.ender5_filament_used": {
+    "entity_id": "sensor.ender5_filament_used",
+    "state": "5.18547322999971",
+    "attributes": {
+      "unit_of_measurement": "m",
+      "icon": "mdi:tape-measure",
+      "friendly_name": "ender5 Filament Used"
+    },
+    "last_changed": "2026-11-25T17:44:12.443367+00:00",
+    "last_reported": "2026-11-25T17:44:18.026244+00:00",
+    "last_updated": "2026-11-25T17:44:12.443367+00:00"
+  },
+  "sensor.ender5_progress": {
+    "entity_id": "sensor.ender5_progress",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "icon": "mdi:percent",
+      "friendly_name": "ender5 Progress"
+    },
+    "last_changed": "2026-11-25T17:44:12.448516+00:00",
+    "last_reported": "2026-11-25T17:44:18.026385+00:00",
+    "last_updated": "2026-11-25T17:44:12.448516+00:00"
+  },
+  "sensor.ender5_print_speed": {
+    "entity_id": "sensor.ender5_print_speed",
+    "state": "0.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "mm/s",
+      "icon": "mdi:speedometer",
+      "friendly_name": "ender5 Print Speed"
+    },
+    "last_changed": "2026-11-25T17:44:12.451340+00:00",
+    "last_reported": "2026-11-25T17:44:18.026565+00:00",
+    "last_updated": "2026-11-25T17:44:12.451340+00:00"
+  },
+  "sensor.ender5_total_layer": {
+    "entity_id": "sensor.ender5_total_layer",
+    "state": "0.0",
+    "attributes": {
+      "state_class": "measurement",
+      "icon": "mdi:layers-triple",
+      "friendly_name": "ender5 Total Layer"
+    },
+    "last_changed": "2026-11-25T17:44:12.453709+00:00",
+    "last_reported": "2026-11-25T17:44:18.026803+00:00",
+    "last_updated": "2026-11-25T17:44:12.453709+00:00"
+  },
+  "sensor.ender5_current_layer": {
+    "entity_id": "sensor.ender5_current_layer",
+    "state": "0",
+    "attributes": {
+      "state_class": "measurement",
+      "icon": "mdi:layers-edit",
+      "friendly_name": "ender5 Current Layer"
+    },
+    "last_changed": "2026-11-25T17:44:12.456058+00:00",
+    "last_reported": "2026-11-25T17:44:18.027039+00:00",
+    "last_updated": "2026-11-25T17:44:12.456058+00:00"
+  },
+  "sensor.ender5_toolhead_position_x": {
+    "entity_id": "sensor.ender5_toolhead_position_x",
+    "state": "5.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "mm",
+      "icon": "mdi:axis-x-arrow",
+      "friendly_name": "ender5 Toolhead position X"
+    },
+    "last_changed": "2026-11-25T17:44:12.458588+00:00",
+    "last_reported": "2026-11-25T17:44:18.027134+00:00",
+    "last_updated": "2026-11-25T17:44:12.458588+00:00"
+  },
+  "sensor.ender5_toolhead_position_y": {
+    "entity_id": "sensor.ender5_toolhead_position_y",
+    "state": "176.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "mm",
+      "icon": "mdi:axis-y-arrow",
+      "friendly_name": "ender5 Toolhead position Y"
+    },
+    "last_changed": "2026-11-25T17:44:12.461465+00:00",
+    "last_reported": "2026-11-25T17:44:18.027196+00:00",
+    "last_updated": "2026-11-25T17:44:12.461465+00:00"
+  },
+  "sensor.ender5_toolhead_position_z": {
+    "entity_id": "sensor.ender5_toolhead_position_z",
+    "state": "180.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "mm",
+      "icon": "mdi:axis-z-arrow",
+      "friendly_name": "ender5 Toolhead position Z"
+    },
+    "last_changed": "2026-11-25T17:44:12.464164+00:00",
+    "last_reported": "2026-11-25T17:44:18.027252+00:00",
+    "last_updated": "2026-11-25T17:44:12.464164+00:00"
+  },
+  "sensor.ender5_object_height": {
+    "entity_id": "sensor.ender5_object_height",
+    "state": "0.0",
+    "attributes": {
+      "unit_of_measurement": "mm",
+      "device_class": "distance",
+      "icon": "mdi:axis-z-arrow",
+      "friendly_name": "ender5 Object Height"
+    },
+    "last_changed": "2026-11-25T17:44:12.471132+00:00",
+    "last_reported": "2026-11-25T17:44:18.027319+00:00",
+    "last_updated": "2026-11-25T17:44:12.471132+00:00"
+  },
+  "sensor.ender5_system_load": {
+    "entity_id": "sensor.ender5_system_load",
+    "state": "0.4697265625",
+    "attributes": {
+      "state_class": "measurement",
+      "icon": "mdi:cpu-64-bit",
+      "friendly_name": "ender5 System Load"
+    },
+    "last_changed": "2026-11-25T17:44:47.615400+00:00",
+    "last_reported": "2026-11-25T17:44:47.615400+00:00",
+    "last_updated": "2026-11-25T17:44:47.615400+00:00"
+  },
+  "sensor.ender5_memory_used": {
+    "entity_id": "sensor.ender5_memory_used",
+    "state": "38.586090610661",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:memory",
+      "friendly_name": "ender5 Memory Used"
+    },
+    "last_changed": "2026-11-25T17:44:47.615710+00:00",
+    "last_reported": "2026-11-25T17:44:47.615710+00:00",
+    "last_updated": "2026-11-25T17:44:47.615710+00:00"
+  },
+  "button.ender5_emergency_stop": {
+    "entity_id": "button.ender5_emergency_stop",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:alert-octagon-outline",
+      "friendly_name": "ender5 Emergency Stop"
+    },
+    "last_changed": "2026-11-25T17:44:12.485934+00:00",
+    "last_reported": "2026-11-25T17:44:18.027740+00:00",
+    "last_updated": "2026-11-25T17:44:12.485934+00:00"
+  },
+  "button.ender5_pause_print": {
+    "entity_id": "button.ender5_pause_print",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:pause",
+      "friendly_name": "ender5 Pause Print"
+    },
+    "last_changed": "2026-11-25T17:44:12.488738+00:00",
+    "last_reported": "2026-11-25T17:44:18.027796+00:00",
+    "last_updated": "2026-11-25T17:44:12.488738+00:00"
+  },
+  "button.ender5_resume_print": {
+    "entity_id": "button.ender5_resume_print",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:play",
+      "friendly_name": "ender5 Resume Print"
+    },
+    "last_changed": "2026-11-25T17:44:12.498597+00:00",
+    "last_reported": "2026-11-25T17:44:18.027828+00:00",
+    "last_updated": "2026-11-25T17:44:12.498597+00:00"
+  },
+  "button.ender5_cancel_print": {
+    "entity_id": "button.ender5_cancel_print",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:stop",
+      "friendly_name": "ender5 Cancel Print"
+    },
+    "last_changed": "2026-11-25T17:44:12.500933+00:00",
+    "last_reported": "2026-11-25T17:44:18.027856+00:00",
+    "last_updated": "2026-11-25T17:44:12.500933+00:00"
+  },
+  "button.ender5_home_x_axis": {
+    "entity_id": "button.ender5_home_x_axis",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:axis-x-arrow",
+      "friendly_name": "ender5 Home X Axis"
+    },
+    "last_changed": "2026-11-25T17:44:12.514316+00:00",
+    "last_reported": "2026-11-25T17:44:18.027884+00:00",
+    "last_updated": "2026-11-25T17:44:12.514316+00:00"
+  },
+  "button.ender5_home_y_axis": {
+    "entity_id": "button.ender5_home_y_axis",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:axis-y-arrow",
+      "friendly_name": "ender5 Home Y Axis"
+    },
+    "last_changed": "2026-11-25T17:44:12.515548+00:00",
+    "last_reported": "2026-11-25T17:44:18.027912+00:00",
+    "last_updated": "2026-11-25T17:44:12.515548+00:00"
+  },
+  "button.ender5_home_z_axis": {
+    "entity_id": "button.ender5_home_z_axis",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:axis-z-arrow",
+      "friendly_name": "ender5 Home Z Axis"
+    },
+    "last_changed": "2026-11-25T17:44:12.516934+00:00",
+    "last_reported": "2026-11-25T17:44:18.027939+00:00",
+    "last_updated": "2026-11-25T17:44:12.516934+00:00"
+  },
+  "button.ender5_home_all_axes": {
+    "entity_id": "button.ender5_home_all_axes",
+    "state": "unknown",
+    "attributes": {
+      "icon": "mdi:axis-arrow",
+      "friendly_name": "ender5 Home All Axes"
+    },
+    "last_changed": "2026-11-25T17:44:12.518734+00:00",
+    "last_reported": "2026-11-25T17:44:18.028039+00:00",
+    "last_updated": "2026-11-25T17:44:12.518734+00:00"
+  },
+  "sensor.ender5_mcu_load": {
+    "entity_id": "sensor.ender5_mcu_load",
+    "state": "4.56",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:cpu-64-bit",
+      "friendly_name": "ender5 Mcu Load"
+    },
+    "last_changed": "2026-11-25T17:44:13.509162+00:00",
+    "last_reported": "2026-11-25T17:44:18.028187+00:00",
+    "last_updated": "2026-11-25T17:44:13.509162+00:00"
+  },
+  "sensor.ender5_mcu_awake": {
+    "entity_id": "sensor.ender5_mcu_awake",
+    "state": "0.04",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:cpu-64-bit",
+      "friendly_name": "ender5 Mcu Awake"
+    },
+    "last_changed": "2026-11-25T17:44:13.511935+00:00",
+    "last_reported": "2026-11-25T17:44:18.028332+00:00",
+    "last_updated": "2026-11-25T17:44:13.511935+00:00"
+  },
+  "sensor.ender5_bed_temperature": {
+    "entity_id": "sensor.ender5_bed_temperature",
+    "state": "57.85",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "icon": "mdi:radiator",
+      "friendly_name": "ender5 Bed Temperature"
+    },
+    "last_changed": "2026-11-25T17:44:13.514579+00:00",
+    "last_reported": "2026-11-25T17:44:18.028493+00:00",
+    "last_updated": "2026-11-25T17:44:13.514579+00:00"
+  },
+  "sensor.ender5_bed_power": {
+    "entity_id": "sensor.ender5_bed_power",
+    "state": "0.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:flash",
+      "friendly_name": "ender5 Bed Power"
+    },
+    "last_changed": "2026-11-25T17:44:13.517008+00:00",
+    "last_reported": "2026-11-25T17:44:18.028676+00:00",
+    "last_updated": "2026-11-25T17:44:13.517008+00:00"
+  },
+  "sensor.ender5_fan_speed": {
+    "entity_id": "sensor.ender5_fan_speed",
+    "state": "0.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:fan",
+      "friendly_name": "ender5 Fan Speed"
+    },
+    "last_changed": "2026-11-25T17:44:13.519512+00:00",
+    "last_reported": "2026-11-25T17:44:18.028783+00:00",
+    "last_updated": "2026-11-25T17:44:13.519512+00:00"
+  },
+  "sensor.ender5_extruder_temperature": {
+    "entity_id": "sensor.ender5_extruder_temperature",
+    "state": "171.55",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "icon": "mdi:printer-3d-nozzle-heat",
+      "friendly_name": "ender5 Extruder Temperature"
+    },
+    "last_changed": "2026-11-25T17:44:13.522500+00:00",
+    "last_reported": "2026-11-25T17:44:18.028885+00:00",
+    "last_updated": "2026-11-25T17:44:13.522500+00:00"
+  },
+  "sensor.ender5_extruder_power": {
+    "entity_id": "sensor.ender5_extruder_power",
+    "state": "0.0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "%",
+      "icon": "mdi:flash",
+      "friendly_name": "ender5 Extruder Power"
+    },
+    "last_changed": "2026-11-25T17:44:13.525001+00:00",
+    "last_reported": "2026-11-25T17:44:18.029039+00:00",
+    "last_updated": "2026-11-25T17:44:13.525001+00:00"
+  },
+  "sensor.ender5_totals_jobs": {
+    "entity_id": "sensor.ender5_totals_jobs",
+    "state": "10.0",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "Jobs",
+      "icon": "mdi:numeric",
+      "friendly_name": "ender5 Totals jobs"
+    },
+    "last_changed": "2026-11-25T17:44:16.019789+00:00",
+    "last_reported": "2026-11-25T17:44:18.029139+00:00",
+    "last_updated": "2026-11-25T17:44:16.019789+00:00"
+  },
+  "sensor.ender5_totals_print_time": {
+    "entity_id": "sensor.ender5_totals_print_time",
+    "state": "20h 4m 57s",
+    "attributes": {
+      "icon": "mdi:clock-outline",
+      "friendly_name": "ender5 Totals Print Time"
+    },
+    "last_changed": "2026-11-25T17:44:16.023266+00:00",
+    "last_reported": "2026-11-25T17:44:18.029241+00:00",
+    "last_updated": "2026-11-25T17:44:16.023266+00:00"
+  },
+  "sensor.ender5_totals_filament_used": {
+    "entity_id": "sensor.ender5_totals_filament_used",
+    "state": "65.9931264100034",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "m",
+      "icon": "mdi:clock-outline",
+      "friendly_name": "ender5 Totals Filament Used"
+    },
+    "last_changed": "2026-11-25T17:44:16.025916+00:00",
+    "last_reported": "2026-11-25T17:44:18.029337+00:00",
+    "last_updated": "2026-11-25T17:44:16.025916+00:00"
+  },
+  "sensor.ender5_longest_print": {
+    "entity_id": "sensor.ender5_longest_print",
+    "state": "8h 35m 13s",
+    "attributes": {
+      "icon": "mdi:clock-outline",
+      "friendly_name": "ender5 Longest Print"
+    },
+    "last_changed": "2026-11-25T17:44:16.028655+00:00",
+    "last_reported": "2026-11-25T17:44:18.029425+00:00",
+    "last_updated": "2026-11-25T17:44:16.028655+00:00"
+  },
+  "number.ender5_bed_target": {
+    "entity_id": "number.ender5_bed_target",
+    "state": "0.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 130.0,
+      "step": 1.0,
+      "mode": "slider",
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "icon": "mdi:radiator",
+      "friendly_name": "ender5 Bed Target"
+    },
+    "last_changed": "2026-11-25T17:44:16.524288+00:00",
+    "last_reported": "2026-11-25T17:44:18.029670+00:00",
+    "last_updated": "2026-11-25T17:44:16.524288+00:00"
+  },
+  "number.ender5_extruder_target": {
+    "entity_id": "number.ender5_extruder_target",
+    "state": "0.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 350.0,
+      "step": 1.0,
+      "mode": "slider",
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "icon": "mdi:printer-3d-nozzle-heat",
+      "friendly_name": "ender5 Extruder Target"
+    },
+    "last_changed": "2026-11-25T17:44:16.526717+00:00",
+    "last_reported": "2026-11-25T17:44:18.029825+00:00",
+    "last_updated": "2026-11-25T17:44:16.526717+00:00"
+  },
+  "sensor.ender5_queue_state": {
+    "entity_id": "sensor.ender5_queue_state",
+    "state": "paused",
+    "attributes": {
+      "friendly_name": "ender5 Queue State"
+    },
+    "last_changed": "2026-11-25T17:44:17.025755+00:00",
+    "last_reported": "2026-11-25T17:44:18.029919+00:00",
+    "last_updated": "2026-11-25T17:44:17.025755+00:00"
+  },
+  "sensor.ender5_jobs_in_queue": {
+    "entity_id": "sensor.ender5_jobs_in_queue",
+    "state": "0",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "Jobs",
+      "icon": "mdi:numeric",
+      "friendly_name": "ender5 Jobs in queue"
+    },
+    "last_changed": "2026-11-25T17:44:17.036862+00:00",
+    "last_reported": "2026-11-25T17:44:18.030070+00:00",
+    "last_updated": "2026-11-25T17:44:17.036862+00:00"
+  },
+  "number.ender5_speed_factor": {
+    "entity_id": "number.ender5_speed_factor",
+    "state": "100.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 200.0,
+      "step": 1.0,
+      "mode": "slider",
+      "unit_of_measurement": "%",
+      "icon": "mdi:speedometer",
+      "friendly_name": "ender5 Speed Factor"
+    },
+    "last_changed": "2026-11-25T17:44:17.528698+00:00",
+    "last_reported": "2026-11-25T17:44:18.030219+00:00",
+    "last_updated": "2026-11-25T17:44:17.528698+00:00"
+  },
+  "number.ender5_fan_speed": {
+    "entity_id": "number.ender5_fan_speed",
+    "state": "0.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 100.0,
+      "step": 1.0,
+      "mode": "slider",
+      "unit_of_measurement": "%",
+      "icon": "mdi:fan",
+      "friendly_name": "ender5 Fan Speed"
+    },
+    "last_changed": "2026-11-25T17:44:18.032499+00:00",
+    "last_reported": "2026-11-25T17:44:18.035197+00:00",
+    "last_updated": "2026-11-25T17:44:18.032499+00:00"
+  }
+}

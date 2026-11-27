@@ -53,9 +53,9 @@ pages:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `type` | required | Page type: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `ai` or one of your own. The ready-made ones are described in the [template catalog](templates/README.md). |
+| `type` | required | Page type: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `printer`, `ai` or one of your own. The ready-made ones are described in the [template catalog](templates/README.md). |
 | `duration` | `interval` | How many seconds the page stays on the display. |
-| `refresh` | `duration` | A page is rendered again at most every `refresh` seconds. Use a larger value for data that changes slowly or for services that limit requests. A page type can have its own default and minimum, for example `energy`: default 5, at least 2. |
+| `refresh` | `duration` | A page is rendered again at most every `refresh` seconds. Use a larger value for data that changes slowly or for services that limit requests. A page type can have its own default and minimum, for example `energy`: default 5, at least 2; `printer`: default 10, at least 5. |
 
 All other keys belong to the page type and are described below. Ready-made pages with preview pictures are in the [template catalog](templates/README.md).
 
@@ -174,6 +174,17 @@ Energy flow from Home Assistant in 1 to 4 rows (`grid`, `pv`, `battery`, `gas`, 
     - type: battery
       entity: sensor.battery_power
       soc: sensor.battery_level
+```
+
+## Page type: printer
+
+State, progress, time left and temperatures of one 3D printer, with the slicer's preview picture. `source:` says where the status comes from: `moonraker` (Klipper), `octoprint`, `prusalink` directly from the printer, or `hass` with a preset for the printer's Home Assistant integration (`moonraker`, `octoprint`, `prusalink`, `bambu_lab`, `creality` or `custom`). Without `refresh` the page uses 10 seconds, at least 5. Keys and passwords belong in `.env`, see [Secrets and environment variables](#secrets-and-environment-variables). Checked on a real printer only through Moonraker (Klipper). Full description, options and setup per source: [printer](templates/printer.md).
+
+```yaml
+- type: printer
+  source: moonraker
+  url: http://drucker.local:7125
+  # api_key: ${MOONRAKER_KEY}
 ```
 
 ## Page type: ai

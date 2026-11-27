@@ -1,0 +1,21 @@
+{
+  "result": {
+    "count": 1,
+    "jobs": [
+      {
+        "job_id": "00000A",
+        "exists": true,
+        "end_time": 1795551240.0,
+        "filament_used": 3790.1,
+        "filename": "benchy_0.2mm_PLA.gcode",
+        "metadata": {},
+        "print_duration": 11400.0,
+        "status": "completed",
+        "start_time": 1795539720.0,
+        "total_duration": 11520.0,
+        "user": "_TRUSTED_USER_",
+        "auxiliary_data": []
+      }
+    ]
+  }
+}

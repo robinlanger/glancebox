@@ -103,6 +103,18 @@ def test_ha_defaults_fill_energy_like_homeassistant():
     assert (out["pages"][1]["url"], out["pages"][1]["token"]) == ("http://other:8123", "t")
 
 
+def test_ha_defaults_fill_printer_with_source_hass():
+    hook = ha_defaults(HaInfo("Europe/Berlin", "de", 1.0, 2.0), {"SUPERVISOR_TOKEN": "sup"})
+    via_ha = {"type": "printer", "source": "hass", "integration": "moonraker", "device": "voron"}
+    own = {**via_ha, "url": "http://homeassistant.lan:8123", "token": "t"}
+    direct = {"type": "printer", "source": "moonraker", "url": "http://drucker.local:7125"}
+    out = hook({"pages": [via_ha, own, direct]})
+    assert (out["pages"][0]["url"], out["pages"][0]["token"]) == ("http://supervisor/core", "sup")
+    assert (out["pages"][1]["url"], out["pages"][1]["token"]) == ("http://homeassistant.lan:8123",
+                                                                  "t")
+    assert out["pages"][2] == direct and "token" not in out["pages"][2]
+
+
 def test_ha_defaults_yaml_wins():
     hook = ha_defaults(HaInfo("America/New_York", "en", 1.0, 2.0), {"SUPERVISOR_TOKEN": "s"})
     out = hook({"timezone": "Europe/Berlin", "lang": "de", "pages": [{"type": "clock"}]})

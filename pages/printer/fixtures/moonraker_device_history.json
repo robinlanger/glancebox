@@ -1,0 +1,79 @@
+{
+  "result": {
+    "count": 1,
+    "jobs": [
+      {
+        "job_id": "00000A",
+        "user": "_TRUSTED_USER_",
+        "filename": "calibration_cube_0.2mm.gcode",
+        "status": "completed",
+        "start_time": 1795198169.2201953,
+        "end_time": 1795203197.9235892,
+        "print_duration": 4853.938620380999,
+        "total_duration": 5028.534921762999,
+        "filament_used": 5185.473229999714,
+        "metadata": {
+          "size": 751101,
+          "modified": 1795198168.745985,
+          "uuid": "0b6f3c1e-5a2d-4c7e-9f10-2d3a4b5c6d7e",
+          "file_processors": [],
+          "slicer": "OrcaSlicer",
+          "slicer_version": "2.5.0",
+          "gcode_start_byte": 9610,
+          "gcode_end_byte": 725954,
+          "layer_count": 10,
+          "object_height": 2.0,
+          "estimated_time": 4591,
+          "nozzle_diameter": 0.4,
+          "layer_height": 0.2,
+          "first_layer_height": 0.2,
+          "first_layer_extr_temp": 220.0,
+          "first_layer_bed_temp": 60.0,
+          "chamber_temp": 0.0,
+          "filament_name": "Generic PLA",
+          "filament_type": "PLA",
+          "filament_colors": [
+            "#26A69A"
+          ],
+          "extruder_colors": [
+            "#26A69A"
+          ],
+          "filament_temps": [
+            220
+          ],
+          "referenced_tools": [],
+          "mmu_print": 1,
+          "filament_total": 5189.47,
+          "filament_weight_total": 15.48,
+          "filament_weights": [
+            15.48
+          ],
+          "printer_model": "Generic Klipper Printer",
+          "printer_variant": "0.4",
+          "thumbnails": [
+            {
+              "width": 32,
+              "height": 32,
+              "size": 1323,
+              "relative_path": ".thumbs/calibration_cube_0.2mm-32x32.png"
+            },
+            {
+              "width": 48,
+              "height": 48,
+              "size": 431,
+              "relative_path": ".thumbs/calibration_cube_0.2mm-48x48.png"
+            },
+            {
+              "width": 300,
+              "height": 300,
+              "size": 4315,
+              "relative_path": ".thumbs/calibration_cube_0.2mm-300x300.png"
+            }
+          ]
+        },
+        "auxiliary_data": [],
+        "exists": true
+      }
+    ]
+  }
+}

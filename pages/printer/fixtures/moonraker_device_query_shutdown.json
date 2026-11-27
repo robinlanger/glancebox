@@ -1,0 +1,79 @@
+{
+  "result": {
+    "eventtime": 507050.322122111,
+    "status": {
+      "webhooks": {
+        "state": "shutdown",
+        "state_message": "Lost communication with MCU 'mcu'\nOnce the underlying issue is corrected, use the\n\"FIRMWARE_RESTART\" command to reset the firmware, reload the\nconfig, and restart the host software.\nPrinter is shutdown\n"
+      },
+      "print_stats": {
+        "filename": "calibration_cube_0.2mm.gcode",
+        "total_duration": 5028.534921762999,
+        "print_duration": 4853.938620380999,
+        "filament_used": 5185.473229999714,
+        "state": "complete",
+        "message": "",
+        "info": {
+          "total_layer": null,
+          "current_layer": null
+        }
+      },
+      "virtual_sdcard": {
+        "file_path": null,
+        "progress": 1.0,
+        "is_active": false,
+        "file_position": 751101,
+        "file_size": 751101
+      },
+      "display_status": {
+        "progress": 1.0,
+        "message": null
+      },
+      "extruder": {
+        "temperature": 171.55,
+        "target": 0.0,
+        "power": 0.0,
+        "can_extrude": true,
+        "pressure_advance": 0.0,
+        "smooth_time": 0.04,
+        "motion_queue": null
+      },
+      "heater_bed": {
+        "temperature": 57.85,
+        "target": 0.0,
+        "power": 0.0
+      },
+      "gcode_move": {
+        "speed_factor": 1.0,
+        "speed": 600.0,
+        "extrude_factor": 1.0,
+        "absolute_coordinates": true,
+        "absolute_extrude": false,
+        "homing_origin": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          5.0,
+          176.0,
+          180.0,
+          10072.713319999473
+        ],
+        "gcode_position": [
+          5.0,
+          176.0,
+          180.0,
+          571.0832400000982
+        ],
+        "axis_map": {
+          "X": 0,
+          "Y": 1,
+          "Z": 2,
+          "E": 3
+        }
+      }
+    }
+  }
+}

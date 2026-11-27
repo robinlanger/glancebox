@@ -1,0 +1,85 @@
+{
+  "sensor.k1_print_status": {
+    "entity_id": "sensor.k1_print_status",
+    "state": "printing",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "off",
+        "error",
+        "self-testing",
+        "completed",
+        "paused",
+        "stopped",
+        "printing",
+        "processing",
+        "idle"
+      ],
+      "friendly_name": "K1 Print status",
+      "file": "benchy_0.2mm_PLA.gcode",
+      "progress": 47,
+      "left_time_s": 4980,
+      "state_raw": 1
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_print_progress": {
+    "entity_id": "sensor.k1_print_progress",
+    "state": "47.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "friendly_name": "K1 Print progress"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_print_time_left": {
+    "entity_id": "sensor.k1_print_time_left",
+    "state": "4980",
+    "attributes": {
+      "unit_of_measurement": "s",
+      "device_class": "duration",
+      "friendly_name": "K1 Print time left"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_nozzle_temperature": {
+    "entity_id": "sensor.k1_nozzle_temperature",
+    "state": "214.2",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "K1 Nozzle temperature",
+      "target": 215.0
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_bed_temperature": {
+    "entity_id": "sensor.k1_bed_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "K1 Bed temperature",
+      "target": 60.0
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_working_layer": {
+    "entity_id": "sensor.k1_working_layer",
+    "state": "112",
+    "attributes": {
+      "friendly_name": "K1 Working layer"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.k1_total_layers": {
+    "entity_id": "sensor.k1_total_layers",
+    "state": "240",
+    "attributes": {
+      "friendly_name": "K1 Total layers"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  }
+}

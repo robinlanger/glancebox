@@ -36,6 +36,14 @@ Live-Werte von bis zu sechs Home-Assistant-Entitäten als große Kacheln oder Li
 
 Energiefluss aus Home Assistant in bis zu vier Zeilen (Netz, PV, Speicher, Gas, Wasser, Wallbox), mit Pfeilen, die auf dem Display in Richtung des Flusses laufen (Firmware 0.7.0 oder neuer). [Details](energy.md)
 
+## 3D-Druck
+
+### printer
+
+![Vorschau der Seite printer](../../img/templates/printer-printing.png)
+
+Zustand, Fortschritt, Restzeit, Fertig-Uhrzeit, Slicer-Vorschaubild und Temperaturen eines 3D-Druckers, direkt von Moonraker (Klipper), OctoPrint oder PrusaLink oder über Home Assistant (auch Bambu Lab und Creality). An einem echten Drucker nur über Moonraker (Klipper) geprüft, direkt und über Home Assistant. [Details](printer.md)
+
 ## KI & Entwicklung
 
 ### ai

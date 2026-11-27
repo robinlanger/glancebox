@@ -1,0 +1,145 @@
+{
+  "sensor.voron_current_print_state": {
+    "entity_id": "sensor.voron_current_print_state",
+    "state": "printing",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "standby",
+        "printing",
+        "paused",
+        "complete",
+        "cancelled",
+        "error"
+      ],
+      "friendly_name": "Voron Current print state"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_printer_state": {
+    "entity_id": "sensor.voron_printer_state",
+    "state": "ready",
+    "attributes": {
+      "device_class": "enum",
+      "options": [
+        "ready",
+        "startup",
+        "shutdown",
+        "error"
+      ],
+      "friendly_name": "Voron Printer state"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_progress": {
+    "entity_id": "sensor.voron_progress",
+    "state": "47.0",
+    "attributes": {
+      "unit_of_measurement": "%",
+      "state_class": "measurement",
+      "friendly_name": "Voron Progress"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_print_time_left": {
+    "entity_id": "sensor.voron_print_time_left",
+    "state": "1.38",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "friendly_name": "Voron Print time left"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_print_eta": {
+    "entity_id": "sensor.voron_print_eta",
+    "state": "2026-11-25T14:55:00+00:00",
+    "attributes": {
+      "device_class": "timestamp",
+      "friendly_name": "Voron Print ETA"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_filename": {
+    "entity_id": "sensor.voron_filename",
+    "state": "benchy_0.2mm_PLA.gcode",
+    "attributes": {
+      "friendly_name": "Voron Filename"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_extruder_temperature": {
+    "entity_id": "sensor.voron_extruder_temperature",
+    "state": "214.2",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "Voron Extruder temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "number.voron_extruder_target": {
+    "entity_id": "number.voron_extruder_target",
+    "state": "215.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 300.0,
+      "step": 1.0,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "friendly_name": "Voron Extruder target"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_bed_temperature": {
+    "entity_id": "sensor.voron_bed_temperature",
+    "state": "60.0",
+    "attributes": {
+      "unit_of_measurement": "°C",
+      "device_class": "temperature",
+      "state_class": "measurement",
+      "friendly_name": "Voron Bed temperature"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "number.voron_bed_target": {
+    "entity_id": "number.voron_bed_target",
+    "state": "60.0",
+    "attributes": {
+      "min": 0.0,
+      "max": 300.0,
+      "step": 1.0,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "friendly_name": "Voron Bed target"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_current_layer": {
+    "entity_id": "sensor.voron_current_layer",
+    "state": "112",
+    "attributes": {
+      "friendly_name": "Voron Current layer"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_total_layer": {
+    "entity_id": "sensor.voron_total_layer",
+    "state": "240",
+    "attributes": {
+      "friendly_name": "Voron Total layer"
+    },
+    "last_changed": "2026-11-25T12:41:00+00:00"
+  },
+  "sensor.voron_slicer_print_time_left_estimate": {
+    "entity_id": "sensor.voron_slicer_print_time_left_estimate",
+    "state": "1.25",
+    "attributes": {
+      "unit_of_measurement": "h",
+      "device_class": "duration",
+      "friendly_name": "Voron Slicer print time left estimate"
+    },
+    "last_changed": "2026-11-25T13:00:00+00:00"
+  }
+}

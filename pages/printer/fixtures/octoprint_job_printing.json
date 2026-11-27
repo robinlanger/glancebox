@@ -1,0 +1,25 @@
+{
+  "job": {
+    "file": {
+      "name": "benchy_0.2mm_PLA.gcode",
+      "display": "benchy_0.2mm_PLA.gcode",
+      "path": "Teile/benchy_0.2mm_PLA.gcode",
+      "origin": "local",
+      "size": 2010000,
+      "date": 1795536300
+    },
+    "estimatedPrintTime": 9780.0,
+    "lastPrintTime": null,
+    "filament": {"tool0": {"length": 3790.1, "volume": 9.1}},
+    "user": "maker"
+  },
+  "progress": {
+    "completion": 47.0,
+    "filepos": 945000,
+    "printTime": 4800,
+    "printTimeLeft": 4980,
+    "printTimeLeftOrigin": "estimate"
+  },
+  "state": "Printing",
+  "error": null
+}

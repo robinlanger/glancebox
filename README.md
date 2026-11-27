@@ -28,7 +28,7 @@ The clip is the real display, filmed with a camera. Only the black of the screen
 ## Highlights
 
 - **Pages are just HTML.** Write a page as a template, or point the server at any web page. The server renders it with headless Chromium, the same engine as in Chrome.
-- **Ready-made templates** for the weather, Uptime Kuma, Home Assistant, the energy flow with moving arrows, AI usage (Claude, OpenAI, xAI, GitHub Copilot), departures and a clock. You only add them to `config.yaml`.
+- **Ready-made templates** for the weather, Uptime Kuma, Home Assistant, the energy flow with moving arrows, a 3D printer (Moonraker, OctoPrint, PrusaLink or Home Assistant), AI usage (Claude, OpenAI, xAI, GitHub Copilot), departures and a clock. You only add them to `config.yaml`.
 - **Open firmware for the ESP8266**: Wi-Fi setup portal, a small settings page, night mode with its own brightness (or backlight off).
 - **Safe updates over Wi-Fi**: password-protected, every image is checked against its MD5. A wrong file is rejected and the old firmware keeps running. After a broken update the device starts in safe mode instead of a boot loop.
 - **Runs in Docker** on a PC, NAS or home server. The display only shows pictures; all the work happens on the server.
@@ -59,6 +59,10 @@ All built-in pages:
 <td width="33%" valign="top"><b><code>homeassistant</code>: tiles</b><br><img src="docs/img/templates/homeassistant-tiles.png" alt="Home Assistant page with four tiles" width="240" height="240"><br>Up to four large values, for example solar power and battery.</td>
 <td width="33%" valign="top"><b><code>homeassistant</code>: list</b><br><img src="docs/img/templates/homeassistant-list.png" alt="Home Assistant page with a list" width="240" height="240"><br>Up to six rows: temperatures, doors, windows, lights.</td>
 <td width="33%" valign="top"><b><code>energy</code>: energy flow</b><br><img src="docs/img/templates/energy.png" alt="Energy page with grid, PV and battery" width="240" height="240"><br>Grid, PV, battery, gas, water or wallbox, with arrows the display moves in the direction of the flow (firmware 0.7.0 or newer; here one still position).</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b><code>printer</code>: printing</b><br><img src="docs/img/templates/printer-printing.png" alt="3D printer page while printing" width="240" height="240"><br>Progress, time left, finish time, layer, slicer preview, nozzle and bed, from Moonraker, OctoPrint, PrusaLink or Home Assistant. Checked on a real printer only through Moonraker (Klipper).</td>
+<td width="33%" valign="top"><b><code>printer</code>: finished</b><br><img src="docs/img/templates/printer-finished.png" alt="3D printer page after a finished print" width="240" height="240"><br>End time, duration and how long ago; after <code>finished_for</code> minutes the page shows Ready.</td>
 </tr>
 </table>
 
