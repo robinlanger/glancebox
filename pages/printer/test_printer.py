@@ -676,6 +676,13 @@ async def test_error_message_takes_at_most_three_lines(mod):
         (boxes,) = await _boxes([_data(mod, s)])
         (msg,) = _find(boxes, "msg")
         assert msg["height"] <= 45 and msg["bottom"] < 150, msg
+    # Home Assistant (moonraker) reports an error without picture and without progress
+    # (seen on a device, 2026-11-27): nothing on the left, so the message uses the width
+    bare = dataclasses.replace(_no_thumb(status), progress=None)
+    (boxes,) = await _boxes([_data(mod, bare)])
+    (msg,) = _find(boxes, "msg")
+    assert msg["left"] == 8 and msg["right"] == 232, msg
+    assert msg["height"] <= 45 and msg["bottom"] < 150, msg
 
 
 @pytest.mark.browser

@@ -88,7 +88,12 @@
 <div class="a big" style="left:6px;top:56px;width:116px;font-size:{{ size }}px;line-height:58px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:{{ size // 2 }}px"> {{ big_unit }}</span>{% endif %}</div>
 {%- endif %}
 {%- if block_msg %}
+{%- if big %}
 <div class="a sm msg" style="left:124px;top:62px;width:108px">{{ block_msg }}</div>
+{%- else %}
+{#- nothing on the left (no number): the message takes the whole width -#}
+<div class="a sm msg" style="left:8px;top:62px;width:224px">{{ block_msg }}</div>
+{%- endif %}
 {%- else %}
 {%- if main %}
 <div class="a mid{% if main|length > 11 %} s{% endif %}" style="left:116px;top:62px;width:116px;text-align:right{% if main_muted %};color:var(--muted){% endif %}">{{ main }}</div>
