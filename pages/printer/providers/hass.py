@@ -19,8 +19,11 @@ ha_creality_ws v0.9.10.
   sensor.{d}_current_print_message (print_stats.message); the first is read only when
   sensor.{d}_printer_state is shutdown/error, the second only for a print error. A printer
   switched off while its Klipper host runs ("Lost communication with MCU") is "Printer off",
-  as with the direct source. sensor.{d}_progress is 0.0 outside a print (seen while Klipper
-  itself reported 1.0), so it counts only while printing or paused.
+  as with the direct source. The integration empties progress, both times left and the
+  layer (0) unless Klipper is printing (sensor.py empty_result_when_not_printing; seen on a
+  device for a finished print and a pause), so they count only while printing. Its time left
+  is print_duration / progress - print_duration, 0.0 h while heating: below 1 % or at 0 the
+  slicer's estimate counts instead, as with the direct source.
 
 `device` is the entity prefix ({d} below); for octoprint it replaces the prefix "octoprint"
 (a second instance is "octoprint_2"). `entities:` replaces single fields of the preset, a
@@ -88,7 +91,7 @@ class Preset:
     klippy: str | None = None            # moonraker only: "sensor.{d}_printer_state"
     klippy_message: str | None = None    # moonraker: Klipper's state_message (optional)
     print_message: str | None = None     # moonraker: print_stats.message (optional)
-    progress_while_printing: bool = False  # moonraker: the sensor says 0.0 outside a print
+    numbers_while_printing: bool = False  # moonraker: progress/times/layer are 0 otherwise
     slicer_remaining: str | None = None  # moonraker: time left before the file estimate counts
     finished_at_100: bool = False        # octoprint: operational + progress >= 100
 
@@ -105,7 +108,7 @@ PRESETS: dict[str, Preset] = {
         states={"printing": ("printing",), "paused": ("paused",), "finished": ("complete",),
                 "error": ("error",), "idle": ("standby", "cancelled")},
         klippy="sensor.{d}_printer_state", klippy_message="sensor.{d}_printer_message",
-        print_message="sensor.{d}_current_print_message", progress_while_printing=True,
+        print_message="sensor.{d}_current_print_message", numbers_while_printing=True,
         slicer_remaining="sensor.{d}_slicer_print_time_left_estimate"),
     "octoprint": Preset(
         entities={
@@ -355,14 +358,17 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
         return PrinterStatus("offline")
     if state == "error" and (entity := _preset_entity(options, "print_message")):
         message = first_line(_value(states, Ref(entity, None)))
-    if preset and preset.progress_while_printing and state not in ("printing", "paused"):
+    numbers = not (preset and preset.numbers_while_printing and state != "printing")
+    if not numbers:
         progress = None
 
     remaining = number(get("remaining"))
     remaining_s = None if remaining is None else seconds(remaining,
                                                          _unit(states, ref.get("remaining")))
     eta = _time(get("eta"), now)
-    if state in ("printing", "paused") and (entity := _preset_entity(options, "slicer_remaining")) \
+    if not numbers:
+        remaining_s = eta = None
+    elif state == "printing" and (entity := _preset_entity(options, "slicer_remaining")) \
             and ((progress is not None and progress < 1) or remaining_s == 0):
         # The integration's time left is print_duration / progress - print_duration: 0.0 h
         # while print_duration is 0 (heating) and noise below 1 %; there the slicer's
@@ -380,7 +386,7 @@ def status_from(states: dict[str, dict | None], options: dict, now: datetime) ->
         filename=clean_filename(filename) if isinstance(filename, str) else None,
         nozzle=temp(get("nozzle"), get("nozzle_target")) if heaters else None,
         bed=temp(get("bed"), get("bed_target")) if heaters else None,
-        layer=_layer(get("layer"), get("layer_total")),
+        layer=_layer(get("layer"), get("layer_total")) if numbers else None,
         message=message,
         state_since=_time(answer.get("last_changed"), now))
 
@@ -446,8 +452,8 @@ def fetch(options: dict, ctx) -> PrinterStatus:
     read(_messages(states, options))      # only what the state and Klippy's state call for
     read(rest)
     if (slicer := _preset_entity(options, "slicer_remaining")) \
-            and _job_word(states, options) in ("printing", "paused"):
-        read([slicer])                    # only a print has a time left
+            and _job_word(states, options) == "printing":
+        read([slicer])                    # 0 unless printing
 
     status = status_from(states, options, ctx.now)
     if (options.get("thumbnail", True) and status.state in _JOB_STATES and "thumbnail" in ref

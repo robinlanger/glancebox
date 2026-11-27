@@ -318,16 +318,35 @@ def test_print_error_shows_the_first_line_of_the_print_message(ha, load):
 
 
 @pytest.mark.parametrize(("job", "progress"), [
-    ("printing", 0.0), ("paused", 0.0), ("error", None), ("complete", None), ("standby", None),
+    ("printing", 0.0), ("paused", None), ("error", None), ("complete", None), ("standby", None),
     ("cancelled", None)])
 def test_moonraker_progress_counts_only_while_printing(ha, load, job, progress):
-    # The integration reports 0.0 % outside a print (Klipper itself said 100 % for the same
-    # finished print), so a value outside printing/paused is not the job's progress.
+    # The integration reports 0.0 % whenever Klipper is not printing (Klipper itself said
+    # 100 % for the same finished print), so a value outside printing is not the job's.
     data = device(load, sensor__ender5_printer_state="ready",
                   sensor__ender5_current_print_state=job)
     assert ha.status_from(data, ENDER, NOW).progress == progress
     data = set_state(states(load, "moonraker"), "sensor.voron_current_print_state", job)
     assert ha.status_from(data, MOON, NOW).progress == (47.0 if progress is not None else None)
+
+
+def test_moonraker_pause_has_no_job_numbers(ha, load):
+    # Real answer of 2026-11-27 while paused: progress, both times left and the layer are 0
+    # (moonraker-home-assistant 1.14.0 empties them unless print_stats.state is printing).
+    data = heating(load, sensor__ender5_current_print_state="paused",
+                   sensor__ender5_progress="0.0", sensor__ender5_print_time_left="0.0",
+                   sensor__ender5_slicer_print_time_left_estimate="0.0",
+                   sensor__ender5_print_duration="26.476288471532",
+                   sensor__ender5_current_layer="0", sensor__ender5_total_layer="10")
+    status = ha.status_from(data, ENDER, NOW)
+    assert status.state == "paused"
+    assert (status.progress, status.remaining_s, status.eta, status.layer) == (
+        None, None, None, None)
+    assert status.filename == "calibration_cube_0.2mm" and status.nozzle is not None
+    # other presets keep their numbers while paused
+    data = set_state(states(load, "bambu_lab"), "sensor.x1c_print_status", "pause")
+    status = ha.status_from(data, options("bambu_lab"), NOW)
+    assert status.progress is not None and status.remaining_s is not None
 
 
 def heating(load, **changes):
@@ -344,9 +363,8 @@ def heating(load, **changes):
     return data
 
 
-@pytest.mark.parametrize("job", ["printing", "paused"])
-def test_moonraker_time_left_before_one_percent_is_the_slicers(ha, load, job):
-    data = heating(load, sensor__ender5_current_print_state=job)
+def test_moonraker_time_left_before_one_percent_is_the_slicers(ha, load):
+    data = heating(load)
     status = ha.status_from(data, ENDER, NOW)
     assert (status.remaining_s, status.eta) == (4591, None)
     # the integration's ETA comes from the same file estimate: dropped with it (the page
