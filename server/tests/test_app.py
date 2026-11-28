@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import logging
 import re
 import subprocess
@@ -21,8 +22,8 @@ def make_cfg() -> AppConfig:
     return AppConfig(30, "Europe/Berlin", "de", pages, ())
 
 
-def make_client(store=None, now=NOW):
-    cfg = make_cfg()
+def make_client(store=None, now=NOW, cfg=None):
+    cfg = cfg or make_cfg()
     store = store or FrameStore(2)
     return TestClient(create_app(cfg, store, lambda: now, start_worker=False)), store
 
@@ -166,6 +167,13 @@ def test_worker_returning_is_also_fatal(caplog):
 def test_frame_has_local_time_header():
     # NOW = 1970-01-12 13:46:40 UTC -> 14:46:40 Europe/Berlin (CET)
     client, _ = make_client(filled_store())
+    assert client.get("/api/v1/frame").headers["x-local-time"] == "14:46:40"
+
+
+def test_local_time_header_ignores_time_format():
+    # The firmware parses HH:MM:SS; the 12-hour option must never reach this header.
+    cfg = dataclasses.replace(make_cfg(), time_format="12h")
+    client, _ = make_client(filled_store(), cfg=cfg)
     assert client.get("/api/v1/frame").headers["x-local-time"] == "14:46:40"
 
 
