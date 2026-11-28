@@ -13,5 +13,5 @@ Data comes from [Open-Meteo](https://open-meteo.com) (free, no key, CC BY 4.0). 
 ```
 
 - `fetch` lets errors propagate (failures are not cached, so once the cache expired every refresh asks again): the last image stays for up to 10 minutes.
-- The four hours are the hourly slots after the current hour in the configured time zone, also across midnight and DST changes (Open-Meteo lists local wall-clock times; a repeated hour is read as the second pass).
+- The four hours are the hourly slots after the current hour in the configured time zone, also across midnight and DST changes (Open-Meteo lists local wall-clock times; a repeated hour is read as the second pass). Each hour shows as `15`, or `3 PM` with `time_format: 12h`.
 - `icons.html` holds one macro `icon(key, w, h)` with flat SVGs; keys are `clear`, `partly`, `cloudy`, `fog`, `rain`, `snow`, `thunder`, plus `clear-night` and `partly-night`.
