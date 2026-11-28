@@ -33,6 +33,8 @@ All notable changes to this project are documented here. The format follows
 - `printer` page without a preview picture: the first small line now steps down to 11 px from
   16 characters in 24-hour mode too. Lines that long were mostly cut with "…" before. The
   shipped preview pictures are unchanged.
+- Add-on web UI footer: it now names the config folder as `/app_configs/…_glancebox/` (older
+  Home Assistant versions: `/addon_configs/…`) and no longer ties it to File editor.
 - Home Assistant add-on guide (issue #37): `docs/en/home-assistant.md` and
   `docs/de/home-assistant.md` are now a step-by-step guide (install, start and open the web UI,
   connect the display, choose the pages), with copy-ready examples for the pages that read from
