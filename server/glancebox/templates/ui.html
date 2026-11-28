@@ -1,5 +1,15 @@
+{# a time of day; a trailing " AM" / " PM" becomes a small suffix, anything else is shown as is #}
+{% macro clock(text) -%}
+{%- if text is string and text|length > 3 and text[-3:] in (" AM", " PM") -%}
+{{ text[:-3] }}<span class="ui-ampm">{{ text[-2:] }}</span>
+{%- else -%}
+{{ text }}
+{%- endif -%}
+{%- endmacro %}
+{% set _clock = clock %}{# header's parameter "clock" hides the macro #}
+
 {% macro header(title, clock, alert=False) -%}
-<div class="ui-hdr{% if alert %} ui-alert{% endif %}"><span class="ui-title">{{ title }}</span><span class="ui-clock">{{ clock }}</span></div>
+<div class="ui-hdr{% if alert %} ui-alert{% endif %}"><span class="ui-title">{{ title }}</span><span class="ui-clock">{{ _clock(clock) }}</span></div>
 {%- endmacro %}
 
 {% macro notice(message, sub=None, tone="muted") -%}
