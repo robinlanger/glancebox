@@ -56,6 +56,19 @@ Each module in `providers/` is registered in `PROVIDERS` by `page.py` and has:
 - That moment and the last finished print live in memory only, per `(source, url, integration, device)`. After a restart the period starts again and "Zuletzt" is empty until the source reports a last job itself.
 - `idle` and `offline` with `powered_off` without a `last_job` of their own get that remembered last finished print.
 
+## Times of day
+
+The header clock and "Stand …" go through `glancebox.timefmt.format_time`; "fertig …", "seit …", the large end time and the end of the last print through `clock_text()` in `providers/_common.py`. Both follow the top-level or per-page `time_format` (`ctx.time_format`, passed to `build()` and `notice()`, default `24h`). The remaining time, the duration and "vor 4 min" are durations and stay as they are. `clock_text()`:
+
+| When | `24h` | `12h` |
+|---|---|---|
+| today | `16:47` | `4:47 PM` |
+| yesterday | `gestern 21:14` / `yesterday 21:14` | `Di 9:14 PM` / `Tue 9:14 PM` |
+| within 6 days | `Mo 07:40` / `Mon 07:40` | `Mo 7:40 AM` / `Mon 7:40 AM` |
+| further away | `10.11. 07:40` / `Nov 10 07:40` | `10.11.` / `Nov 10` (date only) |
+
+In 12 hours "yesterday" and a date with a time would not fit the 114 px column. A large end time of today is split into `big` ("4:47") and `big_suffix` ("PM", 12 px after a 3 px gap); `big_suffix` is `None` otherwise.
+
 ## Errors
 
 `SourceError(kind)` and what the page shows (`notice()`):
@@ -64,7 +77,7 @@ Each module in `providers/` is registered in `PROVIDERS` by `page.py` and has:
 |---|---|
 | `offline` (and `unreachable` of a direct source) | "Drucker nicht erreichbar" / "Printer not reachable", grey, blue header: a printer that is switched off is normal |
 | `auth` | orange "Zugang abgelehnt" / "Access denied" with "API-Key prüfen" or (PrusaLink without `api_key`) "Passwort prüfen"; `hass`: "Token abgelehnt" as on `energy` |
-| `unreachable` (`hass`) | orange "Keine Verbindung zu Home Assistant" with "Stand HH:MM" |
+| `unreachable` (`hass`) | orange "Keine Verbindung zu Home Assistant" with "Stand HH:MM" (12 hours: "Stand 2:32 PM") |
 | `config` | orange, the detail text |
 | `data` | orange "Antwort nicht lesbar" / "Unexpected answer" with "Stand HH:MM" |
 
@@ -76,7 +89,7 @@ Source → `get_bytes` (at most 512 KiB, only `image/png`/`image/jpeg`, no redir
 
 ## Layout
 
-`template.html` follows `docs/superpowers/specs/assets/2026-11-25-printer-mockup.html` (240×240): thumbnail 100×100 at (8, 42) with the texts right of it from x = 116, or without a thumbnail the percentage large on the left; bar at y 150, file name at y 164 (one line, cut with "…"), divider at y 184 and the two temperature fields from y 192 (icon orange when the heater is on, else grey with only the actual value). Font sizes step down with the length of a text so the widest values (`100 %`, `noch 23:59 h`, `Dauer 23:59 h`, `Schicht 1234/1234`, `285°/285`, `Nozzle heating`) fit; only the file name and the title may be cut. The browser tests in `test_printer.py` check this on the rendered HTML and JPEG for the seven `MOCKUPS` cases and the edge cases in `EDGES`.
+`template.html` follows `docs/superpowers/specs/assets/2026-11-25-printer-mockup.html` (240×240): thumbnail 100×100 at (8, 42) with the texts right of it from x = 116, or without a thumbnail the percentage large on the left; bar at y 150, file name at y 164 (one line, cut with "…"), divider at y 184 and the two temperature fields from y 192 (icon orange when the heater is on, else grey with only the actual value). Font sizes step down with the length of a text so the widest values (`100 %`, `noch 23:59 h`, `Dauer 23:59 h`, `Schicht 1234/1234`, `285°/285`, `Nozzle heating`) fit; only the file name and the title may be cut. The widest 12-hour texts (`Done Wed 12:59 PM`, `since Wed 12:59 PM`, `Wed 12:59 PM` large, `12:59 PM` with the small suffix) fit as well (`test_twelve_hour_texts_fit`). The browser tests in `test_printer.py` check this on the rendered HTML and JPEG for the seven `MOCKUPS` cases and the edge cases in `EDGES`.
 
 ## moonraker
 

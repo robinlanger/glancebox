@@ -72,6 +72,19 @@ def test_clock_text(common, when, de, en):
     assert (common.clock_text(when, NOW, "de"), common.clock_text(when, NOW, "en")) == (de, en)
 
 
+@pytest.mark.parametrize(("when", "de", "en"), [
+    (datetime(2026, 11, 25, 15, 55), "3:55 PM", "3:55 PM"),
+    (datetime(2026, 11, 25, 0, 5), "12:05 AM", "12:05 AM"),
+    (datetime(2026, 11, 24, 21, 14), "Di 9:14 PM", "Tue 9:14 PM"),     # weekday, not "yesterday"
+    (datetime(2026, 11, 30, 7, 40), "Mo 7:40 AM", "Mon 7:40 AM"),
+    (datetime(2026, 11, 10, 7, 40), "10.11.", "Nov 10"),               # date only
+])
+def test_clock_text_twelve_hours(common, when, de, en):
+    when = when.replace(tzinfo=NOW.tzinfo)
+    assert (common.clock_text(when, NOW, "de", "12h"),
+            common.clock_text(when, NOW, "en", "12h")) == (de, en)
+
+
 def test_clock_text_converts_to_the_zone_of_now(common):
     when = datetime(2026, 11, 25, 14, 55, tzinfo=UTC)
     assert common.clock_text(when, NOW, "de") == "15:55"

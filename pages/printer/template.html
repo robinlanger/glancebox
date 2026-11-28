@@ -6,7 +6,10 @@
     view "idle": "Bereit" large, the last print, temperatures. view "notice": ui.notice, its
     small line ("Zuletzt: <file name>") wraps anywhere.
     Font sizes step down with the length of a text so the widest values still fit their box
-    (test_texts_fit_without_ellipsis); only the file name and the title are cut with "…". -#}
+    (test_texts_fit_without_ellipsis); only the file name and the title are cut with "…".
+    A 12-hour finish time of today ("big_suffix") is 26 px with "AM"/"PM" in 12 px after a 3 px
+    gap, in both variants; small lines from 16 characters are 11 px in both variants
+    (test_twelve_hour_texts_fit). -#}
 {%- set color = {"green": "var(--green)", "orange": "var(--orange)", "red": "var(--red)",
                  "muted": "var(--muted)"} %}
 {% macro icon(kind) -%}
@@ -23,6 +26,7 @@
 .lbl{font-size:13px;line-height:16px;font-weight:700;}
 .big{font-weight:700;}
 .mid{font-weight:700;font-size:16px;line-height:19px;}
+.suffix{font-size:12px;margin-left:3px;}
 .mid.s{font-size:14px;}
 .sm{font-size:12px;line-height:15px;color:var(--muted);}
 .sm.s{font-size:11px;}  /* "Schicht 1234/1234" in the 114 px column with DejaVu Sans (CI image) */
@@ -63,10 +67,11 @@
 <div class="a lbl col" style="left:118px;top:42px;width:114px;color:{{ tone_color }}">{{ label }}</div>
 {%- if big %}
 {%- if big_unit %}{% set size, lh, top = 34, 38, 58 %}
+{%- elif big_suffix %}{% set size, lh, top = 26, 36, 60 %}
 {%- elif big|length <= 5 %}{% set size, lh, top = 30, 36, 60 %}
 {%- elif big|length <= 9 %}{% set size, lh, top = 19, 36, 60 %}
 {%- else %}{% set size, lh, top = 12, 36, 60 %}{% endif %}
-<div class="a big col" style="left:116px;top:{{ top }}px;width:116px;font-size:{{ size }}px;line-height:{{ lh }}px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:20px"> {{ big_unit }}</span>{% endif %}</div>
+<div class="a big col" style="left:116px;top:{{ top }}px;width:116px;font-size:{{ size }}px;line-height:{{ lh }}px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:20px"> {{ big_unit }}</span>{% elif big_suffix %}<span class="suffix">{{ big_suffix }}</span>{% endif %}</div>
 {%- endif %}
 {%- if block_msg %}
 <div class="a sm msg col" style="left:118px;top:100px;width:114px">{{ block_msg }}</div>
@@ -83,10 +88,11 @@
 <div class="a lbl" style="left:8px;top:42px;width:224px;color:{{ tone_color }}">{{ label }}</div>
 {%- if big %}
 {%- if big_unit %}{% set size = 52 if big|length <= 2 else 40 %}
+{%- elif big_suffix %}{% set size = 26 %}
 {%- elif big|length <= 5 %}{% set size = 34 %}
 {%- elif big|length <= 9 %}{% set size = 19 %}
 {%- else %}{% set size = 12 %}{% endif %}
-<div class="a big" style="left:6px;top:56px;width:116px;font-size:{{ size }}px;line-height:58px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:{{ size // 2 }}px"> {{ big_unit }}</span>{% endif %}</div>
+<div class="a big" style="left:6px;top:56px;width:116px;font-size:{{ size }}px;line-height:58px;color:{{ big_color }}">{{ big }}{% if big_unit %}<span style="font-size:{{ size // 2 }}px"> {{ big_unit }}</span>{% elif big_suffix %}<span class="suffix">{{ big_suffix }}</span>{% endif %}</div>
 {%- endif %}
 {%- if block_msg %}
 {%- if big %}
@@ -100,7 +106,7 @@
 <div class="a mid{% if main|length > 11 %} s{% endif %}" style="left:116px;top:62px;width:116px;text-align:right{% if main_muted %};color:var(--muted){% endif %}">{{ main }}</div>
 {%- endif %}
 {%- if smalls %}
-<div class="a sm" style="left:116px;top:84px;width:116px;text-align:right">{{ smalls[0] }}</div>
+<div class="a sm{% if smalls[0]|length > 15 %} s{% endif %}" style="left:116px;top:84px;width:116px;text-align:right">{{ smalls[0] }}</div>
 {%- endif %}
 {%- if smalls[1] %}
 <div class="a sm" style="left:8px;top:124px;width:224px">{{ smalls[1] }}</div>

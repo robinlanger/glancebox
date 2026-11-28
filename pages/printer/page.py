@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 import requests
 
 from glancebox import hass
+from glancebox.timefmt import format_time, split_suffix
 
 from .providers import hass as hass_source
 from .providers import moonraker, octoprint, prusalink
@@ -154,12 +155,13 @@ def settle(status: PrinterStatus, key: tuple, finished_for: int, now: datetime) 
 
 # --- display data ----------------------------------------------------------------
 
-def _base(options: dict, lang: str, now: datetime, view: str, tone: str, **extra) -> dict:
+def _base(options: dict, lang: str, now: datetime, time_format: str, view: str, tone: str,
+          **extra) -> dict:
     data = {"title": options.get("title") or DEFAULT_TITLE[lang],
-            "clock": now.strftime("%H:%M"), "lang": lang, "alert": False, "view": view,
-            "tone": tone, "label": "", "big": None, "big_unit": None, "main": None,
-            "main_muted": False, "lines": [], "message": None, "bar": None, "filename": None,
-            "thumb": None, "temps": [], "notice": None}
+            "clock": format_time(now, time_format), "lang": lang, "alert": False, "view": view,
+            "tone": tone, "label": "", "big": None, "big_suffix": None, "big_unit": None,
+            "main": None, "main_muted": False, "lines": [], "message": None, "bar": None,
+            "filename": None, "thumb": None, "temps": [], "notice": None}
     data.update(extra)
     return data
 
@@ -202,14 +204,18 @@ def _layer(status: PrinterStatus, lang: str) -> str | None:
     return f"{TEXT[lang]['layer']} {shown}"
 
 
-def build(status: PrinterStatus, options: dict, lang: str, now: datetime) -> dict:
+def build(status: PrinterStatus, options: dict, lang: str, now: datetime,
+          time_format: str = "24h") -> dict:
+    """Template data of a printer state; ``big_suffix`` is "AM"/"PM" of a 12-hour finish time
+    of today (shown small after ``big``), else None."""
+    tf = time_format
     texts = TEXT[lang]
     state = status.state
     if state == "offline":
         sub = status.message
         if sub is None and status.last_job:
             sub = f"{texts['last']}: {status.last_job[0]}"
-        return _offline(options, lang, now, sub, off=status.powered_off)
+        return _offline(options, lang, now, tf, sub, off=status.powered_off)
     temps = _temps(status, lang)
     if state == "idle":
         lines = []
@@ -217,58 +223,62 @@ def build(status: PrinterStatus, options: dict, lang: str, now: datetime) -> dic
             name, ended = status.last_job
             lines.append(f"{texts['last']}: {name}")
             if ended is not None:
-                lines.append(f"{texts['done']} {clock_text(ended, now, lang)}")
-        return _base(options, lang, now, "idle", "muted", big=texts["ready"], lines=lines,
+                lines.append(f"{texts['done']} {clock_text(ended, now, lang, tf)}")
+        return _base(options, lang, now, tf, "idle", "muted", big=texts["ready"], lines=lines,
                      message=status.message, temps=temps)
 
     progress = clamp_progress(status.progress)
     percent = None if progress is None else int(progress)
     big, big_unit = (None, None) if percent is None else (str(percent), "%")
-    main, lines = None, []
+    main, lines, big_suffix = None, [], None
     remaining, eta = _times(status, now)
     if state == "printing":
         main = None if remaining is None else remaining_text(remaining, lang)
         if eta is not None:
-            lines.append(f"{texts['done']} {clock_text(eta, now, lang)}")
+            lines.append(f"{texts['done']} {clock_text(eta, now, lang, tf)}")
     elif state == "paused":
         main = None if remaining is None else remaining_text(remaining, lang)
         if status.state_since is not None:
-            lines.append(f"{texts['since']} {clock_text(status.state_since, now, lang)}")
+            lines.append(f"{texts['since']} {clock_text(status.state_since, now, lang, tf)}")
     elif state == "finished":
         percent = 100
         big, big_unit = None, None
         if status.ended_at is not None:
-            big = clock_text(status.ended_at, now, lang)
+            big = clock_text(status.ended_at, now, lang, tf)
+            head, suffix = split_suffix(big)
+            if suffix and " " not in head:           # a time of today: "2:28" + small "PM"
+                big, big_suffix = head, suffix
             lines.append(ago_text(status.ended_at, now, lang))
         if status.duration_s is not None:
             main = duration_text(status.duration_s, lang)
     if state in ("printing", "paused") and (layer := _layer(status, lang)):
         lines.append(layer)
     thumb = data_uri(status.thumbnail) if options.get("thumbnail", True) else None
-    return _base(options, lang, now, "job", _TONE[state], alert=state == "error",
-                 label=texts[state], big=big, big_unit=big_unit, main=main,
+    return _base(options, lang, now, tf, "job", _TONE[state], alert=state == "error",
+                 label=texts[state], big=big, big_suffix=big_suffix, big_unit=big_unit, main=main,
                  main_muted=state == "paused", lines=lines[:2], message=status.message,
                  bar=percent, filename=status.filename, thumb=thumb, temps=temps)
 
 
-def _offline(options: dict, lang: str, now: datetime, sub: str | None,
+def _offline(options: dict, lang: str, now: datetime, time_format: str, sub: str | None,
              off: bool = False) -> dict:
     """Grey notice: "Printer off" when the source knows the printer itself is switched off."""
     message = TEXT[lang]["off" if off else "offline"]
-    return _base(options, lang, now, "notice", "muted",
+    return _base(options, lang, now, time_format, "notice", "muted",
                  notice={"message": message, "sub": sub, "tone": "muted"})
 
 
-def notice(options: dict, lang: str, now: datetime, err: SourceError) -> dict:
+def notice(options: dict, lang: str, now: datetime, err: SourceError,
+           time_format: str = "24h") -> dict:
     """Template data for a fetch that gave no printer state."""
     texts = TEXT[lang]
     source = options.get("source")
-    asof = f"{texts['asof']} {now.strftime('%H:%M')}"
+    asof = f"{texts['asof']} {format_time(now, time_format)}"
     kind = err.kind
     if kind == "unreachable" and source != "hass":
         kind = "offline"            # e.g. the time budget of a direct source ran out
     if kind == "offline":
-        return _offline(options, lang, now, None)
+        return _offline(options, lang, now, time_format, None)
     if kind == "auth" and source == "hass":
         message, sub = texts["token"], texts["token_sub"]
     elif kind == "auth":
@@ -280,7 +290,7 @@ def notice(options: dict, lang: str, now: datetime, err: SourceError) -> dict:
         message, sub = err.detail or texts["data"], None
     else:
         message, sub = texts["data"], asof
-    return _base(options, lang, now, "notice", "orange",
+    return _base(options, lang, now, time_format, "notice", "orange",
                  notice={"message": message, "sub": sub, "tone": "warn"})
 
 
@@ -312,8 +322,9 @@ def fetch(options: dict, ctx) -> dict:
             raise SourceError("data", url=options.get("url"), cause=e) from e
     except SourceError as err:
         _log(key, options, err)
-        return notice(options, lang, ctx.now, err)
+        return notice(options, lang, ctx.now, err, ctx.time_format)
     with _memory_lock:
         _memory.setdefault(key, _Memory()).offline = False
     finished_for = options.get("finished_for", DEFAULT_FINISHED_FOR)
-    return build(settle(status, key, finished_for, ctx.now), options, lang, ctx.now)
+    return build(settle(status, key, finished_for, ctx.now), options, lang, ctx.now,
+                 ctx.time_format)

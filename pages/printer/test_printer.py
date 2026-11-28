@@ -127,6 +127,40 @@ def test_build_finished(mod, common):
     assert (d["label"], d["main"], d["lines"], d["bar"]) == ("Finished", None, ["4 min ago"], 100)
 
 
+def test_build_twelve_hours_printing(mod, common):       # eta today 16:47
+    d = mod.build(common.PrinterStatus("printing", progress=47, eta=NOW + timedelta(minutes=135)),
+                  OPTS, "en", NOW, "12h")
+    assert d["clock"] == "2:32 PM"
+    assert "done 4:47 PM" in d["lines"] and d["big_suffix"] is None    # big is the percentage
+
+
+def test_build_twelve_hours_finished_today(mod, common):  # ended 14:28
+    d = mod.build(finished(common, ended_at=NOW - timedelta(minutes=4)), OPTS, "en", NOW, "12h")
+    assert (d["big"], d["big_suffix"], d["big_unit"]) == ("2:28", "PM", None)
+
+
+def test_build_twelve_hours_finished_yesterday(mod, common):
+    yesterday = datetime(2026, 11, 24, 21, 14, tzinfo=NOW.tzinfo)
+    d = mod.build(finished(common, ended_at=yesterday), {**OPTS, "finished_for": 1440},
+                  "en", NOW, "12h")
+    assert (d["big"], d["big_suffix"]) == ("Tue 9:14 PM", None)
+
+
+def test_build_twelve_hours_paused_and_idle(mod, common):
+    S = common.PrinterStatus
+    d = mod.build(S("paused", state_since=NOW - timedelta(minutes=27)), OPTS, "de", NOW, "12h")
+    assert d["lines"] == ["seit 2:05 PM"]
+    d = mod.build(S("idle", last_job=("benchy", NOW - timedelta(minutes=4))), OPTS, "en", NOW,
+                  "12h")
+    assert (d["lines"], d["clock"], d["big_suffix"]) == (
+        ["Last: benchy", "done 2:28 PM"], "2:32 PM", None)
+
+
+def test_build_default_has_no_suffix(mod, common):
+    d = mod.build(finished(common, ended_at=NOW - timedelta(minutes=4)), OPTS, "en", NOW)
+    assert (d["big"], d["big_suffix"]) == ("14:28", None)
+
+
 def test_build_error(mod, common):
     S = common.PrinterStatus
     d = mod.build(S("error", progress=47, remaining_s=4980,
@@ -245,6 +279,15 @@ def test_notice_kinds(mod, common, source, extra, kind, detail, de, en):
         assert d["notice"] == {"message": message, "sub": sub,
                                "tone": "muted" if kind == "offline" else "warn"}
         assert (d["clock"], d["lang"]) == ("14:32", lang)
+
+
+def test_notice_twelve_hours(mod, common):
+    options = {"source": "hass", "url": URL}
+    for lang, sub in (("en", "As of 2:32 PM"), ("de", "Stand 2:32 PM")):
+        d = mod.notice(options, lang, NOW, common.SourceError("unreachable"), "12h")
+        assert (d["notice"]["sub"], d["clock"]) == (sub, "2:32 PM")
+    d = mod.notice(OPTS, "en", NOW, common.SourceError("offline"), "12h")
+    assert (d["notice"]["sub"], d["clock"]) == (None, "2:32 PM")
 
 
 def test_unreachable_of_a_direct_source_is_not_home_assistant(mod, common):
@@ -390,6 +433,15 @@ def test_fetch_uses_lang_and_provider(mod, common, fake):
     assert d == mod.build(common.PrinterStatus(**PRINTING), OPTS, "de", NOW)
     mod.fetch(OPTS, ctx("fr"))
     assert fake.calls[2]["lang"] == "de"
+
+
+def test_fetch_passes_time_format(mod, common, fake):
+    fake.result = common.PrinterStatus(**PRINTING)
+    data = mod.fetch(OPTS, dataclasses.replace(ctx("en"), time_format="12h"))
+    assert (data["clock"], data["lines"][0]) == ("2:32 PM", "done 3:55 PM")
+    fake.result = common.SourceError("data")
+    data = mod.fetch(OPTS, dataclasses.replace(ctx("en"), time_format="12h"))
+    assert (data["clock"], data["notice"]["sub"]) == ("2:32 PM", "As of 2:32 PM")
 
 
 def test_auth_rejected_is_its_own_state(mod, common, fake):
@@ -649,6 +701,48 @@ async def test_texts_fit_without_ellipsis(mod):
         if data["thumb"]:
             for b in _find(boxes, "col"):
                 assert b["left"] >= 116, (where, b)
+
+
+def _twelve_hour_cases(mod):
+    """Template data with the widest 12-hour texts, with and without thumbnail, de and en."""
+    base = MOCKUPS["printing"]
+    cases = []
+    for thumb in (True, False):
+        status = base if thumb else _no_thumb(base)
+        for lang in ("de", "en"):
+            done, layer, since = (("Fertig Mi 12:59 PM", "Schicht 1234/1234", "seit Mi 12:59 PM")
+                                  if lang == "de" else
+                                  ("Done Wed 12:59 PM", "Layer 1234/1234", "since Wed 12:59 PM"))
+            job = _data(mod, status, lang)
+            fin = _data(mod, dataclasses.replace(status, state="finished"), lang)
+            paused = _data(mod, dataclasses.replace(status, state="paused"), lang)
+            cases += [
+                ("suffix", thumb, lang, {**fin, "big": "12:59", "big_suffix": "PM",
+                                         "big_unit": None}),
+                ("printing", thumb, lang, {**job, "lines": [done, layer]}),
+                ("paused", thumb, lang, {**paused, "lines": [since]}),
+                ("weekday", thumb, lang, {**fin, "big": "Wed 12:59 PM", "big_suffix": None,
+                                          "big_unit": None}),
+            ]
+    return cases
+
+
+@pytest.mark.browser
+async def test_twelve_hour_texts_fit(mod):
+    cases = _twelve_hour_cases(mod)
+    assert all(bool(c[3]["thumb"]) == c[1] for c in cases)
+    for (name, thumb, lang, _), boxes in zip(cases, await _boxes([c[3] for c in cases]),
+                                             strict=True):
+        where = (name, thumb, lang)
+        for b in boxes:
+            if {"big", "mid", "sm"} & set(b["cls"].split()):
+                assert not b["overflow"], (where, b)
+                assert b["right"] <= 240, (where, b)
+        if name == "suffix":
+            suffix = _find(boxes, "suffix")
+            assert len(suffix) == 1 and suffix[0]["text"] == "PM", where
+            big = _find(boxes, "big")[0]
+            assert big["text"].replace(" ", "") == "12:59PM", where
 
 
 @pytest.mark.browser
