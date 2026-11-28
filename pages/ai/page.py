@@ -58,7 +58,7 @@ def fetch(options: dict, ctx) -> dict:
                     {k: v for k, v in row.items() if k != "remaining_text"}
                     for row in data["rows"]]
     data["title"] = options.get("title") or provider.NAME
-    data["clock"] = ctx.now.strftime("%H:%M")
+    data["clock"] = ctx.clock()
     return data
 
 

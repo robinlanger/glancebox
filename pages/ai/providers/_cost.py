@@ -117,7 +117,7 @@ def no_data(provider: str, exc: Exception, ctx, lang: str) -> dict:
     status = getattr(getattr(exc, "response", None), "status_code", None)
     log.warning("ai %s: no data: %s%s", provider, type(exc).__name__,
                 f" (HTTP {status})" if status else "")
-    return {"message": texts["nodata"], "sub": f"{texts['asof']} {ctx.now:%H:%M}",
+    return {"message": texts["nodata"], "sub": f"{texts['asof']} {ctx.clock()}",
             "alert": True}
 
 
@@ -136,7 +136,7 @@ def show(provider: str, options: dict, ctx, label: str,
 
     stand = (as_of or datetime.fromtimestamp(fetched_at, UTC)).astimezone(ctx.now.tzinfo)
     data = {"big": {"label": texts[label], "value": usd(amount, lang)},
-            "stand": f"{texts['asof']} {stand:%H:%M}"}
+            "stand": f"{texts['asof']} {ctx.clock(stand)}"}
     budget = options.get("budget")
     if budget:
         percent = amount / budget * 100
