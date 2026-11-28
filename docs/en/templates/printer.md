@@ -115,8 +115,9 @@ Keys and passwords never go into `config.yaml`. With Docker put them in `.env` (
 | `lang` | top-level `lang` | `de` or `en`. |
 | `refresh` | `10` | Seconds between two requests. **At least 5.** The page asks the printer (or Home Assistant) on each refresh, also while another page is on the display; an unchanged picture is not sent again. |
 | `duration` | `interval` | How many seconds the page stays on the display. |
+| `time_format` | top-level `time_format` | `24h` or `12h`. With `12h` the finish time, "since" and the end of the last print read `4:47 PM`. A time on another day shows the weekday (`Tue 9:14 PM`) instead of "yesterday", and more than 6 days away only the date (`Nov 10`). Time left, duration and "4 min ago" stay as they are. |
 
-The page only accepts the keys of its `source` (plus `title`, `thumbnail`, `finished_for`, `lang`, `refresh`, `duration`); a key of another source, such as `password` with `source: octoprint`, stops the server with a message that lists the allowed keys.
+The page only accepts the keys of its `source` (plus `title`, `thumbnail`, `finished_for`, `lang`, `refresh`, `duration`, `time_format`); a key of another source, such as `password` with `source: octoprint`, stops the server with a message that lists the allowed keys.
 
 **Home Assistant presets:**
 

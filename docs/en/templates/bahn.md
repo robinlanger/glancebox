@@ -42,6 +42,7 @@ The text on the page is German ("Keine Daten", "Keine Abfahrten", "fällt aus", 
 | `dbf_url` | `https://dbf.finalrewind.org` | Address of a DBF instance, if you run your own. |
 | `refresh` | `60` | **At least 60.** This is DBF's rule of one request per station and minute. If you do not set `refresh` it is raised to 60 automatically. If you set a value below 60 the server refuses to start. |
 | `duration` | `interval` | How many seconds the page stays on the display. |
+| `time_format` | top-level `time_format` | `24h` or `12h`. With `12h` a departure 60 minutes or more away shows its time as `9:10` with `PM` in the grey field where `min` sits, and the scheduled time below the line reads `9:05 PM`. Minutes until departure stay as they are. |
 
 ## Setup
 

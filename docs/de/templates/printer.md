@@ -115,8 +115,9 @@ Keys und Passwörter gehören nie in die `config.yaml`. Bei Docker kommen sie in
 | `lang` | `lang` der obersten Ebene | `de` oder `en`. |
 | `refresh` | `10` | Sekunden zwischen zwei Abfragen. **Mindestens 5.** Die Seite fragt den Drucker (oder Home Assistant) bei jedem Refresh, auch während eine andere Seite auf dem Display ist; ein unverändertes Bild wird nicht noch einmal geschickt. |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h`. Mit `12h` lauten Fertig-Zeit, „seit“ und das Ende des letzten Drucks `4:47 PM`. Eine Zeit an einem anderen Tag zeigt den Wochentag (`Di 9:14 PM`) statt „gestern“, mehr als 6 Tage entfernt nur das Datum (`10.11.`). Restzeit, Dauer und „vor 4 min“ bleiben, wie sie sind. |
 
-Die Seite nimmt nur die Schlüssel ihrer `source` an (dazu `title`, `thumbnail`, `finished_for`, `lang`, `refresh`, `duration`); ein Schlüssel einer anderen Quelle, etwa `password` bei `source: octoprint`, stoppt den Server mit einer Meldung, die die erlaubten Schlüssel nennt.
+Die Seite nimmt nur die Schlüssel ihrer `source` an (dazu `title`, `thumbnail`, `finished_for`, `lang`, `refresh`, `duration`, `time_format`); ein Schlüssel einer anderen Quelle, etwa `password` bei `source: octoprint`, stoppt den Server mit einer Meldung, die die erlaubten Schlüssel nennt.
 
 **Vorlagen für Home Assistant:**
 

@@ -102,6 +102,7 @@ Für die API-Kosten, mit dem Key in `.env` (siehe [Einrichtung](#einrichtung)):
 | `lang` | oberstes `lang` | `de` oder `en`. Legt alle Texte der Seite fest. |
 | `refresh` | Standard-`refresh` | Für `claude` empfehlen wir `30`. Die Seite liest nur, was angekommen ist, das kostet nichts. Bei den API-Anbietern behält der Server eine erfolgreiche Antwort ohnehin 5 Minuten. |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h`. Mit `12h` lautet ein Reset in 24 Stunden oder mehr `Do 9:00 AM`, und „Stand“-Texte nutzen `1:58 PM`. Countdowns wie `in 2:13` bleiben, wie sie sind. |
 
 ## Einrichtung
 

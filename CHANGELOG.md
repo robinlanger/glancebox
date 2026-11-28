@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/). Firmware and server share one version (`VERSION`).
 
+## [Unreleased]
+
+### Added
+
+- Option `time_format: 24h | 12h` (issue #36). `24h` is the default; without the key every page
+  looks as before. Set it at the top of `config.yaml` (an empty value means `24h`) or on a single
+  page, where it overrides the top-level value. Any other value stops the server with
+  `time_format must be '24h' or '12h', got ...`. In 12 hours a time of day reads `2:05 PM`, the
+  same for `lang: de` and `en`. It applies to the header clock of every built-in page, the
+  `clock` page (smaller digits with AM/PM beside them, new preview `clock-12h.png`), `bahn`
+  (departures an hour or more away and the scheduled time), `weather` (the four hours as
+  `3 PM`), `printer` (finish time, "since", end of the last print; another day shows the weekday
+  instead of "yesterday", more than 6 days away the date only), `ai` (resets a day or more away
+  such as `Thu 9:00 AM`, "As of") and the "As of" texts of `kuma`, `homeassistant` and `energy`.
+  It does not touch durations and countdowns (`in 2:13`, `12 min`, `4 min ago`), the "Local
+  time" row of the device page, `url` pages or custom pages that format times themselves. For
+  custom pages: `ctx.time_format`, `ctx.clock()` and the macro `ui.clock(text)`. In the Home
+  Assistant add-on there is no form field; set it in the add-on's `config.yaml` (the starter
+  playlist mentions it). No firmware change.
+
+  Checked with unit tests and browser render tests (Chromium) only; not checked on the real
+  display or in a real Home Assistant.
+
+### Changed
+
+- `printer` page without a preview picture: the first small line now steps down to 11 px from
+  16 characters in 24-hour mode too. Lines that long were mostly cut with "…" before. The
+  shipped preview pictures are unchanged.
+
 ## [0.8.0]
 
 New page `printer`: one 3D printer at a glance, with state, progress, time left, finish time,

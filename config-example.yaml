@@ -2,6 +2,7 @@
 interval: 30              # default display time per page, in seconds
 timezone: Europe/Berlin
 lang: de                  # language for built-in pages (de or en)
+time_format: 24h           # 24h or 12h (AM/PM)
 custom_pages_dir: /config/pages   # your own pages (<type>/page.py + template.html); may be missing
 # push_key: ${GLANCEBOX_PUSH_KEY}   # only needed for pushed data (ai page, provider claude)
 

@@ -25,7 +25,7 @@ pages-custom/
 
 ```python
 def fetch(options: dict, ctx) -> dict:
-    return {"title": "Hello"}
+    return {"title": "Hello", "clock": ctx.clock()}
 ```
 
 - `fetch(options, ctx)` is **required**. It returns a dict. Every key becomes a variable in the template. It runs in a worker thread (blocking calls such as HTTP requests are fine) and must finish within 20 seconds.
@@ -35,14 +35,18 @@ def fetch(options: dict, ctx) -> dict:
 - `DEFAULT_REFRESH = 5` is optional (an integer). It is your page's `refresh` when the page entry in `config.yaml` sets none; without it `refresh` defaults to `duration`. Below `MIN_REFRESH` it is raised to `MIN_REFRESH`.
 - Other `.py` files in the same folder can be imported with `from .helper import something`.
 
-`options` holds every key of the page entry in `config.yaml` except `type`, `duration` and `refresh`. `ctx` has four fields:
+`options` holds every key of the page entry in `config.yaml` except `type`, `duration`, `refresh` and `time_format`. `ctx` has these fields:
 
 | Field | Meaning |
 | --- | --- |
 | `ctx.now` | the current time as a datetime with the time zone from `config.yaml` |
 | `ctx.lang` | the top-level `lang` (`de` or `en`) |
 | `ctx.timezone` | the time zone name |
+| `ctx.time_format` | `24h` or `12h`: the page's own `time_format`, else the top-level one |
+| `ctx.clock(when=None)` | a time of day as text in that format, `14:05` or `2:05 PM`; without `when` the current time (`ctx.now`) |
 | `ctx.pushed(channel)` | the latest data pushed to the server, see [Data pushed to the server](#data-pushed-to-the-server) |
+
+Use `ctx.clock()` for every time of day you show, so the page follows `time_format`. Existing pages that format the time themselves, for example with `strftime("%H:%M")`, keep working and simply stay in 24 hours. Durations such as "in 2:13" are not times of day; format them yourself.
 
 If `fetch` raises an error, the page keeps its last good picture for up to 10 minutes and the error appears in the log and on the preview page. An error in `page.py` while loading (a typo) stops the server at startup with a clear message.
 
@@ -68,12 +72,13 @@ Values are HTML-escaped automatically. The canvas is exactly 240x240 pixels and 
 {% extends "base.html" %}
 {% import "ui.html" as ui %}
 {% block body %}
-{{ ui.header("Server", "14:05", alert=False) }}
+{{ ui.header("Server", clock, alert=False) }}
 <div style="position:absolute;top:50px;left:7px;right:7px">{{ ui.bar(82, "82 %") }}</div>
 {% endblock %}
 ```
 
-- `ui.header(title, clock, alert=False)`: the 34 px title bar with the title on the left and the clock on the right. `alert=True` makes it red (`--header-alert`).
+- `ui.header(title, clock, alert=False)`: the 34 px title bar with the title on the left and the clock on the right. `clock` is the text from `ctx.clock()`, returned by `fetch` (as in the `page.py` example above). `alert=True` makes it red (`--header-alert`).
+- `ui.clock(text)`: a time of day; a trailing ` AM` / ` PM` becomes a small suffix, any other text is shown as it is. `ui.header` uses it for its clock.
 - `ui.notice(message, sub=None, tone="muted")`: a centered message below the header. `tone` is `muted`, `warn` (orange) or `bad` (red).
 - `ui.bar(percent, text, height=30)`: a bar filled to `percent` (limited to 0 to 100) with `text` on its right. Green below 75 %, orange from 75 %, red from 90 %.
 - `ui.level(percent)`: only the class name (`ui-ok`, `ui-warn` or `ui-bad`) for colouring your own elements.
@@ -137,10 +142,10 @@ Keep the server on your home network. The push endpoint is protected only by the
 The built-in `clock` page is the smallest useful example (`pages/clock/`). Its `page.py` does three things:
 
 1. `validate` rejects a `lang` other than `de` or `en`.
-2. `fetch` takes the language (the page's own `lang` option, or the top-level one), formats `ctx.now` and returns `{"time": "14:05", "weekday": "Dienstag", "date": "14.11.2026"}`.
+2. `fetch` takes the language (the page's own `lang` option, or the top-level one), takes the time from `ctx.clock()`, splits a trailing AM/PM off with `split_suffix` from `glancebox.timefmt`, formats the date from `ctx.now` and returns `{"time": "14:05", "ampm": "", "weekday": "Dienstag", "date": "14.11.2026"}` (in 12 hours `"time": "2:05", "ampm": "PM"`).
 3. Nothing else: no network, no state.
 
-Its `template.html` extends `base.html` and uses `{{ time }}`, `{{ weekday }}` and `{{ date }}`, centered in the 240x240 area with a large, bold time. Copy it and change it:
+Its `template.html` extends `base.html` and uses `{{ time }}`, `{{ ampm }}`, `{{ weekday }}` and `{{ date }}`, centered in the 240x240 area with a large, bold time. Copy it and change it:
 
 ```sh
 mkdir -p pages-custom

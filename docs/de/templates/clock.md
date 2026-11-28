@@ -2,6 +2,10 @@
 
 ![Vorschau der Seite clock](../../img/templates/clock.png)
 
+![Vorschau der Seite clock mit time_format: 12h](../../img/templates/clock-12h.png)
+
+Mit `time_format: 12h`
+
 ## Was sie zeigt
 
 Die Uhrzeit in großen Ziffern, darunter Wochentag und Datum. Es ist die kleinste sinnvolle Seite und der Ausgangspunkt für eigene Seiten.
@@ -25,8 +29,9 @@ Nichts. Die Seite braucht keinen Netzwerkzugriff, kein Konto und keinen Schlüss
 | `lang` | oberstes `lang` | `de` oder `en`. Bestimmt die Sprache des Wochentags und das Datumsformat (`14.11.2026` oder `2026-11-14`). |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
 | `refresh` | `duration` | Wie oft die Seite neu gerendert wird. Einmal pro Minute (`60`) genügt. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h`. Bei `12h` steht die Zeit als `2:32` mit kleinem `PM` daneben. Die Ziffern sind dort kleiner (56 statt 72 px), damit AM/PM passt. |
 
-`duration` und `refresh` gelten für jede Seite, siehe [Server-Konfiguration](../configuration.md#optionen-die-jede-seite-hat). Die Zeitzone kommt aus `timezone` auf oberster Ebene.
+`duration`, `refresh` und `time_format` gelten für jede Seite, siehe [Server-Konfiguration](../configuration.md#optionen-die-jede-seite-hat). Die Zeitzone kommt aus `timezone` auf oberster Ebene.
 
 ## Einrichtung
 

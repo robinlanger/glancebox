@@ -47,7 +47,9 @@ _PRINTER_FILE = "benchy_0.2mm_PLA_MK4"
 
 SAMPLES: dict[str, tuple[str, dict, dict]] = {
     "clock": ("clock", {"lang": "en"},
-              {"time": "14:32", "weekday": "Thursday", "date": "2026-11-12"}),
+              {"time": "14:32", "ampm": "", "weekday": "Thursday", "date": "2026-11-12"}),
+    "clock-12h": ("clock", {"lang": "en"},
+                  {"time": "2:32", "ampm": "PM", "weekday": "Thursday", "date": "2026-11-12"}),
     "weather": ("weather", {"location": "Frankfurt am Main", "lang": "en"}, {
         "title": "Frankfurt am Main", "clock": "14:32", "icon": "partly", "temp": 11,
         "desc": "Partly cloudy", "high": 15, "low": 6,

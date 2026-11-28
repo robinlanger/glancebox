@@ -31,6 +31,7 @@ The description and the title follow the page language (`de` or `en`).
 | `lang` | top-level `lang` | `de` or `en`. Sets the description and the default title. |
 | `refresh` | `duration`, at least `60` | Seconds between two new pictures, **at least 60**. The picture and its clock stay current, but Open-Meteo is asked at most every 15 minutes, because weather changes slowly and the service is free. If the value is below 60 the server refuses to start. |
 | `duration` | `interval` | How many seconds the page stays on the display. |
+| `time_format` | top-level `time_format` | `24h` or `12h`. With `12h` the four hours read `3 PM` instead of `15`, and the header clock `2:32 PM`. |
 
 The time zone comes from the top-level `timezone`. The four hours are the next four full hours in that zone, also across midnight.
 

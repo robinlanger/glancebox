@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -208,3 +209,9 @@ def test_time_format_per_page(tmp_path):
 def test_time_format_per_page_rejects_other_values(tmp_path):
     with pytest.raises(ConfigError, match=r"pages\[0\]: time_format must be '24h' or '12h'"):
         load_config(write(tmp_path, "pages:\n  - {type: clock, time_format: am}\n"))
+
+
+def test_example_config_documents_time_format():
+    path = Path(__file__).resolve().parents[2] / "config-example.yaml"
+    assert re.search(r"^time_format: 24h\b", path.read_text(), re.MULTILINE)
+    assert load_config(path, environ={}).time_format == "24h"

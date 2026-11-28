@@ -82,3 +82,12 @@ def test_printer_samples_build():
         assert text in (data["label"], data["big"]), name
         if name != "printer-idle":
             assert data["thumb"].startswith("data:image/png;base64,"), name
+
+
+def test_twelve_hour_clock_sample_exists():
+    ptype, _, data = _load().SAMPLES["clock-12h"]
+    assert ptype == "clock" and (data["time"], data["ampm"]) == ("2:32", "PM")
+
+
+def test_every_clock_sample_has_the_ampm_key():
+    assert all("ampm" in d for p, _, d in _load().SAMPLES.values() if p == "clock")
