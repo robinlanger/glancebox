@@ -1,10 +1,11 @@
 # Home Assistant add-on
 
 If you run Home Assistant OS, you can run the Glance Box server as a Home Assistant add-on instead
-of Docker Compose. This page takes you from the add-on store to your own playlist in four steps.
+of Docker Compose. This page takes you from the App store to your own playlist in four steps.
 
-The names of menus and buttons below are those of the Home Assistant versions this add-on was
-developed with. Newer versions may call them slightly differently.
+The names of menus and buttons below are those of Home Assistant 2026.11 (Home Assistant OS
+18.4). There, add-ons are called **apps**: the menu is **Settings → Apps** and the store is the
+**App store**. Older versions say "Add-ons" and "Add-on store"; newer versions may differ again.
 
 ## What you need
 
@@ -18,11 +19,11 @@ developed with. Newer versions may call them slightly differently.
 
 [![Add the repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Frobinlanger%2Fglancebox)
 
-1. Click the button. It opens your Home Assistant and asks to add this repository to the add-on
-   store. Confirm.
-   Without the button: **Settings → Add-ons → Add-on store → ⋮ (top right) → Repositories**, add
-   `https://github.com/robinlanger/glancebox` and close the dialog.
-2. In the add-on store, open **Glance Box**. If it does not show up yet, reload the page.
+1. Click the button. It opens your Home Assistant and asks "Add app repository?". Click **Add**.
+   Without the button: **Settings → Apps → Install app**. This opens the **App store**. There,
+   **⋮ (top right) → Repositories → Add**, enter `https://github.com/robinlanger/glancebox` as the
+   URL and click **Add**.
+2. In the App store, open **Glance Box**. If it does not show up yet, reload the page.
 3. Click **Install**. The download can take a few minutes; then the add-on page shows **Start**.
 
 ## Step 2: Start it and open the web UI
@@ -30,11 +31,11 @@ developed with. Newer versions may call them slightly differently.
 1. On the add-on page, click **Start**. The **Log** tab shows two lines with `Uvicorn running on`
    once the server is up (the add-on runs two servers). One of them names port 8080, the port
    inside the add-on that your network reaches on port 8090; the other is for the web UI.
-2. Click **Open web UI**. The add-on's overview opens: the box "Connect your display" and, under
+2. Click **Open Web UI**. The add-on's overview opens: the box "Connect your display" and, under
    "Playlist", the starter pages **clock** and **weather**. Their previews appear after a short
    while; until then a page shows "no picture yet". The overview reloads itself every 30 seconds.
-3. Optional: switch on **Show in sidebar** on the add-on page. Home Assistant does not add a
-   sidebar entry by itself.
+3. Optional: switch on **Show in sidebar** on the add-on page. It is off after the install, so
+   Home Assistant does not add a sidebar entry by itself.
 
 Time zone, language (German or English) and the home location for the weather come from Home
 Assistant, so there is nothing to fill in.
@@ -57,9 +58,11 @@ Assistant, so there is nothing to fill in.
 
 ## Step 4: Choose your pages
 
-The playlist is the file `config.yaml` in the add-on's config folder. In the File editor or
-Studio Code Server it is `/addon_configs/<id>_glancebox/config.yaml`, where `<id>` is a short
-code Home Assistant gives this repository. It uses the same format as the
+The playlist is the file `config.yaml` in the add-on's config folder,
+`/app_configs/<id>_glancebox/config.yaml`, where `<id>` is a short code Home Assistant gives this
+repository (for example `9a6cf636_glancebox`). Older versions of Home Assistant and of the editor
+add-ons show the folder as `/addon_configs/<id>_glancebox/`. Inside the add-on, and in its log,
+the same file is called `/config/config.yaml`. It uses the same format as the
 [configuration](configuration.md) of the Docker setup, with two differences:
 
 - `timezone`, `lang` and the location of a `weather` page are optional; without them the values
@@ -67,18 +70,21 @@ code Home Assistant gives this repository. It uses the same format as the
 - A `homeassistant` or `energy` page, and a `printer` page with `source: hass`, needs neither
   `url` nor `token`; it reads from this Home Assistant.
 
-To edit the file you need an editor add-on from the official add-on store, for example
-**File editor** or **Studio Code Server**; Home Assistant OS does not come with one. File editor
-may only show Home Assistant's own config folder until you switch off its option "Enforce
-basepath" in its Configuration tab (not yet checked on a real Home Assistant).
+To edit the file you need an editor add-on from the official App store, for example
+**File editor**, **Studio Code Server** or **Terminal & SSH**; Home Assistant OS does not come
+with one. File editor's own documentation says that its option "Enforce basepath", which is on
+after the install, limits it to Home Assistant's own config folder. Switch it off in File
+editor's **Configuration** tab and restart File editor (not yet tried in File editor itself; the
+folder was checked in Terminal & SSH).
 
-1. Open `/addon_configs/<id>_glancebox/` in the File editor (or Studio Code Server).
+1. Open `/app_configs/<id>_glancebox/` in your editor.
+    - **The folder is empty:** the add-on could not save the starter file. This is what happened
+      on Home Assistant OS 18.4. The Log tab shows `cannot write /config/config.yaml ([Errno 13]
+      Permission denied: ...); using a temporary starter playlist`, and the web UI shows the
+      starter content under "Start config.yaml with this content". Create a new file
+      `config.yaml` in that folder and paste the content.
     - **`config.yaml` is there:** the add-on wrote it on its first start with the starter pages.
       The Log tab of that start shows `wrote starter playlist to /config/config.yaml`.
-    - **The folder is empty or missing:** the add-on could not save the starter file. The Log tab
-      shows `cannot write /config/config.yaml (...); using a temporary starter playlist`, and the
-      web UI shows the starter content under "Start config.yaml with this content". Create a new
-      file `config.yaml` in that folder and paste the content.
 2. Change the pages. A typical first playlist: the clock, the weather and some entities of your
    Home Assistant (replace the entity ids with your own):
 
@@ -100,7 +106,7 @@ basepath" in its Configuration tab (not yet checked on a real Home Assistant).
 4. Open the web UI again. The playlist lists your pages with their previews. If a page has a
    problem, its error is shown in red under its preview.
 
-If the add-on stops instead, the Log tab names the reason in one line, see
+If the add-on stops instead, the last lines of the Log tab name the reason, see
 [Troubleshooting](#troubleshooting).
 
 ## Examples
@@ -242,13 +248,13 @@ Restart the add-on after changing a secret.
 
 | What you see | Likely cause | What to do |
 | --- | --- | --- |
-| The add-on stops right after Start | An error in `config.yaml` | Open the **Log** tab. One line names the problem, for example `pages[2] (homeassistant): ...`, `unknown page type`, `environment variable OCTOPRINT_KEY is not set` (the secret is missing in the Configuration tab) or `refresh must be at least ...`. Fix it and start the add-on again. |
+| The add-on stops right after Start | An error in `config.yaml` | Open the **Log** tab. Its last line names the problem, for example `pages[2] (homeassistant): ...`, `pages[0] (clok): unknown page type; available: ...`, `pages[0].api_key: environment variable OCTOPRINT_KEY is not set` (the secret is missing in the Configuration tab) or `refresh must be at least ...`. A YAML error (for example wrong indentation) starts with `/config/config.yaml: invalid YAML:` and takes a few lines with the line and column. Fix it and start the add-on again. |
 | A change has no effect | The add-on was not restarted | Restart the add-on after every change of `config.yaml` or of a secret. |
-| `config.yaml` cannot be found | The file is in the add-on's config folder, not in Home Assistant's own config folder | Look in `/addon_configs/<id>_glancebox/`. The File editor may be limited to Home Assistant's config folder by its option "Enforce basepath"; Studio Code Server shows `/addon_configs`. If the folder is empty, create `config.yaml` with the starter content from the web UI (Step 4). |
+| `config.yaml` cannot be found | The file is in the add-on's config folder, not in Home Assistant's own config folder | Look in `/app_configs/<id>_glancebox/` (older versions: `/addon_configs/<id>_glancebox/`). File editor is limited to Home Assistant's config folder while its option "Enforce basepath" is on. If the folder is empty, create `config.yaml` with the starter content from the web UI (Step 4). |
 | The display shows nothing, or the web UI keeps saying "Waiting for your display" | The display has a wrong address | Check the address on the display: `http://`, the IP address of Home Assistant, port 8090. Display and Home Assistant must be in the same network. Open `http://192.168.1.x:8090/healthz` in a browser: it answers with one line of JSON that starts with `{"version":` and the version number. If it does not, the display cannot reach the add-on either. |
-| `http://192.168.1.x:8090/` in a browser shows "Not Found" | Nothing is wrong | The overview exists only in the add-on's web UI inside Home Assistant. Port 8090 serves only the display. To check it, open `/healthz`. |
+| `http://192.168.1.x:8090/` in a browser shows `{"detail":"Not Found"}` | Nothing is wrong | The overview exists only in the add-on's web UI inside Home Assistant. Port 8090 serves only the display. To check it, open `/healthz`. |
 | The web UI says "The server address could not be determined" | The add-on's port is switched off | Open the add-on's **Configuration** tab, section **Network**, and enter a port (8090) for the display port. Save and restart the add-on. |
-| The add-on does not start because port 8090 is in use | Another add-on or program uses port 8090 | Change the port in the **Configuration** tab, section **Network**, and use the new port in the display's address. |
+| The add-on does not start: `Cannot start app ... because port 8090 is already in use` | Another add-on or program uses port 8090 | Change the port in the **Configuration** tab, section **Network**, and use the new port in the display's address. |
 | A page shows "Cannot reach Home Assistant", or a tile shows "missing" | Home Assistant did not answer, or an entity id does not exist | Check the entity id in **Settings → Devices & services → Entities**. The web UI shows the error in red under the page's preview. |
 | The weather is for the wrong place | The home location in Home Assistant is not where you want the weather | Set `location:` on the `weather` page (see [Examples](#weather-at-another-place-weather)). |
 

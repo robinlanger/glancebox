@@ -24,8 +24,9 @@ All notable changes to this project are documented here. The format follows
   Assistant add-on there is no form field; set it in the add-on's `config.yaml` (the starter
   playlist mentions it). No firmware change.
 
-  Checked with unit tests and browser render tests (Chromium) only; not checked on the real
-  display or in a real Home Assistant.
+  Checked with unit tests and browser render tests (Chromium); the `clock` page with
+  `time_format: 12h` also in the Home Assistant add-on on the test VM (see the add-on guide entry
+  below). Not checked on the real display.
 
 ### Changed
 
@@ -39,8 +40,32 @@ All notable changes to this project are documented here. The format follows
   troubleshooting table. The add-on's Documentation tab (`ha-addon/DOCS.md`) is a short version
   that links to it. A test loads every YAML example of the three documents in add-on mode.
 
-  Written from the code; not yet checked on a real Home Assistant (menu names, the location of
-  `config.yaml`, whether the File editor reaches it, and the troubleshooting rows).
+  Checked on 2026-11-28 on the project's Home Assistant OS test VM (Home Assistant OS 18.4,
+  Core 2026.11.2, amd64) with this branch built as a local add-on and driven through the `ha`
+  command line in Terminal & SSH. Checked there: on the first start the add-on could not write
+  the starter `config.yaml` (permission denied, the fallback text appears in the log) and the
+  log shows the two `Uvicorn running on` lines; the config folder is
+  `/app_configs/<id>_glancebox/` (the guide said `/addon_configs/`); a hand-made `config.yaml`
+  is read after a restart and a change without restart has no effect; every YAML example of the
+  guide starts the add-on (`homeassistant` and `energy` with the instance's test entities, the
+  `printer` with `source: hass` shows its "entity missing" error because the VM has no printer,
+  the OctoPrint example stops with `environment variable OCTOPRINT_KEY is not set` until the
+  secret is added under "More secrets"); a wrong page type, a YAML error and a missing secret
+  stop the add-on with the log lines now quoted in the guide; a second add-on on port 8090 is
+  refused by the Supervisor with `port 8090 is already in use`; with the display port switched
+  off the add-on keeps running and nothing answers on the network; port 8090 answers `/healthz`
+  with `{"version":...}` and `/` with `{"detail":"Not Found"}`; "Show in sidebar" is off after
+  the install; an add-on update keeps `config.yaml` (tried with a local add-on); and
+  `time_format: 12h` shows the clock page as `9:27 PM` (picture fetched from the display port).
+  Menu and button names (Settings → Apps, App store, ⋮ → Repositories → Add, Install app, Open
+  Web UI, Show in sidebar, Log/Protokoll, Configuration → Network, Settings → Devices & services
+  → Entities, English and German) were read from the interface texts and page code that this
+  Home Assistant serves, not clicked through: there was no login for the test instance. File
+  editor's "Enforce basepath" is described from File editor's own documentation. Not checked:
+  the web UI inside Home Assistant (the box "Connect your display", "no picture yet", the
+  starter content, the "server address could not be determined" warning, the red error under a
+  preview, the 12-hour preview there), File editor and Studio Code Server themselves, the
+  install time of the store add-on, and a real display.
 
 ## [0.8.0]
 

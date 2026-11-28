@@ -21,13 +21,13 @@ Step-by-step guide with examples and troubleshooting:
    the setup portal's field **Server URL**, or later on the display's device page. Only
    `http://` works. The web UI then says "Display connected".
 5. **Edit `config.yaml` and restart the add-on.** The playlist is `config.yaml` in the add-on's
-   config folder; in the File editor (or Studio Code Server) it is under
-   `/addon_configs/<id>_glancebox/config.yaml`. You need an editor add-on from the official
-   add-on store for this, for example File editor or Studio Code Server; File editor may only
-   show Home Assistant's own config folder until you switch off its option "Enforce basepath"
-   (not yet checked on a real Home Assistant). If that folder is empty (the add-on could not save
-   the starter file there), the web UI shows the starter content: create `config.yaml` with it.
-   The add-on reads the file only at start, so restart it after every change.
+   config folder, `/app_configs/<id>_glancebox/config.yaml` (older Home Assistant versions:
+   `/addon_configs/…`). You need an editor from the official App store for this, for example
+   File editor, Studio Code Server or Terminal & SSH. File editor's documentation says its
+   option "Enforce basepath" (on by default) limits it to Home Assistant's own config folder;
+   switch it off first. If the folder is empty (on Home Assistant OS 18.4 the add-on could not
+   save the starter file there), the web UI shows the starter content: create `config.yaml` with
+   it. The add-on reads the file only at start, so restart it after every change.
 
 All page types and options: <https://robinlanger.github.io/glancebox/templates/>.
 
@@ -69,12 +69,13 @@ Restart the add-on after changing them.
 
 ## Troubleshooting
 
-- **The add-on stops right after Start:** an error in `config.yaml`. The **Log** tab names it in
-  one line. Fix it and start again.
+- **The add-on stops right after Start:** an error in `config.yaml`. The last lines of the
+  **Log** tab name it. Fix it and start again.
 - **A change has no effect:** restart the add-on.
 - **The display stays empty:** check the address on the display: `http://`, the IP address of
   Home Assistant and port 8090. Open `http://192.168.1.x:8090/healthz` in a browser; it should
-  answer with the version. (`/` on that port says "Not Found"; the overview is only in the web UI.)
+  answer with the version. (`/` on that port says `{"detail":"Not Found"}`; the overview is only
+  in the web UI.)
 
 More problems and their fixes:
 <https://robinlanger.github.io/glancebox/home-assistant/#troubleshooting>
