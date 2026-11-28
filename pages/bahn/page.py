@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from glancebox.http import redact_urls
+from glancebox.timefmt import convert_hhmm, format_time, split_suffix
 
 from . import departures
 
@@ -45,7 +46,7 @@ def _badge(train: str) -> str:
     return "other"
 
 
-def _row(dep, now) -> dict:
+def _row(dep, now, time_format: str = "24h") -> dict:
     unit = ""
     right_class = ""
     if dep.cancelled:
@@ -57,7 +58,8 @@ def _row(dep, now) -> dict:
         elif mins < 60:
             right, unit = str(mins), "min"
         else:
-            right = dep.realtime(now).strftime("%H:%M")
+            # 12h: "9:10" as value, "PM" in the grey unit field where "min" sits
+            right, unit = split_suffix(format_time(dep.realtime(now), time_format))
         if mins <= 3:
             right_class = "soon"
     delay = dep.delay if not dep.cancelled and dep.delay and dep.delay > 0 else None
@@ -68,7 +70,7 @@ def _row(dep, now) -> dict:
         "right": right,
         "unit": unit,
         "right_class": right_class,
-        "scheduled": dep.scheduled,
+        "scheduled": convert_hhmm(dep.scheduled, time_format),
         "delay": delay,
         "delay_class": "minor" if delay is not None and delay < 6 else "major",
         "platform": f"Gl. {dep.platform}" if dep.platform else "",
@@ -80,7 +82,7 @@ def _row(dep, now) -> dict:
 def fetch(options: dict, ctx) -> dict:
     station = options["station"].strip()
     limit = options.get("limit", DEFAULT_LIMIT)
-    clock = ctx.now.strftime("%H:%M")
+    clock = ctx.clock()
     data = {"title": options.get("title") or station, "clock": clock, "rows": [],
             "message": None, "sub": None}
     try:
@@ -95,5 +97,5 @@ def fetch(options: dict, ctx) -> dict:
     if not deps:
         data["message"] = "Keine Abfahrten"
         return data
-    data["rows"] = [_row(d, ctx.now) for d in deps[:limit]]
+    data["rows"] = [_row(d, ctx.now, ctx.time_format) for d in deps[:limit]]
     return data

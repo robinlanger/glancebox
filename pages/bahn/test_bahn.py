@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -178,6 +179,36 @@ def test_right_soon_and_hours(bahn):
     assert module._row(now, NOW)["right"] == "jetzt"
 
 
+
+def test_twelve_hour_rows(bahn):
+    _, module, _ = bahn
+    soon = Departure("S1", "X", "19:50", 0, None, False, False)
+    later = Departure("S1", "X", "21:10", 5, None, False, False)
+    r1, r2 = (module._row(d, NOW, "12h") for d in (soon, later))
+    assert (r1["right"], r1["unit"], r1["scheduled"]) == ("1", "min", "7:50 PM")
+    assert (r2["right"], r2["unit"], r2["scheduled"]) == ("9:15", "PM", "9:10 PM")
+    assert module._row(later, NOW)["scheduled"] == "21:10"          # default unchanged
+    assert module._row(later, NOW, "24h")["right"] == "21:15"
+
+
+def test_twelve_hour_keeps_odd_scheduled_text(bahn):
+    _, module, _ = bahn
+    # DBF always sends HH:MM; a cancelled row never calls realtime(), so odd text gets this far
+    odd = Departure("S1", "X", "--:--", None, None, False, True)
+    assert module._row(odd, NOW, "12h")["scheduled"] == "--:--"
+
+
+def test_twelve_hour_header_and_error_subtitle(bahn, monkeypatch):
+    ptype, module, _ = bahn
+    ctx12 = replace(_ctx(), time_format="12h")
+    assert ptype.fetch({"station": "X"}, ctx12)["clock"] == "7:49 PM"
+
+    def boom(*a, **k):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(module.departures, "fetch", boom)
+    assert ptype.fetch({"station": "X"}, ctx12)["sub"] == "Stand 7:49 PM"
+
 @pytest.mark.browser
 async def test_template_renders_sample(bahn):
     ptype, _, _ = bahn
@@ -189,3 +220,33 @@ async def test_template_renders_sample(bahn):
         out = await render_page(page, ptype, cfg, r, NOW.timestamp())
     img = Image.open(io.BytesIO(out))
     assert img.format == "JPEG" and img.size == (240, 240)
+
+
+@pytest.mark.browser
+async def test_template_twelve_hours_fits():
+    from playwright.async_api import async_playwright
+
+    from glancebox.frames import _jinja_env
+
+    row = {"train": "ICE 1234", "badge": "long", "destination": "Frankfurt (Main) Flughafen Fernbf",
+           "right": "12:59", "unit": "PM", "right_class": "", "scheduled": "12:59 PM",
+           "delay": 12, "delay_class": "major", "platform": "Gl. 102",
+           "platform_changed": False, "cancelled": False}
+    data = {"title": "Frankfurt (Main) Flughafen Fernbf", "clock": "12:59 PM",
+            "rows": [dict(row) for _ in range(6)], "message": None, "sub": None}
+    html = _jinja_env([PAGES_DIR / "bahn"]).get_template("template.html").render(**data)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        await page.set_content(html, wait_until="load")
+        boxes = await page.evaluate(
+            "[...document.querySelectorAll('.right, .right *, .l2 > *')].map(e => {"
+            " const r = e.getBoundingClientRect();"
+            " return {cls: e.className, text: e.textContent,"
+            " overflow: e.scrollWidth > e.clientWidth, left: r.left, right: r.right}; })")
+        ampm = await page.evaluate("document.querySelectorAll('.hdr .clock .ui-ampm').length")
+        await browser.close()
+    assert len(boxes) == 6 * 6, boxes   # per row: .right, .val, .unit, .sched, .delay, .plat
+    for b in boxes:
+        assert not b["overflow"] and b["left"] >= 0 and b["right"] <= 240, b
+    assert ampm == 1
