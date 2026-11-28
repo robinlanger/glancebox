@@ -293,6 +293,15 @@ def test_ingress_shows_starter_yaml_to_copy_when_not_saved():
     assert '<pre id="starter">' in html and "type: clock" in html
 
 
+def test_ingress_footer_names_the_config_folder():
+    # Home Assistant 2026.11 shows the add-on config folder as /app_configs (seen in
+    # Terminal & SSH); older versions say /addon_configs. Same wording as the add-on guide.
+    html = ingress_client().get("/").text
+    assert "/app_configs/…_glancebox/" in html
+    assert "older versions: /addon_configs/…" in html
+    assert "File editor:" not in html
+
+
 def test_copy_works_without_clipboard_api():
     # navigator.clipboard is missing on plain-http pages (HA is often opened over http).
     html = ingress_client().get("/").text
