@@ -1,4 +1,5 @@
 import io
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -137,6 +138,25 @@ def test_claude_rows_english_and_title(ai):
     assert [(r["label"], r["reset"], r["text"]) for r in data["rows"]] == [
         ("5 hours", "in 2:13", "8 %"), ("Week", "Thu 09:00", "81 %")]
     assert data["stand"] == "As of 13:58"
+
+
+def test_claude_twelve_hours(ai):
+    data = ai.fetch(OPTIONS, replace(ctx(limits()), time_format="12h"))
+    assert data["clock"] == "2:05 PM"
+    assert [r["reset"] for r in data["rows"]] == ["in 2:13", "Do 9:00 AM"]   # countdown untouched
+    assert data["stand"] == "Stand 1:58 PM"
+
+
+def test_claude_twelve_hours_english_and_no_data(ai):
+    data = ai.fetch(OPTIONS, replace(ctx(limits(), lang="en"), time_format="12h"))
+    assert (data["rows"][1]["reset"], data["stand"]) == ("Thu 9:00 AM", "As of 1:58 PM")
+
+
+def test_claude_stand_from_another_day_twelve_hours(ai):
+    item = Pushed(limits(), RECEIVED - 24 * 3600)
+    context = PageContext(now=NOW, lang="en", timezone="Europe/Berlin",
+                          pushed=lambda c: item, time_format="12h")
+    assert ai.fetch(OPTIONS, context)["stand"] == "As of Sat 1:58 PM"
 
 
 def test_claude_reset_passed_is_zero(ai):
@@ -495,6 +515,16 @@ def test_anthropic_request(ai, fake_http):
     assert data["stand"] == "Stand 13:02"  # data_refreshed_at 12:02 UTC
 
 
+def test_cost_stand_twelve_hours(ai, fake_http):
+    fake_http(TWO_PAGES["anthropic-api"])
+    data = ai.fetch(COST["anthropic-api"], replace(cost_ctx(), time_format="12h"))
+    assert data["stand"] == "Stand 1:02 PM"  # data_refreshed_at 12:02 UTC
+    fake_http([], error=http_error(401, "other-key"))
+    en = ai.fetch({**COST["openai-api"], "lang": "en"},
+                  replace(cost_ctx(), time_format="12h"))
+    assert (en["message"], en["sub"]) == ("No data", "As of 2:05 PM")
+
+
 def test_openai_request(ai, fake_http):
     fake = fake_http(TWO_PAGES["openai-api"])
     data = ai.fetch(COST["openai-api"], cost_ctx())
@@ -695,6 +725,12 @@ def test_copilot_premium_requests(ai, fake_http):
     assert data["big"] == {"label": "Übrig", "value": "88"}
     assert data["stand"] == "Stand 14:05"
     assert data["message"] is None and data["alert"] is False
+
+
+def test_copilot_stand_twelve_hours(ai, fake_http):
+    fake_http([gh_usage(200, 12)])
+    data = ai.fetch(COPILOT, replace(cost_ctx(), time_format="12h"))
+    assert data["stand"] == "Stand 2:05 PM"
 
 
 def test_copilot_ai_credits_english(ai, fake_http):

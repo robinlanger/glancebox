@@ -156,3 +156,12 @@ def test_default_refresh_and_skip_unchanged_must_be_well_formed(tmp_path, line, 
 def test_pages_without_the_hooks_behave_as_before():
     clock = load_page_types([REAL])["clock"]
     assert clock.default_refresh is None and clock.skip_unchanged is False
+
+
+def test_strict_page_accepts_per_page_time_format(tmp_path):
+    p = tmp_path / "config.yaml"
+    p.write_text("pages:\n  - {type: printer, source: moonraker, "
+                 "url: 'http://drucker.local:7125', time_format: 12h}\n")
+    cfg = load_config(p)
+    cfg = validate_config(cfg, load_page_types(cfg.pages_dirs))
+    assert cfg.pages[0].time_format == "12h"

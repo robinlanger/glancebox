@@ -4,6 +4,71 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/). Firmware and server share one version (`VERSION`).
 
+## [0.8.1]
+
+### Added
+
+- Option `time_format: 24h | 12h` (issue #36). `24h` is the default; without the key every page
+  looks as before. Set it at the top of `config.yaml` (an empty value means `24h`) or on a single
+  page, where it overrides the top-level value. Any other value stops the server with
+  `time_format must be '24h' or '12h', got ...`. In 12 hours a time of day reads `2:05 PM`, the
+  same for `lang: de` and `en`. It applies to the header clock of every built-in page, the
+  `clock` page (smaller digits with AM/PM beside them, new preview `clock-12h.png`), `bahn`
+  (departures an hour or more away and the scheduled time), `weather` (the four hours as
+  `3 PM`), `printer` (finish time, "since", end of the last print; another day shows the weekday
+  instead of "yesterday", more than 6 days away the date only), `ai` (resets a day or more away
+  such as `Thu 9:00 AM`, "As of") and the "As of" texts of `kuma`, `homeassistant` and `energy`.
+  It does not touch durations and countdowns (`in 2:13`, `12 min`, `4 min ago`), the "Local
+  time" row of the device page, `url` pages or custom pages that format times themselves. For
+  custom pages: `ctx.time_format`, `ctx.clock()` and the macro `ui.clock(text)`. In the Home
+  Assistant add-on there is no form field; set it in the add-on's `config.yaml` (the starter
+  playlist mentions it). No firmware change.
+
+  Checked with unit tests and browser render tests (Chromium); the `clock` page with
+  `time_format: 12h` also in the Home Assistant add-on on the test VM (see the add-on guide entry
+  below). Not checked on the real display.
+
+### Changed
+
+- `printer` page without a preview picture: the first small line now steps down to 11 px from
+  16 characters in 24-hour mode too. Lines that long were mostly cut with "…" before. The
+  shipped preview pictures are unchanged.
+- Add-on web UI footer: it now names the config folder as `/app_configs/…_glancebox/` (older
+  Home Assistant versions: `/addon_configs/…`) and no longer ties it to File editor.
+- Home Assistant add-on guide (issue #37): `docs/en/home-assistant.md` and
+  `docs/de/home-assistant.md` are now a step-by-step guide (install, start and open the web UI,
+  connect the display, choose the pages), with copy-ready examples for the pages that read from
+  Home Assistant without `url`/`token`, a "More secrets" example, how to update, and a
+  troubleshooting table. The add-on's Documentation tab (`ha-addon/DOCS.md`) is a short version
+  that links to it. A test loads every YAML example of the three documents in add-on mode.
+
+  Checked on 2026-11-28 on the project's Home Assistant OS test VM (Home Assistant OS 18.4,
+  Core 2026.11.2, amd64) with this branch built as a local add-on and driven through the `ha`
+  command line in Terminal & SSH. Checked there: on the first start the add-on could not write
+  the starter `config.yaml` (permission denied, the fallback text appears in the log) and the
+  log shows the two `Uvicorn running on` lines; the config folder is
+  `/app_configs/<id>_glancebox/` (the guide said `/addon_configs/`); a hand-made `config.yaml`
+  is read after a restart and a change without restart has no effect; every YAML example of the
+  guide starts the add-on (`homeassistant` and `energy` with the instance's test entities, the
+  `printer` with `source: hass` shows its "entity missing" error because the VM has no printer,
+  the OctoPrint example stops with `environment variable OCTOPRINT_KEY is not set` until the
+  secret is added under "More secrets"); a wrong page type, a YAML error and a missing secret
+  stop the add-on with the log lines now quoted in the guide; a second add-on on port 8090 is
+  refused by the Supervisor with `port 8090 is already in use`; with the display port switched
+  off the add-on keeps running and nothing answers on the network; port 8090 answers `/healthz`
+  with `{"version":...}` and `/` with `{"detail":"Not Found"}`; "Show in sidebar" is off after
+  the install; an add-on update keeps `config.yaml` (tried with a local add-on); and
+  `time_format: 12h` shows the clock page as `9:27 PM` (picture fetched from the display port).
+  Menu and button names (Settings → Apps, App store, ⋮ → Repositories → Add, Install app, Open
+  Web UI, Show in sidebar, Log/Protokoll, Configuration → Network, Settings → Devices & services
+  → Entities, English and German) were read from the interface texts and page code that this
+  Home Assistant serves, not clicked through: there was no login for the test instance. File
+  editor's "Enforce basepath" is described from File editor's own documentation. Not checked:
+  the web UI inside Home Assistant (the box "Connect your display", "no picture yet", the
+  starter content, the "server address could not be determined" warning, the red error under a
+  preview, the 12-hour preview there), File editor and Studio Code Server themselves, the
+  install time of the store add-on, and a real display.
+
 ## [0.8.0]
 
 New page `printer`: one 3D printer at a glance, with state, progress, time left, finish time,

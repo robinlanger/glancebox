@@ -102,6 +102,7 @@ For the API costs, with the key in `.env` (see [Setup](#setup)):
 | `lang` | top-level `lang` | `de` or `en`. Sets all texts on the page. |
 | `refresh` | `refresh` default | For `claude` we recommend `30`. The page only reads what arrived, so this costs nothing. For the API providers the server keeps a successful answer for 5 minutes anyway. |
 | `duration` | `interval` | How many seconds the page stays on the display. |
+| `time_format` | top-level `time_format` | `24h` or `12h`. With `12h` a reset 24 hours or more away reads `Thu 9:00 AM`, and "As of" texts use `1:58 PM`. Countdowns such as `in 2:13` stay as they are. |
 
 ## Setup
 

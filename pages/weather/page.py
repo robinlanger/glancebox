@@ -7,6 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from glancebox import http
+from glancebox.timefmt import format_hour
 
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -167,13 +168,14 @@ def fetch(options: dict, ctx) -> dict:
         if t.timestamp() <= this_hour:
             continue
         rain = hourly["precipitation_probability"][i]
-        hours.append({"hour": f"{t.hour:02d}", "temp": _round(hourly["temperature_2m"][i]),
+        hours.append({"hour": format_hour(t, ctx.time_format),
+                      "temp": _round(hourly["temperature_2m"][i]),
                       "rain": _round(rain) if rain is not None else 0})
         if len(hours) == 4:
             break
     return {
         "title": title,
-        "clock": ctx.now.strftime("%H:%M"),
+        "clock": ctx.clock(),
         "icon": icon_key(code, int(cur.get("is_day", 1))),
         "temp": _round(cur["temperature_2m"]),
         "desc": _description(code, lang),

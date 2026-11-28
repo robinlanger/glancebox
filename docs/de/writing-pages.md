@@ -25,7 +25,7 @@ pages-custom/
 
 ```python
 def fetch(options: dict, ctx) -> dict:
-    return {"title": "Hallo"}
+    return {"title": "Hallo", "clock": ctx.clock()}
 ```
 
 - `fetch(options, ctx)` ist **Pflicht**. Es gibt ein Dict zurück. Jeder Schlüssel wird im Template zu einer Variablen. Die Funktion läuft in einem Worker-Thread (blockierende Aufrufe wie HTTP-Anfragen sind in Ordnung) und muss innerhalb von 20 Sekunden fertig sein.
@@ -35,14 +35,18 @@ def fetch(options: dict, ctx) -> dict:
 - `DEFAULT_REFRESH = 5` ist optional (eine ganze Zahl). Es ist das `refresh` deiner Seite, wenn der Seiteneintrag in der `config.yaml` keins setzt; ohne den Wert gilt `duration`. Liegt es unter `MIN_REFRESH`, gilt `MIN_REFRESH`.
 - Andere `.py`-Dateien im selben Ordner kannst du mit `from .helper import etwas` importieren.
 
-`options` enthält alle Schlüssel des Seiteneintrags in der `config.yaml` außer `type`, `duration` und `refresh`. `ctx` hat vier Felder:
+`options` enthält alle Schlüssel des Seiteneintrags in der `config.yaml` außer `type`, `duration`, `refresh` und `time_format`. `ctx` hat diese Felder:
 
 | Feld | Bedeutung |
 | --- | --- |
 | `ctx.now` | die aktuelle Zeit als datetime mit der Zeitzone aus der `config.yaml` |
 | `ctx.lang` | das `lang` von oberster Ebene (`de` oder `en`) |
 | `ctx.timezone` | der Name der Zeitzone |
+| `ctx.time_format` | `24h` oder `12h`: das eigene `time_format` der Seite, sonst das von oberster Ebene |
+| `ctx.clock(when=None)` | eine Uhrzeit als Text in diesem Format, `14:05` oder `2:05 PM`; ohne `when` die aktuelle Zeit (`ctx.now`) |
 | `ctx.pushed(kanal)` | die letzten Daten, die an den Server geschickt wurden, siehe [Daten, die an den Server geschickt werden](#daten-die-an-den-server-geschickt-werden) |
+
+Nimm `ctx.clock()` für jede Uhrzeit, die du zeigst, dann folgt die Seite `time_format`. Bestehende Seiten, die die Zeit selbst formatieren, etwa mit `strftime("%H:%M")`, funktionieren weiter und bleiben einfach bei 24 Stunden. Dauern wie „in 2:13“ sind keine Uhrzeiten; formatiere sie selbst.
 
 Wirft `fetch` einen Fehler, behält die Seite bis zu 10 Minuten ihr letztes gutes Bild, und der Fehler erscheint im Log und auf der Vorschauseite. Ein Fehler in `page.py` beim Laden (ein Tippfehler) stoppt den Server beim Start mit einer klaren Meldung.
 
@@ -68,12 +72,13 @@ Werte werden automatisch HTML-maskiert. Die Fläche ist genau 240x240 Pixel gro�
 {% extends "base.html" %}
 {% import "ui.html" as ui %}
 {% block body %}
-{{ ui.header("Server", "14:05", alert=False) }}
+{{ ui.header("Server", clock, alert=False) }}
 <div style="position:absolute;top:50px;left:7px;right:7px">{{ ui.bar(82, "82 %") }}</div>
 {% endblock %}
 ```
 
-- `ui.header(title, clock, alert=False)`: die 34 px hohe Titelleiste mit dem Titel links und der Uhr rechts. `alert=True` färbt sie rot (`--header-alert`).
+- `ui.header(title, clock, alert=False)`: die 34 px hohe Titelleiste mit dem Titel links und der Uhr rechts. `clock` ist der Text aus `ctx.clock()`, den `fetch` zurückgibt (wie im Beispiel `page.py` oben). `alert=True` färbt sie rot (`--header-alert`).
+- `ui.clock(text)`: eine Uhrzeit; ein ` AM` / ` PM` am Ende wird zu einem kleinen Zusatz, jeder andere Text bleibt, wie er ist. `ui.header` nutzt es für seine Uhr.
 - `ui.notice(message, sub=None, tone="muted")`: eine zentrierte Meldung unter der Titelleiste. `tone` ist `muted`, `warn` (orange) oder `bad` (rot).
 - `ui.bar(percent, text, height=30)`: ein Balken, gefüllt bis `percent` (begrenzt auf 0 bis 100), mit `text` rechts darin. Grün unter 75 %, orange ab 75 %, rot ab 90 %.
 - `ui.level(percent)`: nur der Klassenname (`ui-ok`, `ui-warn` oder `ui-bad`), um eigene Elemente einzufärben.
@@ -137,10 +142,10 @@ Lass den Server in deinem Heimnetz. Der Endpunkt ist nur durch den Schlüssel ge
 Die mitgelieferte Seite `clock` ist das kleinste sinnvolle Beispiel (`pages/clock/`). Ihre `page.py` macht drei Dinge:
 
 1. `validate` lehnt jede andere `lang` als `de` oder `en` ab.
-2. `fetch` nimmt die Sprache (die eigene Option `lang` der Seite oder die von oberster Ebene), formatiert `ctx.now` und gibt `{"time": "14:05", "weekday": "Dienstag", "date": "14.11.2026"}` zurück.
+2. `fetch` nimmt die Sprache (die eigene Option `lang` der Seite oder die von oberster Ebene), holt die Uhrzeit aus `ctx.clock()`, trennt ein AM/PM am Ende mit `split_suffix` aus `glancebox.timefmt` ab, formatiert das Datum aus `ctx.now` und gibt `{"time": "14:05", "ampm": "", "weekday": "Dienstag", "date": "14.11.2026"}` zurück (bei 12 Stunden `"time": "2:05", "ampm": "PM"`).
 3. Mehr nicht: kein Netzwerk, kein Zustand.
 
-Ihr `template.html` erweitert `base.html` und nutzt `{{ time }}`, `{{ weekday }}` und `{{ date }}`, zentriert in der 240x240-Fläche mit einer großen, fetten Uhrzeit. Kopiere sie und ändere sie ab:
+Ihr `template.html` erweitert `base.html` und nutzt `{{ time }}`, `{{ ampm }}`, `{{ weekday }}` und `{{ date }}`, zentriert in der 240x240-Fläche mit einer großen, fetten Uhrzeit. Kopiere sie und ändere sie ab:
 
 ```sh
 mkdir -p pages-custom

@@ -22,6 +22,7 @@ Der Server prüft die Datei beim Start. Stimmt etwas nicht (Tippfehler bei einem
 | `interval` | `30` | Standard-Anzeigedauer einer Seite in Sekunden. |
 | `timezone` | `Europe/Berlin` | Zeitzone für Uhren und Uhrzeiten auf Seiten (IANA-Name). |
 | `lang` | `de` | Standardsprache der mitgelieferten Seiten (`de` oder `en`). |
+| `time_format` | `24h` | `24h` oder `12h`. `12h` zeigt Uhrzeiten als `2:05 PM`, in beiden Sprachen: die Uhr in der Kopfzeile, die Seite clock, Abfahrts-, Fertig- und Reset-Zeiten, „Stand“-Texte. Dauern und Countdowns wie „in 2:13“ oder „12 min“ ändern sich nicht, `url`-Seiten auch nicht. Ein leerer Wert bedeutet `24h`. Jeder andere Wert stoppt den Server mit `time_format must be '24h' or '12h', got ...`. |
 | `custom_pages_dir` | nicht gesetzt | Ordner mit deinen eigenen Seitentypen. Relative Pfade gelten ab dem Ordner der Konfigurationsdatei. Er darf fehlen, der Server warnt dann im Log und nutzt nur die mitgelieferten Seiten. In Docker `/config/pages`. |
 | `push_key` | nicht gesetzt | Schlüssel für gepushte Daten (nötig für die `ai`-Seite mit Provider `claude`). Mindestens 16 Zeichen, nur ASCII (Buchstaben, Ziffern, `-`, `_`), erzeugen mit `openssl rand -hex 24`. Ohne ihn ist der Push-Endpunkt aus. Nur im Heimnetz (LAN) verwenden. In `.env` ablegen und `push_key: ${GLANCEBOX_PUSH_KEY}` schreiben. |
 | `pages` | Pflicht | Die Playlist, mindestens eine Seite. |
@@ -56,8 +57,9 @@ pages:
 | `type` | Pflicht | Seitentyp: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `printer`, `ai` oder ein eigener. Die fertigen Seiten stehen im [Vorlagen-Katalog](templates/README.md). |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
 | `refresh` | `duration` | Eine Seite wird höchstens alle `refresh` Sekunden neu gerendert. Nimm einen größeren Wert für Daten, die sich langsam ändern, oder für Dienste, die Anfragen begrenzen. Ein Seitentyp kann einen eigenen Standard und ein eigenes Minimum haben, zum Beispiel `energy`: Standard 5, mindestens 2; `printer`: Standard 10, mindestens 5. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h` nur für diese Seite; überschreibt den Wert auf oberster Ebene. Ein leerer Wert ist hier ein Fehler. |
 
-Alle anderen Schlüssel gehören zum Seitentyp und stehen unten. Fertige Seiten mit Vorschaubildern findest du im [Vorlagen-Katalog](templates/README.md).
+Wie `type`, `duration` und `refresh` landet `time_format` nie in den Optionen der Seite. Alle anderen Schlüssel gehören zum Seitentyp und stehen unten. Fertige Seiten mit Vorschaubildern findest du im [Vorlagen-Katalog](templates/README.md).
 
 ## Seitentyp: url
 

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -182,3 +183,35 @@ def test_defaults_hook_must_return_mapping(tmp_path):
     p.write_text("pages:\n  - type: clock\n")
     with pytest.raises(ConfigError):
         load_config(p, defaults=lambda d: None)
+
+
+def test_time_format_default_and_values(tmp_path):
+    base = "pages:\n  - type: clock\n"
+    assert load_config(write(tmp_path, base)).time_format == "24h"
+    assert load_config(write(tmp_path, "time_format: 12h\n" + base)).time_format == "12h"
+    assert load_config(write(tmp_path, "time_format: 24h\n" + base)).time_format == "24h"
+    assert load_config(write(tmp_path, "time_format:\n" + base)).time_format == "24h"  # empty
+
+
+@pytest.mark.parametrize("value", ["12", "12H", "am", "'12'", "true", "[12h]"])
+def test_time_format_rejects_other_values(tmp_path, value):
+    with pytest.raises(ConfigError, match="time_format must be '24h' or '12h'"):
+        load_config(write(tmp_path, f"time_format: {value}\npages:\n  - type: clock\n"))
+
+
+def test_time_format_per_page(tmp_path):
+    cfg = load_config(write(tmp_path, "time_format: 12h\npages:\n  - type: clock\n"
+                                      "  - {type: bahn, station: X, time_format: 24h}\n"))
+    assert [p.time_format for p in cfg.pages] == [None, "24h"]
+    assert "time_format" not in cfg.pages[1].options       # reserved, like duration/refresh
+
+
+def test_time_format_per_page_rejects_other_values(tmp_path):
+    with pytest.raises(ConfigError, match=r"pages\[0\]: time_format must be '24h' or '12h'"):
+        load_config(write(tmp_path, "pages:\n  - {type: clock, time_format: am}\n"))
+
+
+def test_example_config_documents_time_format():
+    path = Path(__file__).resolve().parents[2] / "config-example.yaml"
+    assert re.search(r"^time_format: 24h\b", path.read_text(), re.MULTILINE)
+    assert load_config(path, environ={}).time_format == "24h"

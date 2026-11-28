@@ -179,7 +179,7 @@ TEXT = {
 
 def fetch(options: dict, ctx) -> dict:
     lang = options.get("lang", ctx.lang if ctx.lang in LANGS else "de")
-    clock = ctx.now.strftime("%H:%M")
+    clock = ctx.clock()
     title = options.get("title") or DEFAULT_TITLE
     texts = TEXT[lang]
     parsed = entries(options)

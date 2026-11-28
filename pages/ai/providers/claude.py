@@ -98,13 +98,14 @@ def _windows(data: dict) -> list[tuple[str, float, float | None]]:
     return [(key, *found[key]) for key, _ in WINDOWS if key in found]
 
 
-def _reset_text(resets_at: float, now: datetime, lang: str) -> str:
+def _reset_text(resets_at: float, ctx, lang: str) -> str:
+    now = ctx.now
     left = resets_at - now.timestamp()
     if left < 24 * 3600:
         minutes = int(left // 60)
         return f"in {minutes // 60}:{minutes % 60:02d}"
     at = datetime.fromtimestamp(resets_at, now.tzinfo)
-    return f"{WEEKDAYS[lang][at.weekday()]} {at:%H:%M}"
+    return f"{WEEKDAYS[lang][at.weekday()]} {ctx.clock(at)}"
 
 
 def fetch(options: dict, ctx) -> dict:
@@ -120,7 +121,7 @@ def _fetch(options: dict, ctx) -> dict:
 
     received = datetime.fromtimestamp(pushed.received_at, ctx.now.tzinfo)
     day = "" if received.date() == ctx.now.date() else f"{WEEKDAYS[lang][received.weekday()]} "
-    stand = f"{texts['asof']} {day}{received:%H:%M}"  # weekday once the push is not from today
+    stand = f"{texts['asof']} {day}{ctx.clock(received)}"  # weekday once the push is not from today
     labels = dict(WINDOWS)
     rows = []
     for key, percent, resets_at in _windows(pushed.data):
@@ -129,7 +130,7 @@ def _fetch(options: dict, ctx) -> dict:
         elif resets_at <= ctx.now.timestamp():
             percent, reset = 0.0, texts["reset"]
         else:
-            reset = _reset_text(resets_at, ctx.now, lang)
+            reset = _reset_text(resets_at, ctx, lang)
         rows.append({"label": labels[key][lang], "reset": reset, "percent": percent,
                      "text": f"{round(percent)} %"})
     if not rows:

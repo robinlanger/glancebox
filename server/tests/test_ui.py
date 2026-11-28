@@ -1,3 +1,5 @@
+import pytest
+
 from glancebox.frames import _jinja_env
 
 
@@ -33,3 +35,46 @@ def test_notice_escapes_and_tones():
     out = _render('{{ ui.notice("<b>", sub="<i>", tone="warn") }}')
     assert "&lt;b&gt;" in out and "&lt;i&gt;" in out and "<b>" not in out
     assert "ui-tone-warn" in out
+
+
+def test_clock_plain_text_is_unchanged():
+    assert _render('{{ ui.clock("14:05") }}') == "14:05"
+
+
+def test_clock_small_suffix():
+    assert _render('{{ ui.clock("2:05 PM") }}') == '2:05<span class="ui-ampm">PM</span>'
+    assert _render('{{ ui.clock("12:00 AM") }}') == '12:00<span class="ui-ampm">AM</span>'
+
+
+def test_clock_takes_odd_values():
+    assert _render("{{ ui.clock(none) }}") in ("", "None")
+    assert _render("{{ ui.clock(1405) }}") == "1405"
+    assert _render('{{ ui.clock("<b> PM") }}') == '&lt;b&gt;<span class="ui-ampm">PM</span>'
+
+
+def test_header_uses_clock():
+    out = _render('{{ ui.header("T", "2:05 PM") }}')
+    assert '<span class="ui-clock">2:05<span class="ui-ampm">PM</span></span>' in out
+    assert '<span class="ui-clock">14:05</span>' in _render('{{ ui.header("T", "14:05") }}')
+
+
+@pytest.mark.browser
+async def test_header_12h_clock_fits():
+    from playwright.async_api import async_playwright
+
+    tpl = ('{% extends "base.html" %}{% import "ui.html" as ui %}'
+           '{% block body %}{{ ui.header("Wohnzimmer Solaranlage", "12:59 PM") }}{% endblock %}')
+    html = _jinja_env([]).from_string(tpl).render()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        await page.set_content(html)
+        boxes = await page.evaluate(
+            "Object.fromEntries(['ui-clock', 'ui-title'].map(c => {"
+            " const e = document.querySelector('.' + c); const r = e.getBoundingClientRect();"
+            " return [c, {right: r.right, width: r.width,"
+            " overflow: e.scrollWidth > e.clientWidth}]; }))")
+        await browser.close()
+    assert boxes["ui-clock"]["right"] <= 233
+    assert not boxes["ui-clock"]["overflow"]
+    assert boxes["ui-title"]["width"] >= 120

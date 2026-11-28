@@ -2,6 +2,10 @@
 
 ![Preview of the clock page](../../img/templates/clock.png)
 
+![Preview of the clock page with time_format: 12h](../../img/templates/clock-12h.png)
+
+With `time_format: 12h`
+
 ## What it shows
 
 The time in large digits, below it the weekday and the date. It is the smallest useful page and the starting point for your own pages.
@@ -25,8 +29,9 @@ Nothing. The page needs no network access, no account and no key.
 | `lang` | top-level `lang` | `de` or `en`. Sets the language of the weekday and the date format (`14.11.2026` or `2026-11-14`). |
 | `duration` | `interval` | How many seconds the page stays on the display. |
 | `refresh` | `duration` | How often the page is rendered again. Once a minute (`60`) is enough. |
+| `time_format` | top-level `time_format` | `24h` or `12h`. In `12h` the time reads `2:32` with a small `PM` beside it. The digits are smaller there (56 instead of 72 px), so that AM/PM fits. |
 
-`duration` and `refresh` work on every page, see [Server configuration](../configuration.md#options-every-page-has). The time zone comes from the top-level `timezone`.
+`duration`, `refresh` and `time_format` work on every page, see [Server configuration](../configuration.md#options-every-page-has). The time zone comes from the top-level `timezone`.
 
 ## Setup
 

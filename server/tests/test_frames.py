@@ -1,5 +1,7 @@
+import dataclasses
 import io
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
@@ -7,7 +9,7 @@ from PIL import Image
 from glancebox.anim import Anim, Track
 from glancebox.config import AppConfig, PageConfig
 from glancebox.frames import FrameStore, refresh_once
-from glancebox.pages import PageType
+from glancebox.pages import PageContext, PageType
 
 
 class FakeRenderer:
@@ -123,6 +125,27 @@ async def test_context_uses_page_lang_and_tz(tmp_path):
     assert seen["ctx"].lang == "en"
     assert seen["ctx"].now.tzinfo is not None
     assert seen["ctx"].timezone == "Europe/Berlin"
+
+
+async def test_context_time_format_page_wins(tmp_path):
+    seen = []
+
+    def fetch(o, c):
+        seen.append((c.time_format, c.clock(), c.clock(datetime(2026, 1, 1, 21, 10))))
+        return {"v": 1}
+
+    t = script_type(tmp_path, "a", fetch)
+    cfg = dataclasses.replace(
+        make_cfg(page(0, "a"), dataclasses.replace(page(1, "a"), time_format="24h")),
+        time_format="12h")
+    await refresh_once(cfg, {"a": t}, FakeRenderer(), FrameStore(2), 0)
+    # now = epoch 0 = 01:00 in Europe/Berlin
+    assert seen == [("12h", "1:00 AM", "9:10 PM"), ("24h", "01:00", "21:10")]
+
+
+def test_context_defaults_to_24h():
+    ctx = PageContext(datetime(2026, 11, 28, 14, 5), "de", "Europe/Berlin")
+    assert (ctx.time_format, ctx.clock()) == ("24h", "14:05")
 
 
 def test_available_is_sized_by_page_count():

@@ -123,7 +123,7 @@ Flashing replaces the firmware on your device. You do this at your own risk. The
 
 4. **Set it up.** Join the `GlanceBox-XXXX` Wi-Fi, choose your network, enter the server address and an update password: [docs/en/setup.md](docs/en/setup.md). The display restarts and shows your first page.
 
-**Home Assistant OS?** Run the server as an add-on instead of step 1: [docs/en/home-assistant.md](docs/en/home-assistant.md).
+**Home Assistant OS?** Run the server as an add-on instead of step 1. The step-by-step guide is in [docs/en/home-assistant.md](docs/en/home-assistant.md).
 
 ## Documentation
 

@@ -31,6 +31,7 @@ Beschreibung und Titel folgen der Sprache der Seite (`de` oder `en`).
 | `lang` | oberstes `lang` | `de` oder `en`. Bestimmt die Beschreibung und den Standardtitel. |
 | `refresh` | `duration`, mindestens `60` | Sekunden zwischen zwei neuen Bildern, **mindestens 60**. Bild und Uhrzeit bleiben aktuell, Open-Meteo wird aber höchstens alle 15 Minuten gefragt, weil sich das Wetter langsam ändert und der Dienst kostenlos ist. Bei einem Wert unter 60 startet der Server nicht. |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h`. Mit `12h` stehen die vier Stunden als `3 PM` statt `15` und die Uhr in der Kopfzeile als `2:32 PM`. |
 
 Die Zeitzone kommt aus `timezone` auf oberster Ebene. Die vier Stunden sind die nächsten vier vollen Stunden in dieser Zone, auch über Mitternacht hinweg.
 

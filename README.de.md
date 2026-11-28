@@ -123,7 +123,7 @@ Beim Flashen wird die Firmware deines Geräts ersetzt. Das machst du auf eigene 
 
 4. **Einrichten.** Verbinde dich mit dem WLAN `GlanceBox-XXXX`, wähle dein Netzwerk, gib die Serveradresse und ein Update-Passwort ein: [docs/de/setup.md](docs/de/setup.md). Das Display startet neu und zeigt deine erste Seite.
 
-**Home Assistant OS?** Statt Schritt 1 läuft der Server auch als Add-on: [docs/de/home-assistant.md](docs/de/home-assistant.md).
+**Home Assistant OS?** Statt Schritt 1 läuft der Server auch als Add-on. Die Schritt-für-Schritt-Anleitung steht in [docs/de/home-assistant.md](docs/de/home-assistant.md).
 
 ## Dokumentation
 

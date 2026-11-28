@@ -239,7 +239,7 @@ def build(options: dict, states: dict[str, dict | None], lang: str, clock: str) 
 
 def fetch(options: dict, ctx) -> dict:
     lang = options.get("lang", ctx.lang if ctx.lang in LANGS else "de")
-    clock = ctx.now.strftime("%H:%M")
+    clock = ctx.clock()
     texts = TEXT[lang]
     wanted = []
     for cfg in rows(options):

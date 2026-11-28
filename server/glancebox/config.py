@@ -14,12 +14,15 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import yaml
 
 from .http import redact_urls
+from .timefmt import TIME_FORMATS
 
 log = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL = 30
-_TOP_LEVEL_KEYS = {"interval", "timezone", "lang", "pages", "custom_pages_dir", "push_key"}
-_RESERVED_PAGE_KEYS = {"type", "duration", "refresh"}
+_TOP_LEVEL_KEYS = {
+    "interval", "timezone", "lang", "pages", "custom_pages_dir", "push_key", "time_format",
+}
+_RESERVED_PAGE_KEYS = {"type", "duration", "refresh", "time_format"}
 _ENV_REF = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 MIN_PUSH_KEY_LENGTH = 16
 
@@ -36,6 +39,8 @@ class PageConfig:
     duration: int
     refresh: int
     refresh_explicit: bool = False
+    # None means: use AppConfig.time_format.
+    time_format: str | None = None
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,7 @@ class AppConfig:
     pages: tuple[PageConfig, ...]
     pages_dirs: tuple[Path, ...]
     push_key: str | None = None
+    time_format: str = "24h"
 
 
 def _builtin_pages_dir() -> Path:
@@ -85,6 +91,13 @@ def _positive_int(value: Any, where: str) -> int:
     return value
 
 
+def _time_format(value: Any, where: str) -> str:
+    # A YAML string only: 12 (int), true or a list are refused, not coerced.
+    if not isinstance(value, str) or value not in TIME_FORMATS:
+        raise ConfigError(f"{where}time_format must be '24h' or '12h', got {value!r}")
+    return value
+
+
 def _check_timezone(name: str) -> None:
     # Fail at startup, not on every render of a page that uses the time zone.
     try:
@@ -107,8 +120,12 @@ def _parse_page(index: int, raw: Any, interval: int) -> PageConfig:
     refresh_explicit = "refresh" in raw
     if "refresh" in raw:
         refresh = _positive_int(raw["refresh"], f"{where}: refresh")
+    time_format = None
+    if "time_format" in raw:
+        time_format = _time_format(raw["time_format"], f"{where}: ")
     options = {k: v for k, v in raw.items() if k not in _RESERVED_PAGE_KEYS}
-    return PageConfig(index, page_type, options, duration, refresh, refresh_explicit)
+    return PageConfig(index, page_type, options, duration, refresh, refresh_explicit,
+                      time_format)
 
 
 def load_config(path: Path, defaults: Callable[[dict], dict] | None = None,
@@ -142,6 +159,8 @@ def load_config(path: Path, defaults: Callable[[dict], dict] | None = None,
     if not isinstance(timezone, str) or not isinstance(lang, str):
         raise ConfigError("timezone and lang must be strings")
     _check_timezone(timezone)
+    time_format = data.get("time_format")
+    time_format = "24h" if time_format is None else _time_format(time_format, "")
 
     raw_pages = data.get("pages")
     if not isinstance(raw_pages, list) or not raw_pages:
@@ -172,4 +191,4 @@ def load_config(path: Path, defaults: Callable[[dict], dict] | None = None,
         raise ConfigError("push_key must contain only ASCII characters (for example letters, "
                           "digits, - and _; openssl rand -hex 24 makes a good one)")
 
-    return AppConfig(interval, timezone, lang, pages, tuple(pages_dirs), push_key)
+    return AppConfig(interval, timezone, lang, pages, tuple(pages_dirs), push_key, time_format)

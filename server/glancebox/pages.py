@@ -8,7 +8,7 @@ import sys
 import types as _types
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, time
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from .config import AppConfig, ConfigError
 from .http import redact_urls
 from .push import CHANNEL_RE, Pushed
+from .timefmt import format_time
 
 PACKAGE = "glancebox_pages"
 
@@ -27,6 +28,11 @@ class PageContext:
     timezone: str
     # Latest data pushed to a channel (see push.py), or None when nothing arrived yet.
     pushed: Callable[[str], Pushed | None] = field(default=lambda _c: None)
+    time_format: str = "24h"
+
+    def clock(self, when: datetime | time | None = None) -> str:
+        """Time of day in the page's format; ``now`` when ``when`` is omitted."""
+        return format_time(when or self.now, self.time_format)
 
 
 class PageType:

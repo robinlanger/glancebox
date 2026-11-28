@@ -1,4 +1,5 @@
 import io
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -84,6 +85,12 @@ def test_all_up(kuma, serve):
     assert data["title"] == "Homelab" and data["clock"] == "14:05"
     assert calls == ["http://kuma.lan:3001/api/status-page/home",
                      "http://kuma.lan:3001/api/status-page/heartbeat/home"]
+
+
+def test_twelve_hour_clock(kuma, serve):
+    serve(*build({1: ("Router", UP, 1.0)}))
+    data = kuma.fetch(OPTIONS, replace(ctx(), time_format="12h"))
+    assert data["state"] == "ok" and data["clock"] == "2:05 PM"
 
 
 def test_trailing_slash_and_title_option(kuma, serve):
@@ -190,6 +197,16 @@ def test_unreachable_gives_error_state(kuma, monkeypatch):
     assert data["sub"] == "Stand 14:05"
     data = kuma.fetch(OPTIONS, ctx("en"))
     assert data["message"] == "Cannot reach Uptime Kuma" and data["sub"] == "As of 14:05"
+
+
+def test_twelve_hour_error_subtitle(kuma, monkeypatch):
+    def boom(*a, **k):
+        raise requests.ConnectionError("no route")
+    monkeypatch.setattr(glancebox.http, "get_json", boom)
+    data = kuma.fetch(OPTIONS, replace(ctx(), time_format="12h"))
+    assert data["state"] == "error" and data["sub"] == "Stand 2:05 PM"
+    data = kuma.fetch(OPTIONS, replace(ctx("en"), time_format="12h"))
+    assert data["sub"] == "As of 2:05 PM"
 
 
 def test_failure_is_logged(kuma, monkeypatch, caplog):

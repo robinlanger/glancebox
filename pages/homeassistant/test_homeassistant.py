@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -255,6 +256,12 @@ def test_ok_tiles(ha, serve):
                                 "tone": "", "size": "l"}
 
 
+def test_twelve_hour_clock(ha, serve):
+    serve(two_ok())
+    data = ha.fetch(TWO, replace(ctx(), time_format="12h"))
+    assert data["state"] == "ok" and data["clock"] == "2:05 PM"
+
+
 def test_label_option_wins(ha, serve):
     serve({BASE + "sensor.a": ent("sensor.a", "1", friendly_name="FN")})
     opts = {**OPTIONS, "entities": [{"entity": "sensor.a", "label": "Mine"}]}
@@ -321,6 +328,14 @@ def test_unreachable(ha, serve, exc):
     assert data["sub"] == "Stand 14:05"
     en = ha.fetch(OPTIONS, ctx("en"))
     assert (en["message"], en["sub"]) == ("Cannot reach Home Assistant", "As of 14:05")
+
+
+def test_twelve_hour_error_subtitle(ha, serve):
+    serve({BASE + "sensor.a": requests.ConnectionError("x")})
+    data = ha.fetch(OPTIONS, replace(ctx(), time_format="12h"))
+    assert data["state"] == "error" and data["sub"] == "Stand 2:05 PM"
+    en = ha.fetch(OPTIONS, replace(ctx("en"), time_format="12h"))
+    assert en["sub"] == "As of 2:05 PM"
 
 
 def _timed(monkeypatch, mod, responses, step):

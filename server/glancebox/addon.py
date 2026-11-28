@@ -42,7 +42,8 @@ STARTER_CONFIG = """\
 # Glance Box playlist (Home Assistant add-on).
 # Docs: https://robinlanger.github.io/glancebox/
 # Time zone, language and location come from Home Assistant unless you set them here
-# (timezone:, lang:, and location: on a weather page).
+# (timezone:, lang:, and location: on a weather page). For 12-hour times (AM/PM) add
+# time_format: 12h above pages:.
 # Secrets go into the add-on's Configuration tab and are used here as ${NAME}.
 # Restart the add-on after editing this file.
 

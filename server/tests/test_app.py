@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import logging
 import re
 import subprocess
@@ -21,8 +22,8 @@ def make_cfg() -> AppConfig:
     return AppConfig(30, "Europe/Berlin", "de", pages, ())
 
 
-def make_client(store=None, now=NOW):
-    cfg = make_cfg()
+def make_client(store=None, now=NOW, cfg=None):
+    cfg = cfg or make_cfg()
     store = store or FrameStore(2)
     return TestClient(create_app(cfg, store, lambda: now, start_worker=False)), store
 
@@ -169,6 +170,13 @@ def test_frame_has_local_time_header():
     assert client.get("/api/v1/frame").headers["x-local-time"] == "14:46:40"
 
 
+def test_local_time_header_ignores_time_format():
+    # The firmware parses HH:MM:SS; the 12-hour option must never reach this header.
+    cfg = dataclasses.replace(make_cfg(), time_format="12h")
+    client, _ = make_client(filled_store(), cfg=cfg)
+    assert client.get("/api/v1/frame").headers["x-local-time"] == "14:46:40"
+
+
 def test_local_time_on_304_and_error_frame():
     client, _ = make_client(filled_store())
     etag = client.get("/api/v1/frame").headers["etag"]
@@ -283,6 +291,15 @@ def test_ingress_has_no_frame_or_push():
 def test_ingress_shows_starter_yaml_to_copy_when_not_saved():
     html = ingress_client(note="could not be saved", starter="pages:\n  - type: clock\n").get("/").text
     assert '<pre id="starter">' in html and "type: clock" in html
+
+
+def test_ingress_footer_names_the_config_folder():
+    # Home Assistant 2026.11 shows the add-on config folder as /app_configs (seen in
+    # Terminal & SSH); older versions say /addon_configs. Same wording as the add-on guide.
+    html = ingress_client().get("/").text
+    assert "/app_configs/…_glancebox/" in html
+    assert "older versions: /addon_configs/…" in html
+    assert "File editor:" not in html
 
 
 def test_copy_works_without_clipboard_api():

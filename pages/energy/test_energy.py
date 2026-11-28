@@ -1,6 +1,7 @@
 import io
 import logging
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -307,6 +308,12 @@ def test_fetch_ok_calls_each_entity(energy, serve):
     assert calls[0][1] == {"Authorization": "Bearer t0ken"}
 
 
+def test_twelve_hour_clock(energy, serve):
+    serve(three_responses())
+    data = energy.fetch(THREE, replace(ctx(), time_format="12h"))
+    assert data["state"] == "ok" and data["clock"] == "2:05 PM"
+
+
 @pytest.mark.parametrize(("lang", "word"), [("de", "fehlt"), ("en", "missing")])
 def test_missing_entity_keeps_others(energy, serve, lang, word):
     responses = three_responses()
@@ -338,6 +345,14 @@ def test_unreachable(energy, serve, exc):
     assert (data["message"], data["sub"]) == ("Keine Verbindung zu Home Assistant", "Stand 14:05")
     en = energy.fetch(OPTIONS, ctx("en"))
     assert (en["message"], en["sub"]) == ("Cannot reach Home Assistant", "As of 14:05")
+
+
+def test_twelve_hour_error_subtitle(energy, serve):
+    serve({BASE + "sensor.grid_power": requests.ConnectionError("x")})
+    data = energy.fetch(OPTIONS, replace(ctx(), time_format="12h"))
+    assert data["state"] == "error" and data["sub"] == "Stand 2:05 PM"
+    en = energy.fetch(OPTIONS, replace(ctx("en"), time_format="12h"))
+    assert en["sub"] == "As of 2:05 PM"
 
 
 def test_error_on_later_entity_drops_all(energy, serve):
@@ -534,6 +549,29 @@ async def test_same_data_renders_the_same_bytes(energy, mod):
         second = await render_data(energy, data, r)
     if first != second:
         pytest.xfail("renderer is not byte-stable; SKIP_UNCHANGED carries the 304")
+
+
+@pytest.mark.browser
+async def test_twelve_hour_header_clock_fits(mod):
+    from playwright.async_api import async_playwright
+
+    from glancebox.frames import _jinja_env
+
+    options, states = _setup(*ACTIVE[3])
+    options["title"] = "Energiefluss Zuhause"
+    data = mod.build(options, states, "de", "12:59 PM")
+    html = _jinja_env([PAGES_DIR / "energy"]).get_template("template.html").render(**data)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        await page.set_content(html)
+        box = await page.evaluate(
+            "(() => { const c = document.querySelector('.hd .c'), r = c.getBoundingClientRect();"
+            " return {text: c.textContent, overflow: c.scrollWidth > c.clientWidth,"
+            " right: r.right}; })()")
+        await browser.close()
+    assert box["text"] == "12:59 PM"
+    assert not box["overflow"] and box["right"] <= 232, box
 
 
 def _orange(px):

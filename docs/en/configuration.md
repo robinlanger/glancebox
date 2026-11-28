@@ -22,6 +22,7 @@ The server checks the file at startup. If something is wrong (a typo in a key, a
 | `interval` | `30` | Default display time of a page in seconds. |
 | `timezone` | `Europe/Berlin` | Time zone for clocks and times on pages (IANA name). |
 | `lang` | `de` | Default language of the built-in pages (`de` or `en`). |
+| `time_format` | `24h` | `24h` or `12h`. `12h` shows times of day as `2:05 PM`, in both languages: the header clock, the clock page, departure, finish and reset times, "As of" texts. Durations and countdowns such as "in 2:13" or "12 min" are not affected, nor are `url` pages. An empty value means `24h`. Any other value stops the server with `time_format must be '24h' or '12h', got ...`. |
 | `custom_pages_dir` | not set | Folder with your own page types. Relative paths are relative to the config file. It may be missing, the server then logs a warning and uses the built-in pages only. In Docker use `/config/pages`. |
 | `push_key` | not set | Key for pushed data (needed by the `ai` page with provider `claude`). At least 16 characters, ASCII only (letters, digits, `-`, `_`); generate one with `openssl rand -hex 24`. Without it the push endpoint is off. Use it on your home network only (LAN). Put it in `.env` and write `push_key: ${GLANCEBOX_PUSH_KEY}`. |
 | `pages` | required | The playlist, at least one page. |
@@ -56,8 +57,9 @@ pages:
 | `type` | required | Page type: `url`, `bahn`, `clock`, `weather`, `kuma`, `homeassistant`, `energy`, `printer`, `ai` or one of your own. The ready-made ones are described in the [template catalog](templates/README.md). |
 | `duration` | `interval` | How many seconds the page stays on the display. |
 | `refresh` | `duration` | A page is rendered again at most every `refresh` seconds. Use a larger value for data that changes slowly or for services that limit requests. A page type can have its own default and minimum, for example `energy`: default 5, at least 2; `printer`: default 10, at least 5. |
+| `time_format` | top-level `time_format` | `24h` or `12h` for this page only; overrides the top-level value. An empty value here is an error. |
 
-All other keys belong to the page type and are described below. Ready-made pages with preview pictures are in the [template catalog](templates/README.md).
+Like `type`, `duration` and `refresh`, `time_format` never reaches the page's own options. All other keys belong to the page type and are described below. Ready-made pages with preview pictures are in the [template catalog](templates/README.md).
 
 ## Page type: url
 

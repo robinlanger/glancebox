@@ -42,6 +42,7 @@ Die Texte auf der Seite sind deutsch („Keine Daten“, „Keine Abfahrten“, 
 | `dbf_url` | `https://dbf.finalrewind.org` | Adresse einer DBF-Instanz, falls du eine eigene betreibst. |
 | `refresh` | `60` | **Mindestens 60.** Das ist die Regel von DBF: eine Anfrage pro Bahnhof und Minute. Ohne `refresh` wird automatisch auf 60 angehoben. Bei einem Wert unter 60 startet der Server nicht. |
 | `duration` | `interval` | Wie viele Sekunden die Seite auf dem Display bleibt. |
+| `time_format` | oberstes `time_format` | `24h` oder `12h`. Mit `12h` zeigt eine Abfahrt in 60 Minuten oder mehr ihre Zeit als `9:10` mit `PM` im grauen Feld, wo sonst `min` steht, und die Plan-Zeit unter der Linie lautet `9:05 PM`. Die Minuten bis zur Abfahrt bleiben, wie sie sind. |
 
 ## Einrichtung
 

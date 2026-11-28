@@ -4,6 +4,8 @@ User documentation: [docs/en/templates/clock.md](../../docs/en/templates/clock.m
 
 The smallest useful page type. It shows the time (large), the weekday and the date. Use it as a starting point for your own pages.
 
+The time follows `time_format` (top level or per page). With `12h` it reads `9:05` with a small `AM` / `PM` beside it, and the digits are 56 px instead of 72 px so `12:59 PM` fits. `fetch` gets the text from `ctx.clock()` and splits the suffix off with `glancebox.timefmt.split_suffix`, returning it as `ampm` (empty in 24 hours).
+
 ```yaml
 - type: clock
   lang: en        # optional: de (default, or the top-level lang) or en

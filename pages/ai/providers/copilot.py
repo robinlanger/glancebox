@@ -95,5 +95,5 @@ def fetch(options: dict, ctx) -> dict:
                   "remaining_text": f"{_count(max(allowance - used, 0), lang)} / "
                                     f"{_count(allowance, lang)}"}],
         "big": {"label": texts["left"], "value": _count(max(allowance - used, 0), lang)},
-        "stand": f"{_cost.TEXT[lang]['asof']} {stand:%H:%M}",
+        "stand": f"{_cost.TEXT[lang]['asof']} {ctx.clock(stand)}",
     }

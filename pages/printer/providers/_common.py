@@ -23,6 +23,7 @@ import requests
 from PIL import Image
 
 from glancebox.http import redact_urls
+from glancebox.timefmt import format_time
 
 log = logging.getLogger(__name__)
 
@@ -189,20 +190,27 @@ def duration_text(seconds: int, lang: str) -> str:
     return f"Dauer {span}" if lang == "de" else f"Took {span}"
 
 
-def clock_text(when: datetime, now: datetime, lang: str) -> str:
-    """HH:MM today, else "gestern HH:MM", a weekday within 6 days, or the date."""
+def clock_text(when: datetime, now: datetime, lang: str, time_format: str = "24h") -> str:
+    """HH:MM today, else "gestern HH:MM", a weekday within 6 days, or the date.
+
+    In 12 hours: "4:47 PM" today, the weekday within 6 days (also for yesterday) and the date
+    alone further away; "yesterday" and a date with a time would not fit the column.
+    """
     when = when.astimezone(now.tzinfo)
-    hm = when.strftime("%H:%M")
+    hm = format_time(when, time_format)
     days = (when.date() - now.date()).days
+    twelve = time_format == "12h"
     if days == 0:
         return hm
-    if days == -1:
+    if days == -1 and not twelve:
         return f"gestern {hm}" if lang == "de" else f"yesterday {hm}"
     if abs(days) <= 6:
         return f"{_WEEKDAYS['de' if lang == 'de' else 'en'][when.weekday()]} {hm}"
     if lang == "de":
-        return f"{when.day:02d}.{when.month:02d}. {hm}"
-    return f"{_MONTHS[when.month - 1]} {when.day} {hm}"
+        date = f"{when.day:02d}.{when.month:02d}."
+    else:
+        date = f"{_MONTHS[when.month - 1]} {when.day}"
+    return date if twelve else f"{date} {hm}"
 
 
 def ago_text(when: datetime, now: datetime, lang: str) -> str:

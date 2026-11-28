@@ -4,32 +4,38 @@ This add-on runs the Glance Box server inside Home Assistant. It renders web pag
 pictures, and your Glance Box display (a GeekMagic SmallTV Ultra with the Glance Box firmware)
 shows them in rotation.
 
-## Before you start: flash the display once
+Step-by-step guide with examples and troubleshooting:
+<https://robinlanger.github.io/glancebox/home-assistant/>
 
-The display needs the Glance Box firmware. You flash it **once in the browser** through the stock
-firmware's update page, no soldering: <https://robinlanger.github.io/glancebox/guide/3-flash-the-firmware/>.
-After that, everything happens in Home Assistant.
+## Setup in five steps
 
-## First start
+1. **Flash the display once.** It needs the Glance Box firmware. You flash it once in the browser
+   through the stock firmware's update page, no soldering:
+   <https://robinlanger.github.io/glancebox/guide/3-flash-the-firmware/>.
+2. **Start the add-on.** Without any settings it starts with a starter playlist: a **clock** and
+   the **weather** at your Home Assistant home location. Time zone, language (German or English)
+   and location come from Home Assistant.
+3. **Open the web UI** on this page (switch on **Show in sidebar** to have it one click away). It
+   shows the box "Connect your display" and previews of your pages.
+4. **Enter the address** from that box, for example `http://192.168.1.x:8090`, on the display: in
+   the setup portal's field **Server URL**, or later on the display's device page. Only
+   `http://` works. The web UI then says "Display connected".
+5. **Edit `config.yaml` and restart the add-on.** The playlist is `config.yaml` in the add-on's
+   config folder, `/app_configs/9a6cf636_glancebox/config.yaml` as seen in Terminal & SSH (older
+   Home Assistant versions: `/addon_configs/…`). You need an editor from the official App store
+   for this, for example File editor, Studio Code Server or Terminal & SSH. File editor's
+   documentation says its option "Enforce basepath" (on by default) limits it to Home
+   Assistant's own config folder; switch it off first (not yet tried in File editor itself). If
+   the folder is empty (on Home Assistant OS 18.4 the add-on could not save the starter file
+   there), the web UI shows the starter content: create `config.yaml` with it. The add-on reads
+   the file only at start, so restart it after every change.
 
-Start the add-on. Without any settings it creates a starter playlist: a **clock** and the
-**weather** at your Home Assistant home location. Time zone, language (German or English) and
-location come from Home Assistant.
+All page types and options: <https://robinlanger.github.io/glancebox/templates/>.
 
-Click **Open web UI** on this page (switch on **Show in sidebar** to have it one click away). The box "Connect your display" shows the server address, for
-example `http://192.168.x.x:8090`. Enter it in the display's setup portal (or later on its device
-page). The display then shows your pages.
+## A typical first playlist
 
-## Change the pages
-
-The playlist is `config.yaml` in the add-on's config folder. In the File editor (or Studio Code
-Server) it is under `/addon_configs/<id>_glancebox/config.yaml`. If that folder is empty (the add-on
-could not save the starter file there), the web UI shows the starter content: create
-`config.yaml` with it in the File editor. Restart the add-on after editing.
-All page types and options are described at <https://robinlanger.github.io/glancebox/templates/>.
-
-Home Assistant entities need no token here: a `homeassistant` or `energy` page, or a `printer` page
-with `source: hass`, without `url` and `token` reads directly from this Home Assistant.
+A `homeassistant` or `energy` page, or a `printer` page with `source: hass`, needs no `url` and
+no `token`: it reads directly from this Home Assistant.
 
 ```yaml
 pages:
@@ -37,13 +43,16 @@ pages:
   - type: weather
     refresh: 60
   - type: homeassistant
-    title: Solar
+    title: Home
     entities:
+      - sensor.outside_temperature
       - sensor.pv_power
+      - binary_sensor.front_door
 ```
 
 Anything you set in `config.yaml` wins over the values from Home Assistant (for example
-`timezone:`, `lang:`, or `location:` on a weather page).
+`timezone:`, `lang:`, or `location:` on a weather page). For 12-hour times (`2:05 PM`) add
+`time_format: 12h` above `pages:`; there is no form field for it.
 
 ## Configuration (secrets)
 
@@ -58,6 +67,19 @@ The Configuration tab holds only secrets. All fields are optional.
   as `api_key: ${OCTOPRINT_KEY}`.
 
 Restart the add-on after changing them.
+
+## Troubleshooting
+
+- **The add-on stops right after Start:** an error in `config.yaml`. The last lines of the
+  **Log** tab name it. Fix it and start again.
+- **A change has no effect:** restart the add-on.
+- **The display stays empty:** check the address on the display: `http://`, the IP address of
+  Home Assistant and port 8090. Open `http://192.168.1.x:8090/healthz` in a browser; it should
+  answer with the version. (`/` on that port says `{"detail":"Not Found"}`; the overview is only
+  in the web UI.)
+
+More problems and their fixes:
+<https://robinlanger.github.io/glancebox/home-assistant/#troubleshooting>
 
 ## Security
 

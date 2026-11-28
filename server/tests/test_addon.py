@@ -345,3 +345,10 @@ def test_ha_defaults_fill_null_values():
     hook = ha_defaults(HaInfo("America/New_York", "en", 1.0, 2.0), {"SUPERVISOR_TOKEN": "s"})
     out = hook({"timezone": None, "lang": None, "pages": [{"type": "clock"}]})
     assert (out["timezone"], out["lang"]) == ("America/New_York", "en")
+
+
+def test_starter_config_names_time_format():
+    assert "time_format:" in STARTER_CONFIG
+    # only inside comments: the starter itself stays on the default
+    assert all(line.lstrip().startswith("#") for line in STARTER_CONFIG.splitlines()
+               if "time_format" in line)

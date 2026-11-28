@@ -3,13 +3,19 @@
 <style>
 .clock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
 .time{font-weight:700;font-size:72px;line-height:1;}
+.time.h12{font-size:56px;}
+.ampm{margin-left:6px;font-size:22px;font-weight:700;color:var(--muted);}
 .weekday{margin-top:14px;font-size:22px;font-weight:700;}
 .date{margin-top:4px;font-size:18px;color:var(--muted);}
 </style>
 {% endblock %}
 {% block body %}
 <div class="clock">
+  {% if ampm %}
+  <div class="time h12">{{ time }}<span class="ampm">{{ ampm }}</span></div>
+  {% else %}
   <div class="time">{{ time }}</div>
+  {% endif %}
   <div class="weekday">{{ weekday }}</div>
   <div class="date">{{ date }}</div>
 </div>

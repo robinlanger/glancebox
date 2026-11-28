@@ -115,6 +115,7 @@ async def fetch_page_data(page: PageConfig, ptype: PageType, cfg: AppConfig, now
         now=datetime.fromtimestamp(now, ZoneInfo(cfg.timezone)),
         lang=page.options.get("lang", cfg.lang),
         timezone=cfg.timezone,
+        time_format=page.time_format or cfg.time_format,
         **({} if inbox is None else {"pushed": inbox.get}),
     )
     return await asyncio.wait_for(

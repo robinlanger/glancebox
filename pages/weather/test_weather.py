@@ -1,5 +1,6 @@
 import io
 import itertools
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -190,6 +191,19 @@ def test_english_texts(weather, calls):
     assert data["desc"] == "Partly cloudy"
 
 
+def test_twelve_hour_clock_and_hours(weather, calls):
+    data = weather.fetch({"latitude": 50.1, "longitude": 8.7}, replace(ctx(), time_format="12h"))
+    assert data["clock"] == "2:05 PM"
+    assert [h["hour"] for h in data["hours"]] == ["3 PM", "4 PM", "5 PM", "6 PM"]
+
+
+def test_twelve_hour_hours_cross_midnight(weather, calls):
+    late = datetime(2026, 11, 14, 22, 30, tzinfo=TZ)
+    data = weather.fetch({"latitude": 50.1, "longitude": 8.7},
+                         replace(ctx(now=late), time_format="12h"))
+    assert [h["hour"] for h in data["hours"]] == ["11 PM", "12 AM", "1 AM", "2 AM"]
+
+
 @pytest.mark.browser
 async def test_template_renders(weather, calls):
     cfg = AppConfig(interval=30, timezone="Europe/Berlin", lang="de",
@@ -201,6 +215,33 @@ async def test_template_renders(weather, calls):
     img = Image.open(io.BytesIO(out))
     assert img.format == "JPEG" and img.size == (240, 240)
     assert img.convert("L").getextrema()[1] > 150
+
+
+@pytest.mark.browser
+async def test_twelve_hour_hours_fit_their_columns(weather, calls):
+    from playwright.async_api import async_playwright
+
+    from glancebox.frames import _jinja_env
+
+    data = weather.fetch({"latitude": 50.1, "longitude": 8.7}, replace(ctx(), time_format="12h"))
+    texts = ["10 PM", "11 PM", "12 AM", "1 AM"]
+    for h, text in zip(data["hours"], texts, strict=True):
+        h["hour"] = text
+    html = _jinja_env([PAGES_DIR / "weather"]).get_template("template.html").render(**data)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 240, "height": 240})
+        await page.set_content(html)
+        boxes = await page.evaluate(
+            "[...document.querySelectorAll('.h')].map(h => { const t = h.querySelector('.t');"
+            " const c = h.getBoundingClientRect(), r = t.getBoundingClientRect();"
+            " return {text: t.textContent, overflow: t.scrollWidth > t.clientWidth,"
+            " width: c.width, inside: r.left >= c.left && r.right <= c.right}; })")
+        await browser.close()
+    assert [b["text"] for b in boxes] == texts
+    for b in boxes:
+        assert not b["overflow"] and b["inside"], b
+        assert 59 <= b["width"] <= 61, b
 
 
 def dst_forecast(stamps: list[str]) -> dict:
