@@ -22,7 +22,10 @@ Step-by-step guide with examples and troubleshooting:
    `http://` works. The web UI then says "Display connected".
 5. **Edit `config.yaml` and restart the add-on.** The playlist is `config.yaml` in the add-on's
    config folder; in the File editor (or Studio Code Server) it is under
-   `/addon_configs/<id>_glancebox/config.yaml`. If that folder is empty (the add-on could not save
+   `/addon_configs/<id>_glancebox/config.yaml`. You need an editor add-on from the official
+   add-on store for this, for example File editor or Studio Code Server; File editor may only
+   show Home Assistant's own config folder until you switch off its option "Enforce basepath"
+   (not yet checked on a real Home Assistant). If that folder is empty (the add-on could not save
    the starter file there), the web UI shows the starter content: create `config.yaml` with it.
    The add-on reads the file only at start, so restart it after every change.
 

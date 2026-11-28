@@ -27,9 +27,9 @@ developed with. Newer versions may call them slightly differently.
 
 ## Step 2: Start it and open the web UI
 
-1. On the add-on page, click **Start**. The **Log** tab shows lines with `Uvicorn running on`
-   once the server is up. They name port 8080, the port inside the add-on; your network reaches
-   it on port 8090.
+1. On the add-on page, click **Start**. The **Log** tab shows two lines with `Uvicorn running on`
+   once the server is up (the add-on runs two servers). One of them names port 8080, the port
+   inside the add-on that your network reaches on port 8090; the other is for the web UI.
 2. Click **Open web UI**. The add-on's overview opens: the box "Connect your display" and, under
    "Playlist", the starter pages **clock** and **weather**. Their previews appear after a short
    while; until then a page shows "no picture yet". The overview reloads itself every 30 seconds.
@@ -66,6 +66,11 @@ code Home Assistant gives this repository. It uses the same format as the
   from Home Assistant are used. Values you set in `config.yaml` always win.
 - A `homeassistant` or `energy` page, and a `printer` page with `source: hass`, needs neither
   `url` nor `token`; it reads from this Home Assistant.
+
+To edit the file you need an editor add-on from the official add-on store, for example
+**File editor** or **Studio Code Server**; Home Assistant OS does not come with one. File editor
+may only show Home Assistant's own config folder until you switch off its option "Enforce
+basepath" in its Configuration tab (not yet checked on a real Home Assistant).
 
 1. Open `/addon_configs/<id>_glancebox/` in the File editor (or Studio Code Server).
     - **`config.yaml` is there:** the add-on wrote it on its first start with the starter pages.
@@ -210,7 +215,9 @@ written into `config.yaml` in plain text.
   provider. In `config.yaml` write them as `${ANTHROPIC_ADMIN_KEY}`, `${OPENAI_ADMIN_KEY}`,
   `${XAI_MANAGEMENT_KEY}`, `${GITHUB_COPILOT_TOKEN}`.
 - **More secrets:** name/value pairs for your own pages and for the key or password of a printer
-  read directly, used as `${NAME}`. The name is written in capital letters (A-Z, 0-9, `_`).
+  read directly, used as `${NAME}`. The name starts with a capital letter and may contain capital letters,
+  digits and `_` (A-Z, 0-9, `_`). A name that is already in use, such as one of the built-in
+  secrets above, is ignored.
 
 Example: a printer read directly from OctoPrint. Add `OCTOPRINT_KEY` with your key under **More
 secrets**, save, and use it like this:
@@ -238,7 +245,7 @@ Restart the add-on after changing a secret.
 | The add-on stops right after Start | An error in `config.yaml` | Open the **Log** tab. One line names the problem, for example `pages[2] (homeassistant): ...`, `unknown page type`, `environment variable OCTOPRINT_KEY is not set` (the secret is missing in the Configuration tab) or `refresh must be at least ...`. Fix it and start the add-on again. |
 | A change has no effect | The add-on was not restarted | Restart the add-on after every change of `config.yaml` or of a secret. |
 | `config.yaml` cannot be found | The file is in the add-on's config folder, not in Home Assistant's own config folder | Look in `/addon_configs/<id>_glancebox/`. The File editor may be limited to Home Assistant's config folder by its option "Enforce basepath"; Studio Code Server shows `/addon_configs`. If the folder is empty, create `config.yaml` with the starter content from the web UI (Step 4). |
-| The display shows nothing, or the web UI keeps saying "Waiting for your display" | The display has a wrong address | Check the address on the display: `http://`, the IP address of Home Assistant, port 8090. Display and Home Assistant must be in the same network. Open `http://192.168.1.x:8090/healthz` in a browser: it answers with one line such as `{"version": "0.8.0", ...}`. If it does not, the display cannot reach the add-on either. |
+| The display shows nothing, or the web UI keeps saying "Waiting for your display" | The display has a wrong address | Check the address on the display: `http://`, the IP address of Home Assistant, port 8090. Display and Home Assistant must be in the same network. Open `http://192.168.1.x:8090/healthz` in a browser: it answers with one line of JSON that starts with `{"version":` and the version number. If it does not, the display cannot reach the add-on either. |
 | `http://192.168.1.x:8090/` in a browser shows "Not Found" | Nothing is wrong | The overview exists only in the add-on's web UI inside Home Assistant. Port 8090 serves only the display. To check it, open `/healthz`. |
 | The web UI says "The server address could not be determined" | The add-on's port is switched off | Open the add-on's **Configuration** tab, section **Network**, and enter a port (8090) for the display port. Save and restart the add-on. |
 | The add-on does not start because port 8090 is in use | Another add-on or program uses port 8090 | Change the port in the **Configuration** tab, section **Network**, and use the new port in the display's address. |

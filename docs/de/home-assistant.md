@@ -29,9 +29,10 @@ Add-on entwickelt wurde. Neuere Versionen nennen sie vielleicht etwas anders.
 
 ## Schritt 2: Starten und Oberfläche öffnen
 
-1. Klick auf der Seite des Add-ons auf **Starten**. Der Reiter **Log** zeigt Zeilen mit
-   `Uvicorn running on`, sobald der Server läuft. Sie nennen Port 8080, den Port im Add-on; dein
-   Netzwerk erreicht ihn über Port 8090.
+1. Klick auf der Seite des Add-ons auf **Starten**. Der Reiter **Log** zeigt zwei Zeilen mit
+   `Uvicorn running on`, sobald der Server läuft (das Add-on startet zwei Server). Eine davon
+   nennt Port 8080, den Port im Add-on, den dein Netzwerk über Port 8090 erreicht; die andere
+   gehört zur Oberfläche.
 2. Klick auf **Benutzeroberfläche öffnen**. Die Übersicht des Add-ons öffnet sich: der Kasten
    „Connect your display“ und unter „Playlist“ die Starter-Seiten **clock** und **weather**. Ihre
    Vorschau erscheint nach kurzer Zeit; bis dahin steht bei einer Seite „no picture yet“. Die
@@ -70,6 +71,12 @@ kurzer Code, den Home Assistant diesem Repository gibt. Sie hat dasselbe Format 
   aus Home Assistant. Was du in der `config.yaml` einträgst, hat immer Vorrang.
 - Eine `homeassistant`- oder `energy`-Seite und eine `printer`-Seite mit `source: hass` brauchen
   weder `url` noch `token`; sie lesen aus diesem Home Assistant.
+
+Zum Bearbeiten brauchst du ein Editor-Add-on aus dem offiziellen Add-on-Store, zum Beispiel
+**File editor** oder **Studio Code Server**; Home Assistant OS bringt keins mit. Der File editor
+zeigt womöglich nur den Konfigurationsordner von Home Assistant, bis du in seinem Reiter
+Konfiguration die Option „Enforce basepath“ ausschaltest (noch nicht an einem echten Home
+Assistant geprüft).
 
 1. Öffne `/addon_configs/<id>_glancebox/` im File editor (oder in Studio Code Server).
     - **`config.yaml` ist da:** Das Add-on hat sie beim ersten Start mit den Starter-Seiten
@@ -216,8 +223,9 @@ müssen nie im Klartext in der `config.yaml` stehen.
   Anbieter. In der `config.yaml` schreibst du sie als `${ANTHROPIC_ADMIN_KEY}`,
   `${OPENAI_ADMIN_KEY}`, `${XAI_MANAGEMENT_KEY}`, `${GITHUB_COPILOT_TOKEN}`.
 - **Weitere Geheimnisse:** Paare aus Name und Wert für eigene Seiten und für Key oder Passwort
-  eines direkt gelesenen Druckers, verwendet als `${NAME}`. Der Name besteht aus Großbuchstaben,
-  Ziffern und `_` (A-Z, 0-9, `_`).
+  eines direkt gelesenen Druckers, verwendet als `${NAME}`. Der Name beginnt mit einem
+  Großbuchstaben und besteht aus Großbuchstaben, Ziffern und `_` (A-Z, 0-9, `_`). Ein Name, der
+  schon vergeben ist, etwa der eines der festen Geheimnisse oben, wird ignoriert.
 
 Beispiel: ein Drucker, der direkt aus OctoPrint gelesen wird. Trag unter **Weitere Geheimnisse**
 `OCTOPRINT_KEY` mit deinem Key ein, speichere, und verwende ihn so:
@@ -245,7 +253,7 @@ Starte das Add-on nach jeder Änderung an einem Geheimnis neu.
 | Das Add-on stoppt gleich nach dem Starten | Ein Fehler in der `config.yaml` | Öffne den Reiter **Log**. Eine Zeile nennt das Problem, zum Beispiel `pages[2] (homeassistant): ...`, `unknown page type`, `environment variable OCTOPRINT_KEY is not set` (das Geheimnis fehlt im Reiter Konfiguration) oder `refresh must be at least ...`. Behebe es und starte das Add-on wieder. |
 | Eine Änderung wirkt nicht | Das Add-on wurde nicht neu gestartet | Starte das Add-on nach jeder Änderung an der `config.yaml` oder an einem Geheimnis neu. |
 | Die `config.yaml` ist nicht zu finden | Die Datei liegt im Konfigurationsordner des Add-ons, nicht im Konfigurationsordner von Home Assistant | Schau in `/addon_configs/<id>_glancebox/`. Der File editor ist mit seiner Option „Enforce basepath“ womöglich auf den Konfigurationsordner von Home Assistant beschränkt; Studio Code Server zeigt `/addon_configs`. Ist der Ordner leer, leg die `config.yaml` mit dem Startinhalt aus der Oberfläche an (Schritt 4). |
-| Das Display zeigt nichts, oder die Oberfläche zeigt weiter „Waiting for your display“ | Das Display hat eine falsche Adresse | Prüf die Adresse im Display: `http://`, die IP-Adresse von Home Assistant, Port 8090. Display und Home Assistant müssen im selben Netzwerk sein. Öffne `http://192.168.1.x:8090/healthz` im Browser: Es antwortet mit einer Zeile wie `{"version": "0.8.0", ...}`. Wenn nicht, erreicht auch das Display das Add-on nicht. |
+| Das Display zeigt nichts, oder die Oberfläche zeigt weiter „Waiting for your display“ | Das Display hat eine falsche Adresse | Prüf die Adresse im Display: `http://`, die IP-Adresse von Home Assistant, Port 8090. Display und Home Assistant müssen im selben Netzwerk sein. Öffne `http://192.168.1.x:8090/healthz` im Browser: Es antwortet mit einer Zeile JSON, die mit `{"version":` und der Versionsnummer beginnt. Wenn nicht, erreicht auch das Display das Add-on nicht. |
 | `http://192.168.1.x:8090/` zeigt im Browser „Not Found“ | Alles in Ordnung | Die Übersicht gibt es nur in der Oberfläche des Add-ons in Home Assistant. Port 8090 bedient nur das Display. Zum Prüfen öffne `/healthz`. |
 | Die Oberfläche meldet „The server address could not be determined“ | Der Port des Add-ons ist abgeschaltet | Öffne im Add-on den Reiter **Konfiguration**, Abschnitt **Netzwerk**, und trag für den Display-Port einen Port ein (8090). Speichere und starte das Add-on neu. |
 | Das Add-on startet nicht, weil Port 8090 belegt ist | Ein anderes Add-on oder Programm nutzt Port 8090 | Ändere den Port im Reiter **Konfiguration**, Abschnitt **Netzwerk**, und verwende den neuen Port in der Adresse im Display. |
