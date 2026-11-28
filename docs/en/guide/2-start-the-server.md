@@ -3,6 +3,9 @@
 <p class="gb-meta">Step 2 of 5 · about 10 minutes</p>
 <div class="gb-progress" aria-hidden="true"><span class="on"></span><span class="on"></span><span></span><span></span><span></span></div>
 
+!!! tip "Home Assistant OS?"
+    Run the server as a Home Assistant add-on instead of Docker. Follow the step-by-step guide [Home Assistant add-on](../home-assistant.md) and skip this step.
+
 The server renders your pages and sends them to the display as pictures. It runs in Docker on your always-on computer.
 
 ## Get Glance Box

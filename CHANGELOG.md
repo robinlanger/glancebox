@@ -32,6 +32,15 @@ All notable changes to this project are documented here. The format follows
 - `printer` page without a preview picture: the first small line now steps down to 11 px from
   16 characters in 24-hour mode too. Lines that long were mostly cut with "…" before. The
   shipped preview pictures are unchanged.
+- Home Assistant add-on guide (issue #37): `docs/en/home-assistant.md` and
+  `docs/de/home-assistant.md` are now a step-by-step guide (install, start and open the web UI,
+  connect the display, choose the pages), with copy-ready examples for the pages that read from
+  Home Assistant without `url`/`token`, a "More secrets" example, how to update, and a
+  troubleshooting table. The add-on's Documentation tab (`ha-addon/DOCS.md`) is a short version
+  that links to it. A test loads every YAML example of the three documents in add-on mode.
+
+  Written from the code; not yet checked on a real Home Assistant (menu names, the location of
+  `config.yaml`, whether the File editor reaches it, and the troubleshooting rows).
 
 ## [0.8.0]
 
