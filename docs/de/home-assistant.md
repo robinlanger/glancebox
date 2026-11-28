@@ -67,8 +67,9 @@ Assistant, du musst also nichts ausfüllen.
 ## Schritt 4: Seiten festlegen
 
 Die Playlist ist die Datei `config.yaml` im Konfigurationsordner des Add-ons,
-`/app_configs/<id>_glancebox/config.yaml`; `<id>` ist ein kurzer Code, den Home Assistant diesem
-Repository gibt (zum Beispiel `9a6cf636_glancebox`). Ältere Versionen von Home Assistant und der
+`/app_configs/<id>_glancebox/config.yaml`. `<id>` ist ein kurzer Code, den Home Assistant aus der
+Adresse des Repositorys bildet; für dieses Repository ist er `9a6cf636`, der Ordner ist also
+`/app_configs/9a6cf636_glancebox/`. Ältere Versionen von Home Assistant und der
 Editor-Add-ons zeigen den Ordner als `/addon_configs/<id>_glancebox/`. Im Add-on selbst und in
 seinem Protokoll heißt dieselbe Datei `/config/config.yaml`. Sie hat dasselbe Format wie die
 [Konfiguration](configuration.md) des Docker-Setups, mit zwei Unterschieden:

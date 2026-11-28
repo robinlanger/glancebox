@@ -59,8 +59,9 @@ Assistant, so there is nothing to fill in.
 ## Step 4: Choose your pages
 
 The playlist is the file `config.yaml` in the add-on's config folder,
-`/app_configs/<id>_glancebox/config.yaml`, where `<id>` is a short code Home Assistant gives this
-repository (for example `9a6cf636_glancebox`). Older versions of Home Assistant and of the editor
+`/app_configs/<id>_glancebox/config.yaml`. `<id>` is a short code Home Assistant derives from
+the repository URL; for this repository it is `9a6cf636`, so the folder is
+`/app_configs/9a6cf636_glancebox/`. Older versions of Home Assistant and of the editor
 add-ons show the folder as `/addon_configs/<id>_glancebox/`. Inside the add-on, and in its log,
 the same file is called `/config/config.yaml`. It uses the same format as the
 [configuration](configuration.md) of the Docker setup, with two differences:

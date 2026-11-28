@@ -12,22 +12,23 @@ Step-by-step guide with examples and troubleshooting:
 1. **Flash the display once.** It needs the Glance Box firmware. You flash it once in the browser
    through the stock firmware's update page, no soldering:
    <https://robinlanger.github.io/glancebox/guide/3-flash-the-firmware/>.
-2. **Start the add-on.** Without any settings it creates a starter playlist: a **clock** and the
-   **weather** at your Home Assistant home location. Time zone, language (German or English) and
-   location come from Home Assistant.
+2. **Start the add-on.** Without any settings it starts with a starter playlist: a **clock** and
+   the **weather** at your Home Assistant home location. Time zone, language (German or English)
+   and location come from Home Assistant.
 3. **Open the web UI** on this page (switch on **Show in sidebar** to have it one click away). It
    shows the box "Connect your display" and previews of your pages.
 4. **Enter the address** from that box, for example `http://192.168.1.x:8090`, on the display: in
    the setup portal's field **Server URL**, or later on the display's device page. Only
    `http://` works. The web UI then says "Display connected".
 5. **Edit `config.yaml` and restart the add-on.** The playlist is `config.yaml` in the add-on's
-   config folder, `/app_configs/<id>_glancebox/config.yaml` (older Home Assistant versions:
-   `/addon_configs/…`). You need an editor from the official App store for this, for example
-   File editor, Studio Code Server or Terminal & SSH. File editor's documentation says its
-   option "Enforce basepath" (on by default) limits it to Home Assistant's own config folder;
-   switch it off first. If the folder is empty (on Home Assistant OS 18.4 the add-on could not
-   save the starter file there), the web UI shows the starter content: create `config.yaml` with
-   it. The add-on reads the file only at start, so restart it after every change.
+   config folder, `/app_configs/9a6cf636_glancebox/config.yaml` as seen in Terminal & SSH (older
+   Home Assistant versions: `/addon_configs/…`). You need an editor from the official App store
+   for this, for example File editor, Studio Code Server or Terminal & SSH. File editor's
+   documentation says its option "Enforce basepath" (on by default) limits it to Home
+   Assistant's own config folder; switch it off first (not yet tried in File editor itself). If
+   the folder is empty (on Home Assistant OS 18.4 the add-on could not save the starter file
+   there), the web UI shows the starter content: create `config.yaml` with it. The add-on reads
+   the file only at start, so restart it after every change.
 
 All page types and options: <https://robinlanger.github.io/glancebox/templates/>.
 
